@@ -626,6 +626,72 @@ def find_water_hydrogens(
       angle     = angle_final
     )
 
+def ideal_water_h_sites(o_site, h_sites, distances, angle):
+  """
+  Sites of two H of water with given O-H distances and H-O-H angle, oriented
+  as the input H sites are: in the plane of O and the two input sites,
+  symmetrically about the bisector of their directions from O.
+
+  Parameters
+  ----------
+  o_site : sequence of three floats
+  h_sites : sequence of two sites
+    Approximate H sites, difference map peaks for example. Their directions
+    from O must be neither the same nor opposite.
+  distances : sequence of two floats
+    O-H distances.
+  angle : float
+    H-O-H angle, degrees.
+
+  Returns
+  -------
+  tuple
+    Two H sites, in the order of h_sites.
+  """
+  o = matrix.col(o_site)
+  u1 = (matrix.col(h_sites[0]) - o).normalize()
+  u2 = (matrix.col(h_sites[1]) - o).normalize()
+  bisector = (u1 + u2).normalize()
+  across   = (u1 - u2).normalize()
+  half = math.radians(angle/2)
+  c, s = math.cos(half), math.sin(half)
+  return (o + distances[0]*(c*bisector + s*across)).elems, \
+         (o + distances[1]*(c*bisector - s*across)).elems
+
+def ideal_water_h_geometry(model, water_i_seqs):
+  """
+  Ideal O-H distances and H-O-H angles of water molecules, from restraints.
+
+  Parameters
+  ----------
+  model : mmtbx.model.manager
+  water_i_seqs : list
+    (i_seq of O, i_seq of H, i_seq of H) for each water.
+
+  Returns
+  -------
+  list
+    For each water: ((distance, distance), angle), or None if the model has
+    no restraints or they do not define the geometry of this water.
+  """
+  result = [None]*len(water_i_seqs)
+  rm = model.get_restraints_manager()
+  if(rm is None): return result
+  table = rm.geometry.bond_params_table
+  angles = {}
+  o_i_seqs = set([i_seqs[0] for i_seqs in water_i_seqs])
+  for proxy in rm.geometry.angle_proxies:
+    if(proxy.i_seqs[1] in o_i_seqs):
+      angles[(proxy.i_seqs[1], min(proxy.i_seqs[0], proxy.i_seqs[2]),
+        max(proxy.i_seqs[0], proxy.i_seqs[2]))] = proxy.angle_ideal
+  for i, (o, h1, h2) in enumerate(water_i_seqs):
+    b1 = table.lookup(o, h1)
+    b2 = table.lookup(o, h2)
+    angle = angles.get((o, min(h1, h2), max(h1, h2)))
+    if(b1 is None or b2 is None or angle is None): continue
+    result[i] = ((b1.distance_ideal, b2.distance_ideal), angle)
+  return result
+
 def get_detached_water_residue_group(residue_group, h_sites_cart):
     """
     Copy of water residue_group with H atoms added.
@@ -2040,7 +2106,15 @@ class manager(object):
     Add H to water (also to water in alternative conformations) at
     difference map peaks. Water on special position gets no H. H that water
     has already and that are not in density are moved to the peaks.
+
+    The peaks are weak and distorted, so they are accepted with loose
+    tolerances (add_hydrogens parameters). They define the orientation of
+    water only: H are placed with ideal O-H distances and H-O-H angle (as
+    restraints define them, see ideal_water_h_sites), so refinement that
+    follows starts from sensible geometry. Nothing is done in filter_only
+    mode (final clean up: no refinement follows).
     """
+    if(self.params.mode == "filter_only"): return
     ahp = self.params.add_hydrogens
     if ahp.d_min is None: return
     if self._d_min() > ahp.d_min: return
@@ -2105,10 +2179,51 @@ class manager(object):
         model  = self.model,
         params = self.params,
         groups = [(cid, hoh_residue_groups[cid]) for cid in chain_ids])
+      # Water that got H is at the end of the model now
+      n_changed = 0
+      for cid in chain_ids:
+        for hoh_rg, sources in hoh_residue_groups[cid]:
+          n_changed += len(sources)
+      self._idealize_new_h(
+        i_seq_first    = self.model.size() - n_changed,
+        i_seqs_existed = set(old_to_new.values()))
       self._model_state = None # fmodel needs the new xray structure
       self.new_solvent_selection = None
       self._labelled_selection = None
       self._saved_occ, self._saved_u_iso = None, None
+
+  def _idealize_new_h(self, i_seq_first, i_seqs_existed):
+    """
+    Give ideal geometry to water that just got its two H, keeping the
+    orientation. The new H are atoms from i_seq_first on that are not in
+    i_seqs_existed. Restraints for the new H exist only now, in the model
+    with H added.
+    """
+    self.model.get_hierarchy().atoms().reset_i_seq()
+    water_i_seqs = []
+    for rg in self.model.get_hierarchy().residue_groups():
+      if(not is_water_residue_group(rg)): continue
+      for ag in rg.atom_groups():
+        o_atoms, h_atoms = [], []
+        for atom in ag.atoms():
+          if(atom.element_is_hydrogen()):
+            if(atom.i_seq >= i_seq_first and
+               atom.i_seq not in i_seqs_existed): h_atoms.append(atom)
+          elif(atom.element.strip().upper()=="O"): o_atoms.append(atom)
+        if(len(o_atoms) != 1 or len(h_atoms) != 2): continue
+        water_i_seqs.append(
+          (o_atoms[0].i_seq, h_atoms[0].i_seq, h_atoms[1].i_seq))
+    sites_cart = self.model.get_sites_cart()
+    ideal = ideal_water_h_geometry(
+      model = self.model, water_i_seqs = water_i_seqs)
+    for (o, h1, h2), geometry in zip(water_i_seqs, ideal):
+      if(geometry is None): continue
+      sites_cart[h1], sites_cart[h2] = ideal_water_h_sites(
+        o_site    = sites_cart[o],
+        h_sites   = (sites_cart[h1], sites_cart[h2]),
+        distances = geometry[0],
+        angle     = geometry[1])
+    self.model.set_sites_cart(sites_cart = sites_cart)
 
   def _difference_map_without(self, i_seqs):
     """
@@ -2144,10 +2259,13 @@ class manager(object):
     individual atoms: if they point the wrong way they stay there, and their
     occupancy refines to zero. Here H peaks are searched for such water in the
     same way as for water without H, in a difference map computed without H
-    of water. If two peaks are found and an H is further than
-    add_hydrogens.min_dist from its peak, both H are moved to the peaks and
-    get occupancy of their O. H are left as they are if no two peaks are
-    found, and in filter_only mode (final clean up: no refinement follows).
+    of water. The two peaks found define where H should be: at the peaks, or,
+    if restraints define ideal geometry of the water, at the sites that have
+    the ideal geometry and the orientation of the peaks (see _build_h). If an
+    H is further than add_hydrogens.min_dist from where it should be, both H
+    are moved there and get occupancy of their O. H are left as they are if
+    no two peaks are found, and in filter_only mode (final clean up: no
+    refinement follows).
     """
     if(self.params.mode == "filter_only"): return
     ahp = self.params.add_hydrogens
@@ -2180,9 +2298,13 @@ class manager(object):
       is_periodic = True)
     sites_cart = self.model.get_sites_cart()
     occupancies = self.model.get_occ()
+    ideal = ideal_water_h_geometry(
+      model        = self.model,
+      water_i_seqs = [(o_atom.i_seq, h_atoms[0].i_seq, h_atoms[1].i_seq)
+        for o_atom, h_atoms in waters])
     used = {} # residue group -> H peaks taken by its other conformers
     n_moved = 0
-    for o_atom, h_atoms in waters:
+    for (o_atom, h_atoms), geometry in zip(waters, ideal):
       peak_sites, peak_heights = mpl.get_peaks_within_radius(
         target_cart = o_atom.xyz,
         R           = ahp.max_dist,
@@ -2209,7 +2331,14 @@ class manager(object):
       if(wo is None): continue
       used_rg.extend(wo.h_sites)
       # each H has the peak that makes the two H move least
-      a, b = [matrix.col(s) for s in wo.h_sites]
+      h_sites = wo.h_sites
+      if(geometry is not None):
+        h_sites = ideal_water_h_sites(
+          o_site    = o_atom.xyz,
+          h_sites   = h_sites,
+          distances = geometry[0],
+          angle     = geometry[1])
+      a, b = [matrix.col(s) for s in h_sites]
       h1, h2 = [matrix.col(h.xyz) for h in h_atoms]
       if(abs(h1-a)+abs(h2-b) > abs(h1-b)+abs(h2-a)): a, b = b, a
       if(max(abs(h1-a), abs(h2-b)) < ahp.min_dist): continue # H are at peaks

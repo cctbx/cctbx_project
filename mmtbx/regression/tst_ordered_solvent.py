@@ -10,6 +10,7 @@ import math
 from scitbx import matrix
 from libtbx.utils import null_out
 import libtbx.log
+from libtbx import group_args
 
 pdb_str = """\
 CRYST1   20.000   20.000   20.000  90.00  90.00  90.00 P 1
@@ -395,7 +396,110 @@ def exercise_build_h():
   assert approx_equal(o.model.get_xray_structure().sites_cart(),
     h.atoms().extract_xyz())
 
-def exercise_build_h_misplaced():
+def water_h_geometry(model):
+  """
+  For each water with two H: O-H distances and H-O-H angle, and their ideal
+  values (from restraints).
+  """
+  g = model.get_restraints_manager().geometry
+  angles = {}
+  for p in g.angle_proxies: angles[tuple(sorted(p.i_seqs))] = p.angle_ideal
+  result = []
+  for rg in model.get_hierarchy().residue_groups():
+    for ag in rg.atom_groups():
+      if ag.resname != "HOH": continue
+      h = [a for a in ag.atoms() if a.element_is_hydrogen()]
+      if len(h) != 2: continue
+      o = [a for a in ag.atoms() if a.element.strip()=="O"][0]
+      vs = [matrix.col(a.xyz)-matrix.col(o.xyz) for a in h]
+      result.append(group_args(
+        distances       = [abs(v) for v in vs],
+        angle           = vs[0].angle(vs[1], deg=True),
+        distances_ideal = [g.bond_params_table.lookup(
+          o.i_seq, a.i_seq).distance_ideal for a in h],
+        angle_ideal     = angles[tuple(sorted([o.i_seq]+[a.i_seq for a in h]))]))
+  return result
+
+def exercise_ideal_water_h_sites():
+  """
+  H are placed with given O-H distances and H-O-H angle, in the plane of O
+  and the two input sites, symmetrically about the bisector of their
+  directions from O.
+  """
+  o = matrix.col((1,2,3))
+  s1 = o + matrix.col((1.4,0.1,0))
+  s2 = o + matrix.col((-0.2,0.6,0))
+  h1, h2 = [matrix.col(h) for h in ordered_solvent.ideal_water_h_sites(
+    o_site = o, h_sites = (s1, s2), distances = (0.85, 0.9), angle = 104.)]
+  assert approx_equal(abs(h1-o), 0.85)
+  assert approx_equal(abs(h2-o), 0.9)
+  assert approx_equal((h1-o).angle(h2-o, deg=True), 104.)
+  # in plane
+  assert approx_equal(h1[2], 3) and approx_equal(h2[2], 3)
+  # same bisector, each H on the side of its input site
+  b_in  = ((s1-o).normalize() + (s2-o).normalize()).normalize()
+  b_out = ((h1-o).normalize() + (h2-o).normalize()).normalize()
+  assert approx_equal(b_in, b_out)
+  assert (h1-o).angle(s1-o, deg=True) < (h1-o).angle(s2-o, deg=True)
+  assert (h2-o).angle(s2-o, deg=True) < (h2-o).angle(s1-o, deg=True)
+
+def exercise_build_h_ideal():
+  """
+  H of water are placed at difference map peaks accepted with loose
+  tolerances (the peaks are weak and distorted). The built H have ideal
+  O-H distances and H-O-H angle, as restraints define them: refinement that
+  follows does not have to repair the geometry. No H are built in the final
+  clean up (mode=filter_only): nothing refines them after it.
+  """
+  cryst1 = "CRYST1   20.000   20.000   20.000  90.00  90.00  90.00 P 1"
+  w1 = water_with_h(1, matrix.col((5,5,5)), matrix.col((5,5,0)), chain="A")
+  w2 = water_with_h(2, matrix.col((5,14,5)), matrix.col((5,14,0)), chain="S")
+  # water that has H already (in density) is left as it is
+  w3 = water_with_h(3, matrix.col((14,5,5)), matrix.col((14,5,0)), chain="S")
+  lines_true = w1 + w3 + w2
+  lines = [l for l in w1 + w2 if l[76:78].strip() != "H"] + w3
+  def get_o(mode):
+    model_true = get_model_h(lines_true, cryst1=cryst1)
+    model = get_model_h(lines, cryst1=cryst1)
+    model.process(make_restraints=True)
+    for m in [model_true, model]:
+      m.setup_scattering_dictionaries(scattering_table="n_gaussian")
+    fmodel = get_fmodel(model_true, model, d_min=0.9)
+    params = ordered_solvent.master_params().extract()
+    params.add_hydrogens.min_angle = 60
+    params.mode = mode
+    o = get_manager_stub(model, fmodel, params)
+    o._get_maps()
+    return o, model.size()
+  o, size = get_o(mode = "second_half")
+  o._build_h()
+  assert o.model.size() == size + 4
+  geometry = water_h_geometry(o.model)
+  assert len(geometry) == 3
+  n_ideal = 0
+  for w in geometry:
+    if(approx_equal(w.distances, w.distances_ideal, 1.e-4, out=None) and
+       approx_equal(w.angle, w.angle_ideal, 1.e-3, out=None)): n_ideal += 1
+    else:
+      # as in input (coordinates have three decimals there)
+      assert approx_equal(w.distances, [0.96, 0.96], 1.e-3)
+      assert approx_equal(w.angle, 104.5, 0.2)
+  assert n_ideal == 2, n_ideal
+  assert approx_equal(o.model.get_xray_structure().sites_cart(),
+    o.model.get_hierarchy().atoms().extract_xyz())
+  # H point where the true H are
+  true_h = [matrix.col(a.xyz) for a in get_model_h(lines_true,
+    cryst1=cryst1).get_hierarchy().atoms()
+    if a.parent().resname=="HOH" and a.element_is_hydrogen()]
+  for a in o.model.get_hierarchy().atoms():
+    if a.parent().resname=="HOH" and a.element_is_hydrogen():
+      assert min([abs(matrix.col(a.xyz)-t) for t in true_h]) < 0.35
+  #
+  o, size = get_o(mode = "filter_only")
+  o._build_h()
+  assert o.model.size() == size
+
+def exercise_build_h_misplaced(with_restraints):
   """
   H of water that are not in density are moved to difference map peaks, and
   get occupancy of their O (they used to stay where they were, and their
@@ -410,6 +514,7 @@ def exercise_build_h_misplaced():
   w2_low = [w2[0]] + [l[:54]+"  0.70"+l[60:] for l in w2[1:]]
   model_true = get_model_h(w1_true + w2, cryst1=cryst1)
   model = get_model_h(w1_wrong + w2_low, cryst1=cryst1)
+  if(with_restraints): model.process(make_restraints=True)
   for m in [model_true, model]:
     m.setup_scattering_dictionaries(scattering_table="n_gaussian")
   fmodel = get_fmodel(model_true, model, d_min=0.9)
@@ -455,6 +560,15 @@ def exercise_build_h_misplaced():
   h1, h2 = [a.xyz for a in atoms if a.element_is_hydrogen()
     and a.parent().resname=="HOH" and a.parent().parent().resseq_as_int()==1]
   assert abs(matrix.col(h1)-matrix.col(h2)) > 0.8
+  # moved H have ideal geometry (model with restraints)
+  if(with_restraints):
+    geometry = water_h_geometry(o.model)
+    assert len(geometry) == 2
+    n_ideal = 0
+    for w in geometry:
+      if(approx_equal(w.distances, w.distances_ideal, 1.e-4, out=None) and
+         approx_equal(w.angle, w.angle_ideal, 1.e-3, out=None)): n_ideal += 1
+    assert n_ideal == 1, n_ideal # water 2 was not moved
   # occupancies of scatterers follow
   assert approx_equal(
     o.model.get_xray_structure().scatterers().extract_occupancies(),
@@ -523,7 +637,10 @@ def run():
   exercise_filter_by_distance_h()
   exercise_no_duplicate_water_h_restraints()
   exercise_build_h()
-  exercise_build_h_misplaced()
+  exercise_ideal_water_h_sites()
+  exercise_build_h_ideal()
+  exercise_build_h_misplaced(with_restraints = False)
+  exercise_build_h_misplaced(with_restraints = True)
   exercise_refine_new_water()
   exercise_manager()
 
