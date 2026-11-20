@@ -4733,7 +4733,7 @@ def get_ncs_closest_sites(
 
   """Try to find NCS ops mapping sites_cart close to closest_sites"""
 
-  best_id = None
+  best_ncs_id = None
   best_rms = None
   best_sites = closest_sites.deep_copy()
   for ncs_id in range(box_ncs_object.max_operators()):
@@ -4750,7 +4750,8 @@ def get_ncs_closest_sites(
       best_rms = rms
       best_ncs_id = ncs_id
       best_sites = test_sites.deep_copy()
-  used_ncs_id_list.append(best_ncs_id)
+  if best_ncs_id is not None: # None if all operators are already used
+    used_ncs_id_list.append(best_ncs_id)
   return best_sites, used_ncs_id_list
 
 def get_closest_sites(
@@ -4931,6 +4932,7 @@ def get_bounds_for_au_box(params,
     sites_orig = closest_sites.deep_copy()
     used_ncs_id_list = [box_ncs_object.ncs_groups()[0].identity_op_id()]
     for i in range(params.segmentation.n_au_box-1):
+      n_used = len(used_ncs_id_list)
       closest_sites, used_ncs_id_list = get_ncs_closest_sites(
         used_ncs_id_list = used_ncs_id_list,
         closest_sites = closest_sites,
@@ -4938,8 +4940,11 @@ def get_bounds_for_au_box(params,
         box_ncs_object = box_ncs_object,
         box_crystal_symmetry = box_crystal_symmetry,
         out = out)
+      if len(used_ncs_id_list) == n_used:
+        break # all operators used: fewer than n_au_box are available
     print("\nNew total of %d sites representing %d au found" %(
-      closest_sites.size(), params.segmentation.n_au_box), file = out)
+      closest_sites.size(), closest_sites.size()//sites_orig.size()),
+      file = out)
     print("New rmsd: %7.1f A " %(
        radius_of_gyration_of_vector(closest_sites)), file = out)
 
