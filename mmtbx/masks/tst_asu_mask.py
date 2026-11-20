@@ -691,12 +691,70 @@ def exercise_mask_data_3(space_group_info, n_sites=100, d_min=2.0,
   assert approx_equal(f_mask_1.data(), f_mask_2.data())
   assert approx_equal(f_mask_1.data(), f_mask_3.data())
 
+def exercise_structure_factors_exact():
+  # structure_factors transforms only the lines of the mask and the
+  # coefficients the requested indices read; for any index set it must equal
+  # from_map on a full transform of mask_data_whole_uc, bit for bit
+  from cctbx import maptbx
+  from scitbx import fftpack
+  from scitbx import stl
+  import scitbx.stl.vector # import dependency
+  from cctbx.masks import vdw_radii_from_xray_structure
+  for symbol in ["P 21 21 21 (a-1/4,b+1/6,c)", "I 41/a (a+b,-a+b,c)",
+                 "R 3 :R", "F d -3 m :2", "C 1 2 1"]:
+    xrs = random_structure.xray_structure(
+      space_group_info=space_group_info(symbol),
+      elements=["C"]*20,
+      volume_per_atom=50,
+      min_distance=1.5)
+    sites = xrs.sites_frac()
+    sites[0] = (sites[0][0]+7, sites[0][1]-5, sites[0][2]+11)
+    radii = vdw_radii_from_xray_structure(xray_structure=xrs)
+    n_real = maptbx.crystal_gridding(
+      unit_cell        = xrs.unit_cell(),
+      space_group_info = xrs.space_group_info(),
+      symmetry_flags   = maptbx.use_space_group_symmetry,
+      step             = 0.7).n_real()
+    miller_set = xrs.structure_factors(d_min=2).f_calc().set()
+    index_sets = [
+      miller_set.indices(),
+      miller_set.resolution_filter(d_min=5).indices(),
+      -miller_set.indices(),
+      miller_set.expand_to_p1().generate_bivoet_mates().indices(),
+      miller_set.indices()[-1:],
+      miller_set.indices()[:0]]
+    for shells in [stl.vector.double(), stl.vector.double([0.5, 0.5])]:
+      asu_mask = masks.atom_mask(
+        unit_cell                = xrs.unit_cell(),
+        space_group              = xrs.space_group(),
+        gridding_n_real          = n_real,
+        solvent_radius           = 1.0,
+        shrink_truncation_radius = 1.0)
+      asu_mask.compute(sites, radii, shells)
+      scale = xrs.unit_cell().volume() / (
+        n_real[0]*n_real[1]*n_real[2]*xrs.space_group().order_z())
+      for layer in range(1, asu_mask.n_solvent_layers()+1):
+        complex_map = fftpack.real_to_complex_3d(n_real).forward(
+          asu_mask.mask_data_whole_uc(layer))
+        for indices in index_sets:
+          ref = maptbx.structure_factors.from_map(
+            space_group     = xrs.space_group(),
+            anomalous_flag  = False,
+            miller_indices  = indices,
+            complex_map     = complex_map,
+            conjugate_flag  = True).data() * scale
+          new = asu_mask.structure_factors(indices, layer)
+          assert new.size() == ref.size()
+          if new.size() != 0:
+            assert flex.max(flex.abs(new - ref)) == 0, symbol
+
 def run_call_back(flags, space_group_info):
   exercise_mask_data_1(space_group_info)
   exercise_mask_data_2(space_group_info)
   exercise_mask_data_3(space_group_info)
 
 if (__name__ == "__main__"):
+  exercise_structure_factors_exact()
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back,
     symbols_to_stdout=True, symbols_to_stderr=False)
   try:

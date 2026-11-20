@@ -1030,11 +1030,14 @@ class structure(crystal.special_position_settings):
     :returns: an array to select all H and D scatterers of the structure
     :rtype: boolean[]
     """
-    scattering_types = self._scatterers.extract_scattering_types()
-    result = flex.bool()
-    for sct in scattering_types:
-      if(sct.strip() in ['H','D']): result.append(True)
-      else: result.append(False)
+    # a registry of its own because the structure's would assign tables
+    registry = ext.scattering_type_registry()
+    registry.process(self._scatterers)
+    unique_indices = registry.unique_indices(self._scatterers)
+    result = flex.bool(unique_indices.size(), False)
+    for sct, i in registry.type_index_pairs_as_dict().items():
+      if(sct.strip() in ['H','D']):
+        result.set_selected(unique_indices == i, True)
     return result
 
   def element_selection(self, *elements):
