@@ -87,6 +87,13 @@ namespace cctbx { namespace xray {
   namespace detail {
 
     // self-expanding exponent table
+    /* Values between table entries are linearly interpolated: the result is
+       a continuous function of the argument (relative error is at most 1/8
+       of the squared table step). With the nearest entry taken instead the
+       sampled density, and so structure factors and targets computed from
+       it, change in jumps as atoms move, and line searches in minimization
+       fail.
+     */
     template <typename FloatType>
     class exponent_table
     {
@@ -112,11 +119,12 @@ namespace cctbx { namespace xray {
         {
           if (one_over_step_size_ == 0) return std::exp(x);
           FloatType xs = x * one_over_step_size_;
-          std::size_t i = static_cast<std::size_t>(xs+.5);
-          if (i >= table_.size()) {
-            expand(i + 1);
+          std::size_t i = static_cast<std::size_t>(xs);
+          if (i + 1 >= table_.size()) {
+            expand(i + 2);
           }
-          return table_[i];
+          FloatType e = table_[i];
+          return e + (xs - i) * (table_[i+1] - e);
         }
 
         std::vector<FloatType> const&

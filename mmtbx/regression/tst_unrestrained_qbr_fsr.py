@@ -140,7 +140,10 @@ def exercise_one_of_two():
     frozen = run_one(freeze=True,  refine_q=refine_q, refine_b=refine_b)
     assert approx_equal(full.r, frozen.r, 3.e-3)
     assert approx_equal(full.occ, frozen.occ, 0.02)
-    assert approx_equal(full.b, frozen.b, 1.0)
+    # B above 40 are poorly defined by the data: the two ways stop up to
+    # 1.8 apart there (0.5 before the table of exponents used to compute
+    # structure factors with FFT got interpolated)
+    assert approx_equal(full.b, frozen.b, 3.0)
     if(not refine_q): assert approx_equal(frozen.occ, [1.0]*frozen.occ.size())
     if(not refine_b): assert approx_equal(frozen.b, [25.]*frozen.b.size())
 

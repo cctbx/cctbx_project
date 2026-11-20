@@ -195,16 +195,14 @@ namespace cctbx { namespace xray {
             FloatType d_sq_et = d_sq * exp_table.one_over_step_size_;
             for (std::size_t i=0;i<gaussian_ft.n_rho_real_terms;i++) {
               FloatType xs = gaussian_ft.bs_real_[i] * d_sq_et;
-              std::size_t j = static_cast<std::size_t>(xs+.5);
-              FloatType e;
-              if (j >= exp_tab_size) {
-                exp_table.expand(j + 1);
+              // linear interpolation, see exponent_table
+              std::size_t j = static_cast<std::size_t>(xs);
+              if (j + 1 >= exp_tab_size) {
+                exp_table.expand(j + 2);
                 exp_tab_size = exp_table.table_.size();
-                e = exp_table.table_[j];
               }
-              else {
-                e = exp_table.table_[j];
-              }
+              FloatType e = exp_table.table_[j];
+              e += (xs - j) * (exp_table.table_[j+1] - e);
               contr += gaussian_ft.as_real_[i] * e;
             }
             /*
