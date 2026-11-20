@@ -57,6 +57,7 @@ alternates, encoded by occupancy only, would clash in every conformer.
 from __future__ import absolute_import, division, print_function
 import iotbx.pdb.hierarchy
 import mmtbx.model
+from cctbx.eltbx import chemical_elements
 from libtbx import group_args
 from libtbx.utils import Sorry, null_out
 
@@ -666,9 +667,7 @@ MISSING_BOND_CAP = 1.0
 # atoms and are not always linked in the restraints: a pair with a metal
 # clashes only below this distance (A), or below clash_distance if smaller.
 METAL_CLASH_DISTANCE = 1.5
-METALS = set("""LI BE NA MG AL K CA SC TI V CR MN FE CO NI CU ZN GA RB SR Y ZR
-NB MO TC RU RH PD AG CD IN SN CS BA LA CE PR ND PM SM EU GD TB DY HO ER TM
-YB LU HF TA W RE OS IR PT AU HG TL PB BI TH U""".split())
+METALS = chemical_elements.metals_upper_set()
 # Bonds between consecutive residues of a polymer, expected whether or not
 # the restraints have them: (atom name, atom name in the next residue,
 # ideal distance, sigma).
