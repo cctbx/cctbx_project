@@ -1460,23 +1460,17 @@ NOTES:
     if reduce_add_h_obj.residues_unknown_atoms:
       self._unknown_atoms_note = '\n' + reduce_add_h_obj.unknown_atoms_text(
         verbose=self.params.verbosity > 2) + '\n'
-    # its report of thiols, acids, bridging O-H, phenols, alcohols and N-H at
-    # metals, of NH2 kept against IUPAC, of nucleic-acid ends and the full
-    # list of H not placed (last: it points to the others), for the
-    # description
+    # its report of the H at metals (reduce_hydrogen.metal_h_rules()), of NH2
+    # kept against IUPAC, of nucleic-acid ends and the full list of H not
+    # placed (last: it points to the others), for the description
     self._metal_thiol_note = ''
-    for text in (reduce_add_h_obj.metal_thiol_text(),
-                 reduce_add_h_obj.metal_acid_text(),
-                 reduce_add_h_obj.metal_bridging_text(),
-                 reduce_add_h_obj.metal_phenol_text(),
-                 reduce_add_h_obj.metal_alkoxide_text(),
-                 reduce_add_h_obj.metal_nh_text(),
-                 reduce_add_h_obj.metal_amine_text(),
-                 reduce_add_h_obj.chain_start_kept_text(),
-                 reduce_add_h_obj.nh2_side_fixed_text(),
-                 reduce_add_h_obj.na_terminal_h_text(),
-                 reduce_add_h_obj.na_terminal_gap_text(),
-                 reduce_add_h_obj.not_placed_text(water_rule)):
+    for text in reduce_add_h_obj.metal_h_texts() + [
+        reduce_add_h_obj.metal_amine_text(),
+        reduce_add_h_obj.chain_start_kept_text(),
+        reduce_add_h_obj.nh2_side_fixed_text(),
+        reduce_add_h_obj.na_terminal_h_text(),
+        reduce_add_h_obj.na_terminal_gap_text(),
+        reduce_add_h_obj.not_placed_text(water_rule)]:
       if text:
         self._metal_thiol_note += '\n' + text + '\n'
     missed_residues = set(reduce_add_h_obj.no_H_placed_mlq)
@@ -2344,45 +2338,26 @@ NOTES:
 # ------------------------------------------------------------------------------
 
   def _SuppliedMetalHText(self):
-    # approach=optimize keeps every input H: the H on thiols, acids, bridging
-    # O-H, phenols, alcohols and N bound to metals, and the other N-H next to
-    # a metal, as placement lists them (nothing is deleted here; an H at a
-    # bridge is listed there only).
+    # approach=optimize keeps every input H: the H at the metal sites of
+    # reduce_hydrogen.metal_h_rules(), and the other N-H next to a metal, as
+    # placement lists them (nothing is deleted here; an H that an earlier
+    # rule lists is not listed again).
     # :return: The description-file text ('' if none); also in the log.
     cs = reduce_hydrogen.contact_symmetry(self._output_cs)
-    thiols = reduce_hydrogen.thiol_metal_sites(self.model, cs)
-    acids = reduce_hydrogen.acid_metal_sites(self.model, cs)
-    bridges = reduce_hydrogen.bridging_metal_sites(self.model, cs)
-    phenols = reduce_hydrogen.phenol_metal_sites(self.model, cs)
-    alcohols = reduce_hydrogen.alkoxide_metal_sites(self.model, cs)
-    nh = reduce_hydrogen.metal_nh_sites(self.model, cs)
-    bridged = set()
-    for site in bridges.h_sites:
-      if site.verdict != 'not counted': bridged.add(site.i_h)
-    def not_bridged(a):
-      return a.i_seq not in bridged
+    listed = set()
+    def not_listed(a):
+      return a.i_seq not in listed
     result = ''
-    for text in (
-        reduce_hydrogen.metal_thiol_text(
-          supplied = reduce_hydrogen.supplied_metal_h(thiols, lambda a: True),
-          hint = self._RebuildHint()),
-        reduce_hydrogen.metal_acid_text(
-          supplied = reduce_hydrogen.supplied_metal_h(acids, lambda a: True),
-          hint = self._RebuildHint()),
-        reduce_hydrogen.metal_bridging_text(
-          supplied = reduce_hydrogen.supplied_metal_h(bridges,
-            lambda a: True),
-          hint = self._RebuildHint()),
-        reduce_hydrogen.metal_phenol_text(
-          supplied = reduce_hydrogen.supplied_metal_h(phenols, not_bridged),
-          hint = self._RebuildHint()),
-        reduce_hydrogen.metal_alkoxide_text(
-          supplied = reduce_hydrogen.supplied_metal_h(alcohols, not_bridged),
-          hint = self._RebuildHint()),
-        reduce_hydrogen.metal_nh_text(
-          supplied = reduce_hydrogen.supplied_metal_h(nh, lambda a: True),
-          reported = reduce_hydrogen.reported_metal_h(nh),
-          hint = self._RebuildHint())):
+    for rule in reduce_hydrogen.metal_h_rules():
+      sites = rule.site_class(self.model, cs)
+      supplied = reduce_hydrogen.supplied_metal_h(sites, not_listed)
+      for site in sites.h_sites:
+        if site.verdict != 'not counted': listed.add(site.i_h)
+      reported = ()
+      if rule.reported is not None:
+        reported = reduce_hydrogen.reported_metal_h(sites)
+      text = reduce_hydrogen.metal_h_text(rule, supplied = supplied,
+        hint = self._RebuildHint(), reported = reported)
       if not text: continue
       print('\n' + text, file=self.logger)
       result += '\n' + text + '\n'

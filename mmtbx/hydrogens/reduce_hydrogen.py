@@ -2419,100 +2419,71 @@ def reported_metal_h_rows(sites, key):
       (' altloc %s' % altloc if altloc else '')))
   return rows
 
-def _metal_h_text(titles, not_placed, unresolved, supplied, hint,
-                  reported=()):
+def metal_h_rules():
+  '''
+  The rules that take H off atoms bound to metals, in the order placement
+  applies them (a bridge decides before the phenol and alcohol rules). Each:
+  site_class; cause, of its not_placed records and its key in
+  place_hydrogens.metal_h; and the titles of its report sections:
+  not_placed, unresolved, supplied, and reported (of the candidates the
+  class only lists; None if it lists none).
+  '''
+  rows = (
+    (thiol_metal_sites, 'metal_thiolate', METAL_THIOL_NOT_PLACED,
+     'Thiol H placed at metal sites with unresolved protonation',
+     f'Supplied thiol H at metal sites: {THIOL_H_SUPPLIED_NOTE}', None),
+    (acid_metal_sites, 'metal_acid', METAL_ACID_NOT_PLACED,
+     'Acid H placed at metal sites with unresolved protonation',
+     f'Supplied acid H at metal sites: {ACID_H_SUPPLIED_NOTE}', None),
+    (bridging_metal_sites, 'metal_bridging', METAL_BRIDGING_NOT_PLACED,
+     'Hydroxyl H placed at bridging metal sites with unresolved protonation',
+     'Supplied hydroxyl H at bridging metal sites: '
+     f'{BRIDGING_H_SUPPLIED_NOTE}', None),
+    (phenol_metal_sites, 'metal_phenolate', METAL_PHENOL_NOT_PLACED,
+     'Phenol H placed at metal sites with unresolved protonation',
+     f'Supplied phenol H at metal sites: {PHENOL_H_SUPPLIED_NOTE}', None),
+    (alkoxide_metal_sites, 'metal_alkoxide', METAL_ALKOXIDE_NOT_PLACED,
+     'Alcohol H placed at metal sites with unresolved protonation',
+     f'Supplied alcohol H at metal sites: {ALKOXIDE_H_SUPPLIED_NOTE}', None),
+    (metal_nh_sites, 'metal_nh', METAL_NH_NOT_PLACED,
+     'N-H placed at metal sites with unresolved protonation',
+     f'Supplied N-H at metal sites: {METAL_NH_SUPPLIED_NOTE}',
+     'N-H next to a metal, not changed'))
+  rules = []
+  for site_class, cause, not_placed, unresolved, supplied, reported in rows:
+    rules.append(group_args(site_class = site_class, cause = cause,
+      not_placed = not_placed, unresolved = unresolved, supplied = supplied,
+      reported = reported))
+  return rules
+
+def metal_h_text(rule, not_placed=(), unresolved=(), supplied=(), hint=None,
+                 reported=()):
+  '''
+  Report of one rule of metal_h_rules(): H not placed [(label, contacts)],
+  messages of unresolved sites, supplied H kept (supplied_metal_h()) and how
+  to drop them (hint), and the candidates the rule only lists [(label,
+  contacts)]; '' if there is nothing to report.
+  '''
   lines = []
   if not_placed:
-    lines.append(titles.not_placed)
+    lines.append(rule.not_placed)
     for label, contact in not_placed:
       lines.append('  %s  (%s)' % (label, contact))
   if unresolved:
-    lines.append(titles.unresolved)
+    lines.append(rule.unresolved)
     for msg in unresolved:
       lines.append('  ' + msg)
   if supplied:
-    lines.append(titles.supplied)
+    lines.append(rule.supplied)
     for label, contact, connectivity in supplied:
       lines.append('  %s  (%s); %s' % (label, contact, connectivity))
     if hint:
       lines.append('  to drop it: ' + hint)
   if reported:
-    lines.append(titles.reported)
+    lines.append(rule.reported)
     for label, contact in reported:
       lines.append('  %s  (%s)' % (label, contact))
   return '\n'.join(lines)
-
-def metal_thiol_text(not_placed=(), unresolved=(), supplied=(), hint=None):
-  '''
-  Report of thiols bound to metals: H not placed [(label, contacts)],
-  messages of unresolved sites, supplied H kept (supplied_metal_h()), and
-  how to drop them (hint); '' if there is nothing to report.
-  '''
-  return _metal_h_text(group_args(
-    not_placed = METAL_THIOL_NOT_PLACED,
-    unresolved = 'Thiol H placed at metal sites with unresolved protonation',
-    supplied = 'Supplied thiol H at metal sites: %s' % THIOL_H_SUPPLIED_NOTE),
-    not_placed, unresolved, supplied, hint)
-
-def metal_acid_text(not_placed=(), unresolved=(), supplied=(), hint=None):
-  '''
-  Report of acids bound to metals (acid_metal_sites), as metal_thiol_text().
-  '''
-  return _metal_h_text(group_args(
-    not_placed = METAL_ACID_NOT_PLACED,
-    unresolved = 'Acid H placed at metal sites with unresolved protonation',
-    supplied = f'Supplied acid H at metal sites: {ACID_H_SUPPLIED_NOTE}'),
-    not_placed, unresolved, supplied, hint)
-
-def metal_phenol_text(not_placed=(), unresolved=(), supplied=(), hint=None):
-  '''
-  Report of phenols bound to metals (phenol_metal_sites), as
-  metal_thiol_text().
-  '''
-  return _metal_h_text(group_args(
-    not_placed = METAL_PHENOL_NOT_PLACED,
-    unresolved = 'Phenol H placed at metal sites with unresolved protonation',
-    supplied = f'Supplied phenol H at metal sites: {PHENOL_H_SUPPLIED_NOTE}'),
-    not_placed, unresolved, supplied, hint)
-
-def metal_alkoxide_text(not_placed=(), unresolved=(), supplied=(), hint=None):
-  '''
-  Report of alcohols bound to Ti, Zr, Hf, V, Mo or W (alkoxide_metal_sites),
-  as metal_thiol_text().
-  '''
-  return _metal_h_text(group_args(
-    not_placed = METAL_ALKOXIDE_NOT_PLACED,
-    unresolved = 'Alcohol H placed at metal sites with unresolved protonation',
-    supplied = ('Supplied alcohol H at metal sites: '
-      f'{ALKOXIDE_H_SUPPLIED_NOTE}')),
-    not_placed, unresolved, supplied, hint)
-
-def metal_bridging_text(not_placed=(), unresolved=(), supplied=(), hint=None):
-  '''
-  Report of O-H bridging two metals (bridging_metal_sites), as
-  metal_thiol_text().
-  '''
-  return _metal_h_text(group_args(
-    not_placed = METAL_BRIDGING_NOT_PLACED,
-    unresolved = 'Hydroxyl H placed at bridging metal sites with unresolved '
-      'protonation',
-    supplied = ('Supplied hydroxyl H at bridging metal sites: '
-      f'{BRIDGING_H_SUPPLIED_NOTE}')),
-    not_placed, unresolved, supplied, hint)
-
-def metal_nh_text(not_placed=(), unresolved=(), supplied=(), reported=(),
-                  hint=None):
-  '''
-  Report of N-H at metals (metal_nh_sites): H not placed, unresolved sites,
-  supplied H kept, and the other N-H next to a metal, left unchanged
-  [(label, contacts)]; '' if there is nothing to report.
-  '''
-  return _metal_h_text(group_args(
-    not_placed = METAL_NH_NOT_PLACED,
-    unresolved = 'N-H placed at metal sites with unresolved protonation',
-    supplied = 'Supplied N-H at metal sites: %s' % METAL_NH_SUPPLIED_NOTE,
-    reported = 'N-H next to a metal, not changed'),
-    not_placed, unresolved, supplied, hint, reported)
 
 def metal_amine_text(converted=(), unresolved=(), supplied=(),
                      chain_starts=(), supplied_nh2=(), supplied_nh2_partly=(),
@@ -3713,40 +3684,20 @@ class place_hydrogens():
     self.renamed_symmetric_atoms = list()
     #self.charged_atoms          = list()
     self.sl_removed             = list()
-    # thiols bound to metals (thiol_metal_sites): H not placed, with the
-    # contact; messages of unresolved sites; supplied H kept, with the
-    # contact and whether the S has a metal-coordination proxy
-    self.site_labels_thiolate   = list()
-    self.thiol_h_unresolved     = list()
-    self.thiol_h_supplied_kept  = list()
-    # the same for acids bound to metals (acid_metal_sites)
-    self.site_labels_acid       = list()
-    self.acid_h_unresolved      = list()
-    self.acid_h_supplied_kept   = list()
-    # and for phenols bound to metals (phenol_metal_sites)
-    self.site_labels_phenolate  = list()
-    self.phenol_h_unresolved    = list()
-    self.phenol_h_supplied_kept = list()
-    # and for alcohols bound to metals (alkoxide_metal_sites)
-    self.site_labels_alkoxide     = list()
-    self.alkoxide_h_unresolved    = list()
-    self.alkoxide_h_supplied_kept = list()
-    # and for O-H bridging two metals (bridging_metal_sites)
-    self.site_labels_bridging     = list()
-    self.bridging_h_unresolved    = list()
-    self.bridging_h_supplied_kept = list()
-    # H listed by an earlier metal step (_exclude_H_at_metal_sites()):
-    # unresolved, key: (list, message), and supplied, keys
+    # per rule of metal_h_rules() (key: its cause): the H not placed, with
+    # the contact; messages of unresolved sites; supplied H kept, with the
+    # contact and whether the atom has a metal-coordination proxy; the
+    # candidates the rule only lists (other N-H next to a metal, kept)
+    self.metal_h = {}
+    for rule in metal_h_rules():
+      self.metal_h[rule.cause] = group_args(not_placed = [], unresolved = [],
+        supplied = [], reported = [])
+    # H listed by an earlier rule (_exclude_H_at_metal_sites()): unresolved,
+    # key: (list, message), and supplied, keys
     self._metal_h_unresolved    = dict()
     self._metal_h_supplied      = set()
-    # the same for backbone amide N, T/U N3, sulfonamide and azolium N bound
-    # to metals (metal_nh_sites), and the other N-H next to a metal, kept
-    self.site_labels_metal_nh   = list()
-    self.metal_nh_unresolved    = list()
-    self.metal_nh_supplied_kept = list()
-    self.metal_nh_reported      = list()
-    # (target list, reported_metal_h_rows()) for metal_nh_reported,
-    # filled in _finish_metal_lists() from the H that are left
+    # (target list, reported_metal_h_rows()) for the reported lists, filled
+    # in _finish_metal_lists() from the H that are left
     self._metal_nh_reported_src = list()
     # metal_bound_amines_as_nh2: sites placed as NH2 (group_args, see
     # convert_metal_bound_amines()), messages of sites left as NH3+,
@@ -4026,12 +3977,7 @@ class place_hydrogens():
     # X-H lengths, esd=1/period=1 torsions) into any downstream
     # re-interpretation.
     self.remove_auto_restraint_objects()
-    self.exclude_H_on_metal_thiolates()
-    self.exclude_H_on_metal_acids()
-    self.exclude_H_on_metal_bridges()
-    self.exclude_H_on_metal_phenolates()
-    self.exclude_H_on_metal_alkoxides()
-    self.exclude_H_on_metal_bound_N()
+    self.exclude_H_at_metal_sites()
     if self.metal_bound_amines_as_nh2:
       self.convert_metal_bound_amines()
     self.orient_metal_bound_neutral_nh2()
@@ -4824,73 +4770,18 @@ class place_hydrogens():
       sel = flex.bool(elements.size(), True).set_selected(remove, False)
       self.model = self.model.select(sel)
 
-  def exclude_H_on_metal_thiolates(self):
+  def exclude_H_at_metal_sites(self):
     '''
-    A thiol bound to a metal is taken as a thiolate (A4): an H that reduce2
-    built on it is removed when thiol_metal_sites() finds the site covered
-    (thiolate), and kept and reported when it is not (unresolved). Supplied
-    H (keep_existing_H) are kept, with a note. Geometric contacts and
-    metal-coordination proxies decide alike; exclude_H_on_links() leaves
-    metal coordination to this step.
+    The rules of metal_h_rules(), in their order: an atom that a rule's site
+    class finds bound to a metal is taken as deprotonated (A4, A5). An H
+    that reduce2 built on it is removed when the site is covered, and kept
+    and reported when it is not (unresolved). Supplied H (keep_existing_H)
+    are kept, with a note. Geometric contacts and metal-coordination proxies
+    decide alike; exclude_H_on_links() leaves metal coordination to this
+    step. What each rule selects: its site class.
     '''
-    self._exclude_H_at_metal_sites(thiol_metal_sites, METAL_ELEMENTS,
-      self.site_labels_thiolate, self.thiol_h_unresolved,
-      self.thiol_h_supplied_kept, cause='metal_thiolate')
-
-  def exclude_H_on_metal_acids(self):
-    '''
-    An acid (acid_metal_sites(): carboxylic, phosphoric, phosphonic,
-    sulfonic or arsenic acid) bound to a metal is taken as deprotonated: as
-    exclude_H_on_metal_thiolates().
-    '''
-    self._exclude_H_at_metal_sites(acid_metal_sites, METAL_ELEMENTS,
-      self.site_labels_acid, self.acid_h_unresolved,
-      self.acid_h_supplied_kept, cause='metal_acid')
-
-  def exclude_H_on_metal_bridges(self):
-    '''
-    An O-H (bridging_metal_sites(): alcohol, phenol or N-OH) bridging two
-    metals of NH_METAL_ELEMENTS is taken as deprotonated: as
-    exclude_H_on_metal_thiolates(). Before the phenol and alcohol rules: the
-    bridge decides.
-    '''
-    self._exclude_H_at_metal_sites(bridging_metal_sites, NH_METAL_ELEMENTS,
-      self.site_labels_bridging, self.bridging_h_unresolved,
-      self.bridging_h_supplied_kept, cause='metal_bridging')
-
-  def exclude_H_on_metal_phenolates(self):
-    '''
-    A phenol (phenol_metal_sites(), also an enol or an N-OH) bound to a
-    metal of PHENOLATE_METAL_ELEMENTS is taken as a phenolate: as
-    exclude_H_on_metal_thiolates().
-    '''
-    self._exclude_H_at_metal_sites(phenol_metal_sites,
-      PHENOLATE_METAL_ELEMENTS, self.site_labels_phenolate,
-      self.phenol_h_unresolved, self.phenol_h_supplied_kept,
-      cause='metal_phenolate')
-
-  def exclude_H_on_metal_alkoxides(self):
-    '''
-    An alcohol (alkoxide_metal_sites()) bound to Ti, Zr, Hf, V, Mo or W, not
-    in a residue with Fe, is taken as an alkoxide: as
-    exclude_H_on_metal_thiolates().
-    '''
-    self._exclude_H_at_metal_sites(alkoxide_metal_sites,
-      ALKOXIDE_METAL_ELEMENTS, self.site_labels_alkoxide,
-      self.alkoxide_h_unresolved, self.alkoxide_h_supplied_kept,
-      cause='metal_alkoxide')
-
-  def exclude_H_on_metal_bound_N(self):
-    '''
-    A backbone amide N (with a preceding residue), a thymine/uracil N3, a
-    sulfonamide N (one H of an NH2) or an azolium N bound to a metal of
-    NH_METAL_ELEMENTS is taken as deprotonated (A5): as
-    exclude_H_on_metal_thiolates(), with metal_nh_sites(). Other N-H next to
-    such a metal (not His ring N) are kept and listed.
-    '''
-    self._exclude_H_at_metal_sites(metal_nh_sites, NH_METAL_ELEMENTS,
-      self.site_labels_metal_nh, self.metal_nh_unresolved,
-      self.metal_nh_supplied_kept, self.metal_nh_reported, cause='metal_nh')
+    for rule in metal_h_rules():
+      self._exclude_H_at_metal_sites(rule)
 
   def _atom_key(self, parts, a):
     return parts[a.parent().memory_id()] + (a.parent().altloc, a.name)
@@ -5487,25 +5378,26 @@ class place_hydrogens():
     self.metal_amine_converted_text = [(s.text, s.contact)
       for s in self.metal_amine_converted]
 
-  def _exclude_H_at_metal_sites(self, site_class, metals, not_placed,
-                                unresolved, supplied_kept, reported=None,
-                                cause=None):
-    # The H that reduce2 built at a covered site of site_class are removed and
-    # listed (not_placed: label, contacts); unresolved sites keep the H, with
-    # the message; supplied H are kept (supplied_kept); reported: the
-    # candidates site_class only reports, listed in _finish_metal_lists();
-    # cause: of the not_placed records.
-    # An H that an earlier step listed is not listed again; one that this
-    # step removes loses the earlier unresolved message.
+  def _exclude_H_at_metal_sites(self, rule):
+    # One rule of metal_h_rules(), into its lists of self.metal_h: the H that
+    # reduce2 built at a covered site of rule.site_class are removed and
+    # listed (not_placed: label, contacts), each with a not_placed record of
+    # rule.cause; unresolved sites keep the H, with the message; supplied H
+    # are kept (supplied); the candidates the class only reports are listed
+    # in _finish_metal_lists().
+    # An H that an earlier rule listed is not listed again; one that this
+    # rule removes loses the earlier unresolved message.
+    lists = self.metal_h[rule.cause]
     elements = self.model.get_hierarchy().atoms().extract_element()
-    if not any(e.strip().upper() in metals for e in elements): return
-    sites = site_class(self.model, self._contact_cs)
+    if not any(e.strip().upper() in rule.site_class.metals for e in elements):
+      return
+    sites = rule.site_class(self.model, self._contact_cs)
     hierarchy = self.model.get_hierarchy()
     atoms = hierarchy.atoms()
     parts = residue_parts(hierarchy)
-    if reported is not None:
-      self._metal_nh_reported_src.append((reported, reported_metal_h_rows(
-        sites, lambda a: self._atom_key(parts, a))))
+    if rule.reported is not None:
+      self._metal_nh_reported_src.append((lists.reported,
+        reported_metal_h_rows(sites, lambda a: self._atom_key(parts, a))))
     if not sites.h_sites: return
     def supplied(a):
       return (self.keep_existing_H and parts[a.parent().memory_id()] +
@@ -5513,7 +5405,7 @@ class place_hydrogens():
     def supplied_not_listed(a):
       return (supplied(a) and
         self._atom_key(parts, a) not in self._metal_h_supplied)
-    supplied_kept.extend(supplied_metal_h(sites, supplied_not_listed))
+    lists.supplied.extend(supplied_metal_h(sites, supplied_not_listed))
     # the H of a protonation state stay (_protonation_metal_conflicts()
     # lists them)
     state_h = self._state_h_iseqs()
@@ -5530,15 +5422,15 @@ class place_hydrogens():
         continue
       elif site.verdict == sites.covered:
         remove.append(site.i_h)
-        not_placed.append((label, contact))
-        self._not_placed(h, cause, atoms[site.i_x], contact)
+        lists.not_placed.append((label, contact))
+        self._not_placed(h, rule.cause, atoms[site.i_x], contact)
         if key in self._metal_h_unresolved:
           listed, message = self._metal_h_unresolved.pop(key)
           listed.remove(message)
       elif key not in self._metal_h_unresolved:
         message = sites.unresolved_message(site)
-        unresolved.append(message)
-        self._metal_h_unresolved[key] = (unresolved, message)
+        lists.unresolved.append(message)
+        self._metal_h_unresolved[key] = (lists.unresolved, message)
     if remove:
       sel = flex.bool(atoms.size(), True).set_selected(
         flex.size_t(sorted(remove)), False)
@@ -6782,8 +6674,8 @@ class place_hydrogens():
     exclusion_iseqs = list()
     exclusion_dict = dict()
     link_partners = dict()
-    # Metal coordination is decided elsewhere (A4): thiols by
-    # exclude_H_on_metal_thiolates(), other H on metal-bound atoms stay. It
+    # Metal coordination is decided elsewhere (A4): by
+    # exclude_H_at_metal_sites(), other H on metal-bound atoms stay. It
     # neither marks a link nor counts as a bond here.
     metal = origin_ids['metal coordination']
     metal_partners = dict()
@@ -7198,64 +7090,19 @@ class place_hydrogens():
 
 # ------------------------------------------------------------------------------
 
-  def metal_thiol_text(self):
+  def metal_h_texts(self):
     '''
-    The report of thiols bound to metals (show(), reduce2's description);
-    '' if there is none. supplied_h_hint, if set, says how to drop the
-    supplied H.
+    The reports of the rules of metal_h_rules() that have something to
+    report, in their order (show(), reduce2's description). supplied_h_hint,
+    if set, says how to drop the supplied H.
     '''
-    return metal_thiol_text(self.site_labels_thiolate, self.thiol_h_unresolved,
-      self.thiol_h_supplied_kept, self.supplied_h_hint)
-
-# ------------------------------------------------------------------------------
-
-  def metal_acid_text(self):
-    '''
-    The report of acids bound to metals, as metal_thiol_text().
-    '''
-    return metal_acid_text(self.site_labels_acid, self.acid_h_unresolved,
-      self.acid_h_supplied_kept, self.supplied_h_hint)
-
-# ------------------------------------------------------------------------------
-
-  def metal_phenol_text(self):
-    '''
-    The report of phenols bound to metals, as metal_thiol_text().
-    '''
-    return metal_phenol_text(self.site_labels_phenolate,
-      self.phenol_h_unresolved, self.phenol_h_supplied_kept,
-      self.supplied_h_hint)
-
-# ------------------------------------------------------------------------------
-
-  def metal_alkoxide_text(self):
-    '''
-    The report of alcohols bound to Ti, Zr, Hf, V, Mo or W, as
-    metal_thiol_text().
-    '''
-    return metal_alkoxide_text(self.site_labels_alkoxide,
-      self.alkoxide_h_unresolved, self.alkoxide_h_supplied_kept,
-      self.supplied_h_hint)
-
-# ------------------------------------------------------------------------------
-
-  def metal_bridging_text(self):
-    '''
-    The report of O-H bridging two metals, as metal_thiol_text().
-    '''
-    return metal_bridging_text(self.site_labels_bridging,
-      self.bridging_h_unresolved, self.bridging_h_supplied_kept,
-      self.supplied_h_hint)
-
-# ------------------------------------------------------------------------------
-
-  def metal_nh_text(self):
-    '''
-    The report of N-H at metals (show(), reduce2's description); '' if
-    there is none.
-    '''
-    return metal_nh_text(self.site_labels_metal_nh, self.metal_nh_unresolved,
-      self.metal_nh_supplied_kept, self.metal_nh_reported, self.supplied_h_hint)
+    texts = []
+    for rule in metal_h_rules():
+      lists = self.metal_h[rule.cause]
+      text = metal_h_text(rule, lists.not_placed, lists.unresolved,
+        lists.supplied, self.supplied_h_hint, lists.reported)
+      if text: texts.append(text)
+    return texts
 
 # ------------------------------------------------------------------------------
 
@@ -7293,12 +7140,10 @@ class place_hydrogens():
       print('', file=log)
       print(self.unknown_atoms_text(verbose), file=log)
     #
-    for text in (self.metal_thiol_text(), self.metal_acid_text(),
-                 self.metal_bridging_text(), self.metal_phenol_text(),
-                 self.metal_alkoxide_text(), self.metal_nh_text(),
-                 self.metal_amine_text(), self.chain_start_kept_text(),
-                 self.nh2_side_fixed_text(),
-                 self.na_terminal_h_text(), self.na_terminal_gap_text()):
+    for text in self.metal_h_texts() + [
+        self.metal_amine_text(), self.chain_start_kept_text(),
+        self.nh2_side_fixed_text(),
+        self.na_terminal_h_text(), self.na_terminal_gap_text()]:
       if text:
         print('', file=log)
         print(text, file=log)
@@ -7329,25 +7174,7 @@ class place_hydrogens():
       residues_missing_neighbor = self.residues_missing_neighbor,
       residues_unknown_atoms = self.residues_unknown_atoms,
       site_labels_unknown_atoms = self.site_labels_unknown_atoms,
-      site_labels_thiolate = self.site_labels_thiolate,
-      thiol_h_unresolved = self.thiol_h_unresolved,
-      thiol_h_supplied_kept = self.thiol_h_supplied_kept,
-      site_labels_acid = self.site_labels_acid,
-      acid_h_unresolved = self.acid_h_unresolved,
-      acid_h_supplied_kept = self.acid_h_supplied_kept,
-      site_labels_phenolate = self.site_labels_phenolate,
-      phenol_h_unresolved = self.phenol_h_unresolved,
-      phenol_h_supplied_kept = self.phenol_h_supplied_kept,
-      site_labels_alkoxide = self.site_labels_alkoxide,
-      alkoxide_h_unresolved = self.alkoxide_h_unresolved,
-      alkoxide_h_supplied_kept = self.alkoxide_h_supplied_kept,
-      site_labels_bridging = self.site_labels_bridging,
-      bridging_h_unresolved = self.bridging_h_unresolved,
-      bridging_h_supplied_kept = self.bridging_h_supplied_kept,
-      site_labels_metal_nh = self.site_labels_metal_nh,
-      metal_nh_unresolved = self.metal_nh_unresolved,
-      metal_nh_supplied_kept = self.metal_nh_supplied_kept,
-      metal_nh_reported = self.metal_nh_reported,
+      metal_h = self.metal_h,
       metal_amine_converted = self.metal_amine_converted_text,
       metal_amine_unresolved = self.metal_amine_unresolved,
       metal_amine_supplied = self.metal_amine_supplied,
