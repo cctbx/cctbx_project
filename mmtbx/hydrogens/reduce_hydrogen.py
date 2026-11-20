@@ -1276,6 +1276,9 @@ THIOL_METAL_WINDOW = (-0.55, 0.25)
 THIOL_H_SUPPLIED_NOTE = ('kept as supplied; thiols bound to metals are usually '
   'deprotonated')
 
+ACID_H_SUPPLIED_NOTE = ('kept as supplied; acids bound to metals are '
+  'deprotonated')
+
 METAL_NH_SUPPLIED_NOTE = ('kept as supplied; backbone amide N and '
   'thymine/uracil N3 bound to metals are usually deprotonated')
 
@@ -1629,6 +1632,66 @@ class thiol_metal_sites(metal_h_sites):
                  for j in heavy.get(i_s, [])
                  if _compatible(atoms[j], atoms[i_h]))
         if len(nb) == 1: candidates.append((i_s, i_h, True))
+    return candidates
+
+def _residue_atom(atom):
+  # one atom whatever its altloc copy: (residue_group, name)
+  return (atom.parent().parent().memory_id(), atom.name)
+
+def _one_heavy_neighbour(atoms, heavy, i_x, h):
+  '''
+  The non-metal heavy neighbour of atom i_x in the conformer of H h if there
+  is exactly one (counted by residue and atom name), else None.
+  '''
+  nb = [j for j in heavy.get(i_x, []) if _compatible(atoms[j], h)]
+  names = set(_residue_atom(atoms[j]) for j in nb)
+  if len(names) != 1: return None
+  return nb[0]
+
+def _oxoacid_centre(atoms, elements, heavy, h_on, i_x, i_o, h):
+  '''
+  Whether atom i_x, the heavy neighbour of O i_o that carries H h, is the
+  centre of an acid group: a C, P, S or As bonded to another O that has no
+  other heavy neighbour and no H, in the conformer of h. A C must have three
+  neighbours (H counted), not three O: carbonic acid and bicarbonate are
+  left out.
+  '''
+  if elements[i_x] not in ('C', 'P', 'S', 'AS'): return False
+  nb = {}
+  for j in heavy.get(i_x, []) + h_on.get(i_x, []):
+    if _compatible(atoms[j], h): nb[_residue_atom(atoms[j])] = j
+  if elements[i_x] == 'C':
+    if len(nb) != 3 or all(elements[j] == 'O' for j in nb.values()):
+      return False
+  for j in nb.values():
+    if elements[j] != 'O': continue
+    if _residue_atom(atoms[j]) == _residue_atom(atoms[i_o]): continue
+    others = set(_residue_atom(atoms[l]) for l in heavy.get(j, [])
+                 if _compatible(atoms[l], h))
+    hs = [l for l in h_on.get(j, []) if _compatible(atoms[l], h)]
+    if len(others) == 1 and not hs:
+      return True
+  return False
+
+class acid_metal_sites(metal_h_sites):
+  '''
+  Acids bound to metals: an O carrying H whose one non-metal heavy
+  neighbour is an acid centre (_oxoacid_centre(): carboxylic, phosphoric,
+  phosphonic, sulfonic or arsenic acid) in the bond restraints of the H
+  site's conformer. Covered: deprotonated. Metals: METAL_ELEMENTS.
+  '''
+  covered = 'deprotonated'
+  state = 'acid'
+
+  def _candidates(self, atoms, elements, heavy, h_on):
+    candidates = []
+    for i_o, hs in h_on.items():
+      if elements[i_o] != 'O': continue
+      for i_h in hs:
+        i_x = _one_heavy_neighbour(atoms, heavy, i_o, atoms[i_h])
+        if i_x is not None and _oxoacid_centre(atoms, elements, heavy, h_on,
+            i_x, i_o, atoms[i_h]):
+          candidates.append((i_o, i_h, True))
     return candidates
 
 def residue_is_amino_acid(resname, mon_lib_srv):
@@ -2178,6 +2241,16 @@ def metal_thiol_text(not_placed=(), unresolved=(), supplied=(), hint=None):
     supplied = 'Supplied thiol H at metal sites: %s' % THIOL_H_SUPPLIED_NOTE),
     not_placed, unresolved, supplied, hint)
 
+def metal_acid_text(not_placed=(), unresolved=(), supplied=(), hint=None):
+  '''
+  Report of acids bound to metals (acid_metal_sites), as metal_thiol_text().
+  '''
+  return _metal_h_text(group_args(
+    not_placed = METAL_ACID_NOT_PLACED,
+    unresolved = 'Acid H placed at metal sites with unresolved protonation',
+    supplied = f'Supplied acid H at metal sites: {ACID_H_SUPPLIED_NOTE}'),
+    not_placed, unresolved, supplied, hint)
+
 def metal_nh_text(not_placed=(), unresolved=(), supplied=(), reported=(),
                   hint=None):
   '''
@@ -2249,6 +2322,8 @@ def metal_amine_text(converted=(), unresolved=(), supplied=(),
 # The section titles of the texts that list some causes with their contacts
 METAL_THIOL_NOT_PLACED = ('Thiol H not placed: the S is bound to a metal, '
   'taken as thiolate')
+METAL_ACID_NOT_PLACED = ('Acid H not placed: the O is bound to a metal, '
+  'taken as deprotonated')
 METAL_NH_NOT_PLACED = ('N-H not placed: backbone amide N or thymine/uracil '
   'N3 bound to a metal, taken as deprotonated')
 # a neutral NH2 (orient_metal_bound_neutral_nh2()) with a metal of
@@ -2322,6 +2397,9 @@ NOT_PLACED_CAUSES = [group_args(key=k, short=s, title=t, hint=h, listed_in=l,
   ('metal_thiolate', 'metal thiolate',
    'Thiol S bound to a metal, taken as thiolate', None,
    METAL_THIOL_NOT_PLACED),
+  ('metal_acid', 'metal-bound acid',
+   'Acid O bound to a metal, taken as deprotonated', None,
+   METAL_ACID_NOT_PLACED),
   ('metal_nh', 'metal-bound N',
    'Backbone amide N or thymine/uracil N3 bound to a metal, taken as '
    'deprotonated', None, METAL_NH_NOT_PLACED),
@@ -3377,6 +3455,10 @@ class place_hydrogens():
     self.site_labels_thiolate   = list()
     self.thiol_h_unresolved     = list()
     self.thiol_h_supplied_kept  = list()
+    # the same for acids bound to metals (acid_metal_sites)
+    self.site_labels_acid       = list()
+    self.acid_h_unresolved      = list()
+    self.acid_h_supplied_kept   = list()
     # the same for backbone amide N and T/U N3 bound to metals
     # (metal_nh_sites), and the other N-H next to a metal, kept
     self.site_labels_metal_nh   = list()
@@ -3665,6 +3747,7 @@ class place_hydrogens():
     # re-interpretation.
     self.remove_auto_restraint_objects()
     self.exclude_H_on_metal_thiolates()
+    self.exclude_H_on_metal_acids()
     self.exclude_H_on_metal_bound_N()
     if self.metal_bound_amines_as_nh2:
       self.convert_metal_bound_amines()
@@ -4471,6 +4554,16 @@ class place_hydrogens():
       self.site_labels_thiolate, self.thiol_h_unresolved,
       self.thiol_h_supplied_kept, cause='metal_thiolate')
 
+  def exclude_H_on_metal_acids(self):
+    '''
+    An acid (acid_metal_sites(): carboxylic, phosphoric, phosphonic,
+    sulfonic or arsenic acid) bound to a metal is taken as deprotonated: as
+    exclude_H_on_metal_thiolates().
+    '''
+    self._exclude_H_at_metal_sites(acid_metal_sites, METAL_ELEMENTS,
+      self.site_labels_acid, self.acid_h_unresolved,
+      self.acid_h_supplied_kept, cause='metal_acid')
+
   def exclude_H_on_metal_bound_N(self):
     '''
     A backbone amide N (with a preceding residue) or a thymine/uracil N3 bound
@@ -5099,13 +5192,16 @@ class place_hydrogens():
       return (self.keep_existing_H and parts[a.parent().memory_id()] +
         (a.parent().altloc, a.name) in self._existing_h)
     supplied_kept.extend(supplied_metal_h(sites, supplied))
+    # the H of a protonation state stay (_protonation_metal_conflicts()
+    # lists them)
+    state_h = self._state_h_iseqs()
     remove = []
     for site in sites.h_sites:
       if site.verdict == 'not counted': continue
       h = atoms[site.i_h]
       label = _atom_label(h)
       contact = '; '.join(sites.contact_text(c) for c in site.contacts)
-      if supplied(h):
+      if supplied(h) or site.i_h in state_h:
         continue
       elif site.verdict == sites.covered:
         remove.append(site.i_h)
@@ -6783,6 +6879,15 @@ class place_hydrogens():
 
 # ------------------------------------------------------------------------------
 
+  def metal_acid_text(self):
+    '''
+    The report of acids bound to metals, as metal_thiol_text().
+    '''
+    return metal_acid_text(self.site_labels_acid, self.acid_h_unresolved,
+      self.acid_h_supplied_kept, self.supplied_h_hint)
+
+# ------------------------------------------------------------------------------
+
   def metal_nh_text(self):
     '''
     The report of N-H at metals (show(), reduce2's description); '' if
@@ -6827,7 +6932,8 @@ class place_hydrogens():
       print('', file=log)
       print(self.unknown_atoms_text(verbose), file=log)
     #
-    for text in (self.metal_thiol_text(), self.metal_nh_text(),
+    for text in (self.metal_thiol_text(), self.metal_acid_text(),
+                 self.metal_nh_text(),
                  self.metal_amine_text(), self.chain_start_kept_text(),
                  self.nh2_side_fixed_text(),
                  self.na_terminal_h_text(), self.na_terminal_gap_text()):
@@ -6864,6 +6970,9 @@ class place_hydrogens():
       site_labels_thiolate = self.site_labels_thiolate,
       thiol_h_unresolved = self.thiol_h_unresolved,
       thiol_h_supplied_kept = self.thiol_h_supplied_kept,
+      site_labels_acid = self.site_labels_acid,
+      acid_h_unresolved = self.acid_h_unresolved,
+      acid_h_supplied_kept = self.acid_h_supplied_kept,
       site_labels_metal_nh = self.site_labels_metal_nh,
       metal_nh_unresolved = self.metal_nh_unresolved,
       metal_nh_supplied_kept = self.metal_nh_supplied_kept,
