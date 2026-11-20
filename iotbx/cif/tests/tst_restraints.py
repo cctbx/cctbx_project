@@ -186,6 +186,13 @@ def exercise_adp_restraints_as_cif():
   from smtbx.refinement.restraints import adp_restraints as smtbx_adp_restraints
   import smtbx.development
   xs = smtbx.development.sucrose()
+  # The ADP restraint builders only restrain a scatterer whose ADPs are being
+  # refined, so a structure whose flags are still at their defaults yields no
+  # proxies and the loops below come out empty. Heavy atoms anisotropic and
+  # refined, hydrogens riding, as an ordinary refinement has it.
+  for sc in xs.scatterers():
+    sc.flags.set_grad_site(True)
+    if sc.flags.use_u_aniso(): sc.flags.set_grad_u_aniso(True)
   rigid_bond_proxies = smtbx_adp_restraints.rigid_bond_restraints(
     xray_structure=xs).proxies[:3]
   rigu_proxies = smtbx_adp_restraints.rigu_restraints(

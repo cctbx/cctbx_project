@@ -3,6 +3,7 @@
 #include "test_utils.h"
 #include <cmath>
 #include <limits>
+#include <stdexcept>
 
 using xcif::string_view;
 using xcif::as_double;

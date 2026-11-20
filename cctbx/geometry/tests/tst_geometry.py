@@ -303,10 +303,31 @@ def finite_differences(func, unit_cell, eps=1.e-6):
     gradients.append(dq)
   return gradients
 
+def exercise_coincident_distance_gradients():
+  """Two atoms at one point have no distance to take a gradient of.
+
+  d_distance_d_site_0 has always returned zero there;
+  d_distance_d_metrical_matrix divided regardless, and because the
+  fractional vector is zero as well the result was 0 * inf = NaN rather
+  than a large number - twelve of them across the two gradients, which
+  would spread through anything that consumed them.
+  """
+  uc = uctbx.unit_cell((10, 10, 10, 90, 90, 90))
+  for sep in (1.5, 1e-8, 0.0):
+    d = geometry.distance(((0., 0., 0.), (sep, 0., 0.)))
+    values = list(d.d_distance_d_metrical_matrix(uc)) \
+           + list(d.d_distance_d_cell_params(uc))
+    assert [v for v in values if v != v] == [], \
+      "NaN in the distance gradients at a separation of %g" % sep
+    if sep == 0.0:
+      assert values == [0.0] * len(values), values
+
+
 def run():
   exercise_high_symmetry_case()
   exercise_grad_metrical_matrix()
   exercise_geometry()
+  exercise_coincident_distance_gradients()
   print("OK")
 
 if __name__ == '__main__':

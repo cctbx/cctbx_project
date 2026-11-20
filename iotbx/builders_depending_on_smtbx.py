@@ -20,6 +20,27 @@ class constrained_crystal_structure_builder(crystal_structure_builder):
     self.constraints = []
     self.temperature_in_celsius = None
 
+  def _checked_scatterer(self, index, what):
+    """A scatterer by index, or an error saying which reference is dangling.
+
+    Indexing the array directly gives "Index out of range" and nothing else -
+    not the constraint, not the atom, not the file it came from. That happens
+    whenever a constraint outlives the atom ordering it was built against: a
+    RESI that takes a riding group's pivot into a residue and leaves the
+    hydrogens outside is enough to do it, and the message named neither RESI
+    nor an atom.
+    """
+    sc = self.structure.scatterers()
+    if not (0 <= index < len(sc)):
+      known = ", ".join(s.label for s in sc[:6])
+      raise RuntimeError(
+        "%s refers to scatterer %d, but the structure has %d "
+        "(%s%s). A constraint or a restraint is left over from a different "
+        "atom ordering - check any AFIX group split across a RESI, or an "
+        "instruction naming an atom that has been renamed or deleted."
+        % (what, index, len(sc), known, ", ..." if len(sc) > 6 else ""))
+    return sc[index]
+
   def add_occupancy_pair_affine_constraint(self, scatterer_indices, linear_form):
     """ Add a constraint on the occupancies of a pair of scatterers that is
         affine, i.e. linear_form shall be ((a0, a1), b) and then
@@ -27,6 +48,8 @@ class constrained_crystal_structure_builder(crystal_structure_builder):
         where (occ0, occ1) are the occupancies of the scatterers whose indices
         are given in `scatterer_indices`.
     """
+    for i in scatterer_indices:
+      self._checked_scatterer(i, "An occupancy constraint")
     self.constraints.append(
       constraints.occupancy.occupancy_pair_affine_constraint(scatterer_indices,
                                                              linear_form))
@@ -35,9 +58,10 @@ class constrained_crystal_structure_builder(crystal_structure_builder):
                                            u_iso_scatterer_index,
                                            u_eq_scatterer_index,
                                            multiplier):
-    sc = self.structure.scatterers()
-    sc_eq = sc[u_eq_scatterer_index]
-    sc_iso = sc[u_iso_scatterer_index]
+    sc_eq = self._checked_scatterer(
+      u_eq_scatterer_index, "A riding-ADP constraint's pivot")
+    sc_iso = self._checked_scatterer(
+      u_iso_scatterer_index, "A riding-ADP constraint's dependent atom")
     if sc_iso.flags.use_u_iso():
       self.constraints.append(
         constraints.adp.u_iso_proportional_to_pivot_u_eq(

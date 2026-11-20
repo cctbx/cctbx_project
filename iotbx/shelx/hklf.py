@@ -146,6 +146,11 @@ class reader(iotbx_shelx_ext.hklf_reader):
         miller_set=miller_set,
         data=self.alphas())
         .set_info(base_array_info.customized_copy(labels=["alphas"])))
+    if (self.wavelengths() is not None):
+      miller_arrays.append(miller.array(
+        miller_set=miller_set,
+        data=self.wavelengths())
+        .set_info(base_array_info.customized_copy(labels=["wavelengths"])))
     return miller_arrays
 
   def _override(method_name):

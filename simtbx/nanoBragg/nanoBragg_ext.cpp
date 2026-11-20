@@ -310,7 +310,7 @@ namespace boost_python { namespace {
   static void   set_cell_astuple(nanoBragg& nanoBragg, boost::python::tuple const& value) {
       nanoBragg.a_A[0] = extract<double>(value[0]);  // initialize Angstrom version, update at the end
       nanoBragg.b_A[0] = extract<double>(value[1]);
-      nanoBragg.c_A[0] = extract<double>(value[2]);;
+      nanoBragg.c_A[0] = extract<double>(value[2]);
       nanoBragg.alpha  = extract<double>(value[3])/RTD;
       nanoBragg.beta   = extract<double>(value[4])/RTD;
       nanoBragg.gamma  = extract<double>(value[5])/RTD;
@@ -442,7 +442,7 @@ namespace boost_python { namespace {
 
   /* twotheta is a special extra missetting angle, applied in addition to above, but pivoting about sample instead of beam spot */
   static double get_detector_twotheta_deg(nanoBragg const& nanoBragg) {
-      return nanoBragg.detector_twotheta*RTD;;
+      return nanoBragg.detector_twotheta*RTD;
   }
   static void   set_detector_twotheta_deg(nanoBragg& nanoBragg, double const& value) {
       nanoBragg.detector_twotheta = value/RTD;
@@ -1051,7 +1051,7 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
 
   /* crystal mosaic spread, in deg */
   static double get_mosaic_spread_deg(nanoBragg const& nanoBragg) {
-      return nanoBragg.mosaic_spread*RTD;;
+      return nanoBragg.mosaic_spread*RTD;
   }
   static void   set_mosaic_spread_deg(nanoBragg& nanoBragg, double const& value) {
       nanoBragg.mosaic_spread = value/RTD;
@@ -1119,7 +1119,7 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
 
   /* spindle starting angle phi, in deg */
   static double get_phi_deg(nanoBragg const& nanoBragg) {
-      return nanoBragg.phi0*RTD;;
+      return nanoBragg.phi0*RTD;
   }
   static void   set_phi_deg(nanoBragg& nanoBragg, double const& value) {
       nanoBragg.phi0 = value/RTD;
@@ -1130,7 +1130,7 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
 
   /* spindle rotation ange, in deg */
   static double get_osc_deg(nanoBragg const& nanoBragg) {
-      return nanoBragg.osc*RTD;;
+      return nanoBragg.osc*RTD;
   }
   static void   set_osc_deg(nanoBragg& nanoBragg, double const& value) {
       nanoBragg.osc = value/RTD;
@@ -1154,7 +1154,7 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
 
   /* spindle angle phi step, in deg */
   static double get_phistep_deg(nanoBragg const& nanoBragg) {
-      return nanoBragg.phi0*RTD;;
+      return nanoBragg.phi0*RTD;
   }
   static void   set_phistep_deg(nanoBragg& nanoBragg, double const& value) {
       nanoBragg.phistep = value/RTD;

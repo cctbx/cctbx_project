@@ -16,7 +16,7 @@ namespace smtbx { namespace refinement { namespace constraints {
         return_internal_reference<> rir;
         class_<wt,
                bases<asu_u_iso_parameter>,
-               std::auto_ptr<wt> >("u_iso_proportional_to_pivot_u_eq", no_init)
+               boost::shared_ptr<wt> >("u_iso_proportional_to_pivot_u_eq", no_init)
           .def(init<u_star_parameter *,
                     double,
                     wt::scatterer_type *>
@@ -26,7 +26,7 @@ namespace smtbx { namespace refinement { namespace constraints {
           .add_property("pivot_u", make_function(&wt::pivot_u, rir))
           .def_readwrite("multiplier", &wt::multiplier)
           ;
-        implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+        implicitly_convertible<boost::shared_ptr<wt>, boost::shared_ptr<parameter> >();
       }
     };
 

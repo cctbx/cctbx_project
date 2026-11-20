@@ -100,7 +100,7 @@ struct filtered_range_type
     struct apply
     {
       typedef typename Export::first indexer_type;
-      typedef typename indexer_type::range_type range_type;;
+      typedef typename indexer_type::range_type range_type;
       typedef boost::filtered_range< Predicate, range_type > type;
     };
 };

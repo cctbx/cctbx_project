@@ -104,8 +104,12 @@ class reparametrisation(ext.reparametrisation):
 
   temperature = 20 # Celsius
   twin_fractions = None
-  extinction = None
+  thickness = None
   directions = None
+  fc_correction = None
+  # an xray.dispersion_radial_correction, giving f' and f'' a refinable radial
+  # falloff; c.f. cctbx/xray/dispersion_radial.h
+  dispersion_radial = None
 
   def __init__(self,
                structure,
@@ -147,9 +151,8 @@ class reparametrisation(ext.reparametrisation):
     scatterers = xs.scatterers()
     self.site_symmetry_table_ = self.structure.site_symmetry_table()
     libtbx.adopt_optional_init_args(self, kwds)
-    self.asu_scatterer_parameters = shared_scatterer_parameters(xs.scatterers())
-    self.independent_scalar_parameters = shared_independent_shared_parameters()
-
+    self.asu_scatterer_parameters = shared_scatterer_parameters(scatterers)
+    self.independent_scalar_parameters = shared_independent_parameters()
     #create referrable parameters
     if self.directions is not None:
       directions = {}
@@ -195,9 +198,69 @@ class reparametrisation(ext.reparametrisation):
       for fraction in self.twin_fractions:
         if fraction.grad:
           self.add_new_twin_fraction_parameter(fraction)
-    if self.extinction is not None and self.extinction.grad:
-      p = self.add(extinction_parameter, self.extinction)
+    if (self.fc_correction is not None and self.fc_correction.grad
+        and self.thickness is not None
+        and isinstance(self.fc_correction, xray.shelx_extinction_correction)):
+      """EXTI must not be refined against an **N-beam (dynamical)** model.
+
+      **This is not a statement about electron diffraction in general.**
+      Refining EXTI against a *kinematical* calculation is perfectly fine and
+      is deliberately left alone -- which is what keying the test on
+      `thickness` achieves, since a sample thickness is only ever supplied for
+      the dynamical path (`smtbx/ED/*`). A kinematical refinement has no
+      thickness, so it never reaches this branch.
+
+      Against N-beam the correction is wrong for two independent reasons:
+
+      Physically it double-counts. Secondary extinction is an empirical
+      stand-in for exactly the multiple scattering the dynamical calculation
+      already computes explicitly, so the two are competing to explain one
+      effect.
+
+      Numerically it carries no information. Measured on TyrosineED with a
+      refined EXTI: the parameter's normal-matrix diagonal is **1.9e-21**,
+      fourteen orders below the Cholesky rounding error, the condition number
+      goes from 1.7e13 to 2.4e27, the objective is bit-identical with and
+      without it, and it refines to ~3e9. (`extinction.h:66` computes
+      `fc_sq*lambda^3*0.001/sin_2t`, and lambda^3 is 1.6e-5 at 0.025 A against
+      3.65 for Cu Ka.)
+
+      The symptom is a Cholesky failure naming a "Scalar Parameter ... not
+      determined by the data" -- and whether it fires at all depends on the
+      build, because a pivot that small is decided by rounding rather than by
+      the data. Ignoring the correction is therefore a fix, not a workaround.
+
+      `grad` is cleared on the caller's own object so that anything peeling an
+      ESD off the covariance diagonal agrees about how many parameters there
+      were; the attribute is then dropped so the build takes the trivial
+      fast path rather than paying for a correction that returns 1.
+      """
+      print("smtbx: EXTI cannot be refined together with an N-beam (dynamical)"
+            " calculation -- it is redundant with the multiple scattering the"
+            " dynamical model already computes, and carries no information"
+            " there. Ignoring it. (EXTI with a kinematical refinement is"
+            " unaffected.)")
+      self.fc_correction.grad = False
+      self.fc_correction = None
+
+    if self.fc_correction is not None and self.fc_correction.grad:
+      if isinstance(self.fc_correction, xray.shelx_extinction_correction):
+        p = self.add(extinction_parameter, self.fc_correction)
+      elif isinstance(self.fc_correction, xray.shelx_SWAT_correction):
+        p = self.add(SWAT_parameter, self.fc_correction)
       self.independent_scalar_parameters.append(p)
+    self.thickness_param = None
+    if self.thickness is not None and self.thickness.grad:
+      p = self.add(thickness_parameter, self.thickness)
+      self.independent_scalar_parameters.append(p)
+      self.thickness_param = p
+    # last of the independent scalars: finalise(), parameter_map() and every
+    # consumer peeling the covariance diagonal must agree on that
+    self.dispersion_radial_param = None
+    if self.dispersion_radial is not None and self.dispersion_radial.grad:
+      p = self.add(dispersion_radial_parameter, self.dispersion_radial)
+      self.independent_scalar_parameters.append(p)
+      self.dispersion_radial_param = p
     self.finalise()
 
   def finalise(self):
@@ -215,8 +278,12 @@ class reparametrisation(ext.reparametrisation):
       for fraction in self.twin_fractions:
         if fraction.grad:
           independent_grad_cnt += 1
-    if self.extinction is not None and self.extinction.grad:
+    if self.fc_correction is not None and self.fc_correction.grad:
+      independent_grad_cnt += self.fc_correction.n_param
+    if self.thickness is not None and self.thickness.grad:
       independent_grad_cnt += 1
+    if self.dispersion_radial is not None and self.dispersion_radial.grad:
+      independent_grad_cnt += self.dispersion_radial.n_param
     # update the grad indices
     independent_grad_i = self.jacobian_transpose.n_rows-independent_grad_cnt
     if self.twin_fractions is not None:
@@ -224,9 +291,15 @@ class reparametrisation(ext.reparametrisation):
         if fraction.grad:
           fraction.grad_index = independent_grad_i
           independent_grad_i += 1
-    if self.extinction is not None and self.extinction.grad:
-      self.extinction.grad_index = independent_grad_i
+    if self.fc_correction is not None and self.fc_correction.grad:
+      self.fc_correction.grad_index = independent_grad_i
+      independent_grad_i += self.fc_correction.n_param
+    if self.thickness is not None and self.thickness.grad:
+      self.thickness.grad_index = independent_grad_i
       independent_grad_i += 1
+    if self.dispersion_radial is not None and self.dispersion_radial.grad:
+      self.dispersion_radial.grad_index = independent_grad_i
+      independent_grad_i += self.dispersion_radial.n_param
 
   def apply_shifts(self, shifts):
     ext.reparametrisation.apply_shifts(self, shifts)
@@ -360,6 +433,12 @@ class reparametrisation(ext.reparametrisation):
       for fraction in self.twin_fractions:
         if fraction.grad:
           rv.add_independent_scalar()
-    if self.extinction is not None and self.extinction.grad:
+    if self.fc_correction is not None and self.fc_correction.grad:
+      for i in range(self.fc_correction.n_param):
+        rv.add_independent_scalar()
+    if self.thickness is not None and self.thickness.grad:
       rv.add_independent_scalar()
+    if self.dispersion_radial is not None and self.dispersion_radial.grad:
+      for i in range(self.dispersion_radial.n_param):
+        rv.add_independent_scalar()
     return rv

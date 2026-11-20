@@ -57,6 +57,16 @@ namespace cctbx { namespace geometry_restraints {
       //! Convenience typedef.
       typedef scitbx::vec3<double> vec3;
 
+      /*! Shortest bond that still has a usable direction, in Angstrom.
+
+          Only the exact singularity needs excluding here, unlike the dihedral
+          case: the numerator carries a factor of the bond vector, so it
+          cancels the length and the gradient stays bounded at 1e-12 A. At
+          exactly zero it is 0/0. The threshold is therefore as small as it
+          can usefully be, and far below any real bond.
+       */
+      static double min_bond_distance() { return 1e-8; }
+
       //! Default constructor. Some data members are not initialized!
       bond_similarity() {}
 
@@ -161,9 +171,14 @@ namespace cctbx { namespace geometry_restraints {
           = bond_distances_.const_ref();
         result.reserve(deltas_ref.size());
         for(std::size_t i_pair=0;i_pair<deltas_ref.size();i_pair++) {
-          vec3 grad_0 = (2 * weights_ref[i_pair] * deltas_ref[i_pair])
-                      / (distances_ref[i_pair] * sum_weights_)
-                      * (sites_array[i_pair][0] - sites_array[i_pair][1]);
+          // see linearise: a pair with no length has no direction, and
+          // dividing by it gives NaN rather than a large number
+          vec3 grad_0(0,0,0);
+          if (distances_ref[i_pair] > min_bond_distance()) {
+            grad_0 = (2 * weights_ref[i_pair] * deltas_ref[i_pair])
+                   / (distances_ref[i_pair] * sum_weights_)
+                   * (sites_array[i_pair][0] - sites_array[i_pair][1]);
+          }
           pair_grads[0] = grad_0;
           pair_grads[1] = -grad_0;
           result.push_back(pair_grads);
@@ -185,9 +200,19 @@ namespace cctbx { namespace geometry_restraints {
           std::size_t row_i = linearised_eqns.next_row();
           linearised_eqns.weights[row_i] = weights[i_pair];
           linearised_eqns.deltas[row_i] = deltas_[i_pair];
-          vec3 grad_i = (1 - weights[i_pair]/sum_weights_)
-            * (sites_array[i_pair][0] - sites_array[i_pair][1])
-            / bond_distances_[i_pair];
+          /* The direction of a bond is undefined when its two atoms are at
+          the same point, and dividing by the length put NaN straight into the
+          design matrix - six of them, for a SADI whose second pair had
+          collapsed. NaN spreads through the normal matrix and the Cholesky
+          failure that follows names an unrelated atom. A pair with no length
+          has no direction to restrain along, so contribute nothing for it.
+          */
+          vec3 grad_i(0,0,0);
+          if (bond_distances_[i_pair] > min_bond_distance()) {
+            grad_i = (1 - weights[i_pair]/sum_weights_)
+              * (sites_array[i_pair][0] - sites_array[i_pair][1])
+              / bond_distances_[i_pair];
+          }
           grad_i = unit_cell.fractionalize_gradient(grad_i);
           for(int i=0;i<2;i++) {
             if (i == 1) {

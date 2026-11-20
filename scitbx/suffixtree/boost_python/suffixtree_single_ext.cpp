@@ -7,7 +7,7 @@
 #include <boost/unordered_map.hpp>
 
 #include <boost_adaptbx/boost_range_python.hpp>
-#include <scitbx/boost_python/pair_as_tuple.hpp>
+#include <scitbx/boost_python/std_pair.h>
 
 #include <scitbx/suffixtree/word.hpp>
 #include <scitbx/suffixtree/boost_python/edge_exports.hpp>
@@ -121,13 +121,11 @@ struct python_exports
 
     to_python_converter<
       typename msi_type::position_type,
-      scitbx::boost_python::PairToTupleConverter< typename msi_type::position_type >
-      >();
+      scitbx::boost_python::PairToTupleConverter< typename msi_type::position_type > >();
 
     to_python_converter<
       typename msi_type::value_type,
-      scitbx::boost_python::PairToTupleConverter< typename msi_type::value_type >
-      >();
+      scitbx::boost_python::PairToTupleConverter< typename msi_type::value_type > >();
 
     def(
       "matching_statistics",

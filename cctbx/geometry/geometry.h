@@ -76,6 +76,17 @@ namespace cctbx { namespace geometry {
     {
       scitbx::vec3<FloatType> vec_frac = unit_cell.fractionalize(sites[0]-sites[1]);
       scitbx::sym_mat3<FloatType> result;
+      /* Two atoms at the same point have no distance to take a gradient
+      of. d_distance_d_site_0 above already returns zero for that; this
+      one divided regardless, and since vec_frac is zero as well the
+      result was 0 * inf = NaN rather than a large number. Same shape as
+      the bond_similarity case, on the cell-parameter path instead of the
+      restraint path.
+      */
+      if (distance_model < 1.e-100) {
+        result.fill(0);
+        return result;
+      }
       FloatType one_over_distance = 1./distance_model;
       result[0] = vec_frac[0] * vec_frac[0] * one_over_distance * 0.5;
       result[1] = vec_frac[1] * vec_frac[1] * one_over_distance * 0.5;

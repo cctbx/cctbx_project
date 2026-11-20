@@ -7,6 +7,26 @@ from cctbx.array_family import flex
 from cctbx import crystal
 from six.moves import range
 
+def refinable_sucrose():
+  """ Sucrose as an ordinary refinement has it: heavy atoms anisotropic and
+  refined, hydrogens riding.
+
+  The flags are not incidental. The ADP restraint builders only restrain a
+  scatterer whose ADPs are actually being refined, so a structure straight out
+  of development, whose flags are all at their defaults, yields no proxies at
+  all -- which is what the counts below were failing on.
+
+  The hydrogens are deliberately left unflagged, which is what makes those
+  counts what they are: riding hydrogens have no ADPs of their own to restrain.
+  Refine them, as an aspherical model does, and they are restrained too.
+  """
+  xs = development.sucrose()
+  for sc in xs.scatterers():
+    sc.flags.set_grad_site(True)
+    if sc.flags.use_u_aniso(): sc.flags.set_grad_u_aniso(True)
+  return xs
+
+
 def get_pair_sym_table(xray_structure):
   asu_mappings = xray_structure.asu_mappings(buffer_thickness=3.5)
   pair_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
@@ -16,7 +36,7 @@ def get_pair_sym_table(xray_structure):
   return pair_asu_table.extract_pair_sym_table()
 
 def exercise_adp_similarity():
-  xray_structure = development.sucrose()
+  xray_structure = refinable_sucrose()
   pair_sym_table = get_pair_sym_table(xray_structure)
   for table in (None,pair_sym_table):
     if table is None: xs = xray_structure
@@ -57,7 +77,7 @@ def exercise_adp_similarity():
       assert approx_equal(proxies[i].weight, expected_weights[i])
 
 def exercise_rigid_bond():
-  xray_structure = development.sucrose()
+  xray_structure = refinable_sucrose()
   pair_sym_table = get_pair_sym_table(xray_structure)
   for table in (None,pair_sym_table):
     if table is None: xs = xray_structure
@@ -100,7 +120,7 @@ def exercise_rigid_bond():
       assert approx_equal(proxies[i].weight, expected_weights[i])
 
 def exercise_isotropic_adp():
-  xray_structure = development.sucrose()
+  xray_structure = refinable_sucrose()
   xray_structure.scatterers()[10].set_use_u_iso_only()
   pair_sym_table = get_pair_sym_table(xray_structure)
   for table in (None,pair_sym_table):
@@ -138,7 +158,7 @@ def exercise_isotropic_adp():
       assert approx_equal(proxies[i].weight, expected_weights[i])
 
 def exercise_rigu():
-  xray_structure = development.sucrose()
+  xray_structure = refinable_sucrose()
   pair_sym_table = get_pair_sym_table(xray_structure)
   for table in (None,pair_sym_table):
     if table is None: xs = xray_structure

@@ -153,7 +153,7 @@ double * cmaes_PerturbSolutionInto(cmaes_t *t, double *xout,
                                    double const *xin, double eps);
 void cmaes_WriteToFile(cmaes_t *, const char *key, const char *name);
 void cmaes_WriteToFileAW(cmaes_t *t, const char *key, const char *name,
-                         char * append);
+                         const char * append);
 void cmaes_WriteToFilePtr(cmaes_t *, const char *key, FILE *fp);
 void cmaes_ReadFromFilePtr(cmaes_t *, FILE *fp);
 void cmaes_FATAL(char const *s1, char const *s2,
@@ -893,9 +893,9 @@ void cmaes_WriteToFile(cmaes_t *t, const char *key, const char *name)
 /* --------------------------------------------------------- */
 /* --------------------------------------------------------- */
 void cmaes_WriteToFileAW(cmaes_t *t, const char *key, const char *name,
-                         char *appendwrite)
+                         const char *appendwrite)
 {
-  char *s = "tmpcmaes.dat";
+  const char *s = "tmpcmaes.dat";
   FILE *fp;
 
   if (name == NULL)
@@ -933,7 +933,7 @@ void cmaes_WriteToFilePtr(cmaes_t *t, const char *key, FILE *fp)
 {
   int i, k, N=(t ? t->sp.N : 0);
   char const *keyend, *keystart;
-  char *s = "few";
+  const char *s = "few";
   if (key == NULL)
     key = s;
   keystart = key; /* for debugging purpose */
@@ -1552,7 +1552,7 @@ void cmaes_ReadFromFilePtr( cmaes_t *t, FILE *fp)
 /* reading commands e.g. from signals.par file
 */
 {
-  char *keys[15];
+  const char *keys[15];
   char s[199], sin1[99], sin2[129], sin3[99], sin4[99];
   int ikey, ckeys, nb;
   double d;
@@ -2360,9 +2360,9 @@ readpara_init (readpara_t *t,
                const char * filename)
 {
   int i, N;
-  t->rgsformat = (char **) new_void(55, sizeof(char *));
+  t->rgsformat = (const char **) new_void(55, sizeof(char *));
   t->rgpadr = (void **) new_void(55, sizeof(void *));
-  t->rgskeyar = (char **) new_void(11, sizeof(char *));
+  t->rgskeyar = (const char **) new_void(11, sizeof(char *));
   t->rgp2adr = (double ***) new_void(11, sizeof(double **));
   t->weigkey = (char *)new_void(7, sizeof(char));
 
@@ -2511,7 +2511,8 @@ void readpara_exit(readpara_t *t)
 void
 readpara_ReadFromFile(readpara_t *t, const char * filename)
 {
-  char s[1000], *ss = "initials.par";
+  char s[1000];
+  const char *ss = "initials.par";
   int ipara, i;
   int size;
   FILE *fp;

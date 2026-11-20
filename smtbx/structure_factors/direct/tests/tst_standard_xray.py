@@ -124,6 +124,14 @@ class consistency_test_cases(test_case):
       assert f1.grad_f_calc is None
       assert approx_equal_relatively(fe, fl, relative_error=1e-12), (fe, fl)
 
+    f2 = structure_factors.f_calc_modulus_squared(xs)
+    f2_values = f2.evaluate_many(indices)
+    assert f2_values.size() == indices.size()
+    for h, f2_value in zip(indices, f2_values):
+      f1.evaluate(h)
+      assert approx_equal_relatively(
+        f2_value, f1.f_calc, relative_error=1e-12), (f2_value, f1.f_calc)
+
     if (xs.space_group().is_origin_centric() and not self.inelastic_scattering):
       for h in indices:
         f.linearise(h)
@@ -164,12 +172,12 @@ class smtbx_against_cctbx_test_case(test_case):
                          space_group_info=xs.space_group_info()),
         indices))
     f = structure_factors.f_calc_modulus_squared(xs)
-    for h, fc in cctbx_structure_factors.f_calc():
-      f.linearise(h)
+    f_values = f.evaluate_many(indices)
+    for (h, fc), f_value in zip(cctbx_structure_factors.f_calc(), f_values):
       if fc == 0:
-        assert f.f_calc == 0
+        assert f_value == 0
       else:
-        delta = abs((f.f_calc - fc)/fc)
+        delta = abs((f_value - fc)/fc)
         assert delta < 1e-6
 
 class custom_vs_std_test_case(test_case):
@@ -187,12 +195,11 @@ class custom_vs_std_test_case(test_case):
         xs, None, None, exp_i_2pi_functor))
     std_fc_sq = (
       structure_factors.f_calc_modulus_squared(xs))
+    custom_values = custom_fc_sq.evaluate_many(indices)
+    std_values = std_fc_sq.evaluate_many(indices)
     deltas = flex.double()
-    for h in indices:
-      custom_fc_sq.linearise(h)
-      std_fc_sq.linearise(h)
-      deltas.append(abs(custom_fc_sq.f_calc - std_fc_sq.f_calc)
-                    /abs(std_fc_sq.f_calc))
+    for custom_value, std_value in zip(custom_values, std_values):
+      deltas.append(abs(custom_value - std_value) / abs(std_value))
     stats = median_statistics(deltas)
     if verbose:
       if not self.has_printed_header:

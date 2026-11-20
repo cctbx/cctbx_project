@@ -225,6 +225,10 @@ class levenberg_marquardt_iterations(iterations):
 
   tau = 1e-3
 
+  # Skip the rebuild after a rejected step, restoring the equations instead.
+  # Faster, and it changes the answer; see do().
+  reuse_equations_on_rejected_step = False
+
   @property
   def mu(self):
     return self._mu
@@ -235,14 +239,48 @@ class levenberg_marquardt_iterations(iterations):
     self._mu = value
 
   def do(self):
+    """ Two builds a cycle, and why neither can simply be taken away.
+
+    A cycle builds twice: an objective-only build at the trial point, to get rho
+    from, and a full build at wherever the cycle ends up. On an accepted step
+    those are the same point, and on a rejected one the second is at the point
+    the cycle started from and had already built. Both look redundant. Neither
+    can be removed without moving the answer, which is worth writing down
+    because it is not obvious and the second build is most of a cycle.
+
+    Removing the *first* -- making the trial build a full one and dropping the
+    build after it -- puts the trial point into the journal, and the convergence
+    test reads the journal: has_gradient_converged_to_zero() would look at the
+    gradient where the step landed instead of where it started. Arguably better,
+    certainly different, and a refinement that stops on a different cycle stops
+    somewhere slightly different.
+
+    Removing the *second* -- restoring a saved copy of the equations rather than
+    rebuilding them -- looks exact, and is not. build_up() resets before it
+    accumulates, so the accumulation is clean, but it takes the overall scale
+    factor from the previous build and the weighting scheme is a function of it.
+    Two builds of one point therefore disagree, by a margin which falls off
+    geometrically but never reaches zero. The rebuild being removed is the one
+    that would have refreshed the weights, so a copy is not what it would have
+    produced.
+
+    Hence reuse_equations_on_rejected_step, off by default: with it off this is
+    the algorithm it has always been.
+    """
     self.mu_history = flex.double()
     self.n_iterations = 0
     nu = 2
     self.non_linear_ls.build_up()
     if self.has_gradient_converged_to_zero(): return
-    a = self.non_linear_ls.normal_matrix_packed_u()
-    self.mu = self.tau*flex.max(a.matrix_packed_u_diagonal())
+    self.mu = self.tau*flex.max(
+      self.non_linear_ls.normal_matrix_packed_u().matrix_packed_u_diagonal())
     while self.n_iterations < self.n_max_iterations:
+      # fetched afresh each cycle rather than held from before the loop: a
+      # rebuild or a restore is entitled to hand out different storage
+      a = self.non_linear_ls.normal_matrix_packed_u()
+      undamped = None
+      if self.reuse_equations_on_rejected_step:
+        undamped = self.non_linear_ls.save_step_equations()
       a.matrix_packed_u_diagonal_add_in_place(self.mu)
       objective = self.non_linear_ls.objective()
       g = -self.non_linear_ls.opposite_of_gradient()
@@ -260,11 +298,15 @@ class levenberg_marquardt_iterations(iterations):
         if self.has_gradient_converged_to_zero(): break
         self.mu *= max(1/3, 1 - (2*rho - 1)**3)
         nu = 2
+        self.non_linear_ls.build_up()
       else:
         self.non_linear_ls.step_backward()
         self.mu *= nu
         nu *= 2
-      self.non_linear_ls.build_up()
+        if undamped is not None:
+          self.non_linear_ls.restore_step_equations(undamped)
+        else:
+          self.non_linear_ls.build_up()
 
   def __str__(self):
     return "Levenberg-Marquardt"
