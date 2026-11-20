@@ -10,6 +10,7 @@ from rdkit.Chem import rdFMCS
 from collections import defaultdict
 from rdkit.Chem import Lipinski
 from scitbx.array_family import flex
+from cctbx.eltbx import chemical_elements
 
 from rdkit.Chem import AllChem
 from rdkit.Chem.Draw import rdMolDraw2D
@@ -1258,9 +1259,7 @@ def is_nucleic_acid(molecule):
 # ------------------------------------------------------------------------------
 # RDKit molecule of one residue conformer of a processed model
 
-_metal_elements = frozenset("""LI BE NA MG AL K CA SC TI V CR MN FE CO NI CU ZN GA RB
-  SR Y ZR NB MO TC RU RH PD AG CD IN SN CS BA LA CE PR ND PM SM EU GD TB DY HO ER
-  TM YB LU HF TA W RE OS IR PT AU HG TL PB BI PO FR RA AC TH PA U NP PU""".split())
+_metal_elements = chemical_elements.metals_upper_set()
 
 # X-H lengths (A) for the H caps and added H; positions do not enter the bond orders
 _cap_length = {"C": 1.09, "N": 1.01, "O": 0.96, "S": 1.34, "SE": 1.47, "P": 1.42,

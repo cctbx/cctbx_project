@@ -209,6 +209,7 @@ from libtbx import group_args
 from libtbx.utils import Sorry, null_out
 from scitbx.array_family import flex
 from cctbx import crystal, sgtbx
+from cctbx.eltbx import chemical_elements
 
 # probe2's classes with the default options (in this order in reports)
 probe_classes = ("wc", "cc", "so", "hb", "bo")
@@ -225,9 +226,7 @@ vdw_classes = ("so", "cc", "wc")
 # atoms are bonded and |pnp.cos_vec| exceeds this (hard-coded there)
 inline_clash_cos_min = 0.707
 
-metal_elements = frozenset("""LI BE NA MG AL K CA SC TI V CR MN FE CO NI CU ZN GA RB
-  SR Y ZR NB MO TC RU RH PD AG CD IN SN CS BA LA CE PR ND PM SM EU GD TB DY HO ER
-  TM YB LU HF TA W RE OS IR PT AU HG TL PB BI PO FR RA AC TH PA U NP PU""".split())
+metal_elements = chemical_elements.metals_upper_set()
 
 def _hbond_phil_str():
   h = pnp.h_bond()
