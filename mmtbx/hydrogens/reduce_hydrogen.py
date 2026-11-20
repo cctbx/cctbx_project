@@ -1240,7 +1240,7 @@ def get_output_crystal_symmetry(model):
 
 # ==============================================================================
 # H on atoms bound to metals: thiols (A4), backbone amide N and T/U N3 (A5),
-# primary amines, acids
+# primary amines, acids, phenols (also enols and N-OH)
 
 # alkali, alkaline earth, transition metals (Zn, Cd, Hg named), lanthanides,
 # actinides, Al Ga In Sn Tl Pb Bi; not B Si Ge As Sb Te. Membership makes an
@@ -1266,6 +1266,14 @@ NH_METAL_ELEMENTS = METAL_ELEMENTS - frozenset(
 # on Be is known (A5)
 AMINE_METAL_ELEMENTS = NH_METAL_ELEMENTS | frozenset(('MG',))
 
+# phenols (also enols and N-OH) bound to these lose their H: ions usually of
+# charge +3 or more in proteins (Fe taken as Fe(III)), and Cu (galactose
+# oxidase Tyr 272, Cu-lactoferrin). Mn and Co need the oxidation state; on
+# Zn, Ni or Cd a phenol keeps it
+PHENOLATE_METAL_ELEMENTS = frozenset((
+  'AL SC TI V CR FE CU GA Y ZR IN HF BI TH U PU '
+  'LA CE PR ND PM SM EU GD TB DY HO ER TM YB LU').split())
+
 # images of one metal atom closer than this are one metal site
 METAL_SITE_IMAGE_DISTANCE = 2.0
 
@@ -1279,6 +1287,9 @@ THIOL_H_SUPPLIED_NOTE = ('kept as supplied; thiols bound to metals are usually '
 
 ACID_H_SUPPLIED_NOTE = ('kept as supplied; acids bound to metals are '
   'deprotonated')
+
+PHENOL_H_SUPPLIED_NOTE = ('kept as supplied; phenols bound to Fe, Cu and '
+  'ions of charge +3 or more are usually deprotonated')
 
 METAL_NH_SUPPLIED_NOTE = ('kept as supplied; backbone amide N and '
   'thymine/uracil N3 bound to metals are usually deprotonated')
@@ -1678,6 +1689,61 @@ class acid_metal_sites(metal_h_sites):
         i_x = _one_heavy_neighbour(atoms, heavy, i_o, atoms[i_h])
         if i_x is not None and _oxoacid_centre(atoms, elements, heavy, h_on,
             i_x, i_o, atoms[i_h]):
+          candidates.append((i_o, i_h, True))
+    return candidates
+
+class phenol_metal_sites(metal_h_sites):
+  '''
+  Phenols bound to Fe, Cu or a metal ion usually of charge +3 or more.
+
+  Phenol: an O with exactly one non-metal heavy neighbour (counted by
+  residue and atom name) in the bond restraints of the H site's conformer,
+  carrying that H: a C in a double, triple, aromatic or delocalized bond
+  (_unsaturated_atoms(); also enols; acids are left to acid_metal_sites), or
+  an N in such a bond or bonded to such an atom (hydroxamic acids, N-hydroxy
+  heterocycles). Covered: phenolate. Metals: PHENOLATE_METAL_ELEMENTS.
+  Contacts and verdicts as in metal_h_sites.
+
+  Parameters
+  ----------
+  model : mmtbx.model.manager
+    The processed model.
+  crystal_symmetry : cctbx.crystal.symmetry, optional
+    The symmetry of the contacts; None: no symmetry.
+  '''
+  metals = PHENOLATE_METAL_ELEMENTS
+  covered = 'phenolate'
+  state = 'phenol'
+
+  def __init__(self, model, crystal_symmetry=None):
+    self._mon_lib_srv = model.get_mon_lib_srv()
+    self._unsaturated = {}
+    metal_h_sites.__init__(self, model, crystal_symmetry)
+
+  def _in_multiple_bond(self, a):
+    return a.name.strip() in _unsaturated_atoms(a.parent().resname,
+      self._mon_lib_srv, self._unsaturated)
+
+  def _candidates(self, atoms, elements, heavy, h_on):
+    candidates = []
+    for i_o, hs in h_on.items():
+      if elements[i_o] != 'O': continue
+      for i_h in hs:
+        h = atoms[i_h]
+        i_x = _one_heavy_neighbour(atoms, heavy, i_o, h)
+        if i_x is None: continue
+        x = atoms[i_x]
+        phenol = False
+        if elements[i_x] == 'C':
+          phenol = (self._in_multiple_bond(x) and
+            not _oxoacid_centre(atoms, elements, heavy, h_on, i_x, i_o, h))
+        elif elements[i_x] == 'N':
+          phenol = self._in_multiple_bond(x)
+          for j in heavy.get(i_x, []):
+            if (j != i_o and _compatible(atoms[j], h) and
+                self._in_multiple_bond(atoms[j])):
+              phenol = True
+        if phenol:
           candidates.append((i_o, i_h, True))
     return candidates
 
@@ -2257,6 +2323,35 @@ def metal_acid_text(not_placed=(), unresolved=(), supplied=(), hint=None):
     supplied = f'Supplied acid H at metal sites: {ACID_H_SUPPLIED_NOTE}'),
     not_placed, unresolved, supplied, hint)
 
+def metal_phenol_text(not_placed=(), unresolved=(), supplied=(), hint=None):
+  '''
+  Write the report of phenols, enols and N-OH bound to metals.
+
+  Sites: phenol_metal_sites.
+
+  Parameters
+  ----------
+  not_placed : sequence of (str, str)
+    The H not placed, (label, contacts).
+  unresolved : sequence of str
+    The messages of the unresolved sites.
+  supplied : sequence of (str, str, str)
+    The supplied H kept (supplied_metal_h()), (label, contacts,
+    connectivity).
+  hint : str, optional
+    How to drop the supplied H.
+
+  Returns
+  -------
+  str
+    The report; '' if there is nothing to report.
+  '''
+  return _metal_h_text(group_args(
+    not_placed = METAL_PHENOL_NOT_PLACED,
+    unresolved = 'Phenol H placed at metal sites with unresolved protonation',
+    supplied = f'Supplied phenol H at metal sites: {PHENOL_H_SUPPLIED_NOTE}'),
+    not_placed, unresolved, supplied, hint)
+
 def metal_nh_text(not_placed=(), unresolved=(), supplied=(), reported=(),
                   hint=None):
   '''
@@ -2330,6 +2425,8 @@ METAL_THIOL_NOT_PLACED = ('Thiol H not placed: the S is bound to a metal, '
   'taken as thiolate')
 METAL_ACID_NOT_PLACED = ('Acid H not placed: the O is bound to a metal, '
   'taken as deprotonated')
+METAL_PHENOL_NOT_PLACED = ('Phenol H not placed: the O is bound to a metal, '
+  'taken as phenolate')
 METAL_NH_NOT_PLACED = ('N-H not placed: backbone amide N or thymine/uracil '
   'N3 bound to a metal, taken as deprotonated')
 # a neutral NH2 (orient_metal_bound_neutral_nh2()) with a metal of
@@ -2406,6 +2503,9 @@ NOT_PLACED_CAUSES = [group_args(key=k, short=s, title=t, hint=h, listed_in=l,
   ('metal_acid', 'metal-bound acid',
    'Acid O bound to a metal, taken as deprotonated', None,
    METAL_ACID_NOT_PLACED),
+  ('metal_phenolate', 'metal phenolate',
+   'Phenol O bound to Fe, Cu or a metal ion usually of charge +3 or more, '
+   'taken as phenolate', None, METAL_PHENOL_NOT_PLACED),
   ('metal_nh', 'metal-bound N',
    'Backbone amide N or thymine/uracil N3 bound to a metal, taken as '
    'deprotonated', None, METAL_NH_NOT_PLACED),
@@ -3465,6 +3565,10 @@ class place_hydrogens():
     self.site_labels_acid       = list()
     self.acid_h_unresolved      = list()
     self.acid_h_supplied_kept   = list()
+    # and for phenols bound to metals (phenol_metal_sites)
+    self.site_labels_phenolate  = list()
+    self.phenol_h_unresolved    = list()
+    self.phenol_h_supplied_kept = list()
     # the same for backbone amide N and T/U N3 bound to metals
     # (metal_nh_sites), and the other N-H next to a metal, kept
     self.site_labels_metal_nh   = list()
@@ -3754,6 +3858,7 @@ class place_hydrogens():
     self.remove_auto_restraint_objects()
     self.exclude_H_on_metal_thiolates()
     self.exclude_H_on_metal_acids()
+    self.exclude_H_on_metal_phenolates()
     self.exclude_H_on_metal_bound_N()
     if self.metal_bound_amines_as_nh2:
       self.convert_metal_bound_amines()
@@ -4571,6 +4676,19 @@ class place_hydrogens():
     self._exclude_H_at_metal_sites(acid_metal_sites, METAL_ELEMENTS,
       self.site_labels_acid, self.acid_h_unresolved,
       self.acid_h_supplied_kept, cause='metal_acid')
+
+  def exclude_H_on_metal_phenolates(self):
+    '''
+    Remove the H that reduce2 built on phenols, enols and N-OH on metals.
+
+    A phenol (phenol_metal_sites(), also an enol or an N-OH) bound to a
+    metal of PHENOLATE_METAL_ELEMENTS is taken as a phenolate: as
+    exclude_H_on_metal_thiolates().
+    '''
+    self._exclude_H_at_metal_sites(phenol_metal_sites,
+      PHENOLATE_METAL_ELEMENTS, self.site_labels_phenolate,
+      self.phenol_h_unresolved, self.phenol_h_supplied_kept,
+      cause='metal_phenolate')
 
   def exclude_H_on_metal_bound_N(self):
     '''
@@ -6903,6 +7021,23 @@ class place_hydrogens():
 
 # ------------------------------------------------------------------------------
 
+  def metal_phenol_text(self):
+    '''
+    Write the report of phenols, enols and N-OH bound to metals.
+
+    For show() and reduce2's description, as metal_thiol_text().
+
+    Returns
+    -------
+    str
+      The report; '' if there is none.
+    '''
+    return metal_phenol_text(self.site_labels_phenolate,
+      self.phenol_h_unresolved, self.phenol_h_supplied_kept,
+      self.supplied_h_hint)
+
+# ------------------------------------------------------------------------------
+
   def metal_nh_text(self):
     '''
     The report of N-H at metals (show(), reduce2's description); '' if
@@ -6948,7 +7083,7 @@ class place_hydrogens():
       print(self.unknown_atoms_text(verbose), file=log)
     #
     for text in (self.metal_thiol_text(), self.metal_acid_text(),
-                 self.metal_nh_text(),
+                 self.metal_phenol_text(), self.metal_nh_text(),
                  self.metal_amine_text(), self.chain_start_kept_text(),
                  self.nh2_side_fixed_text(),
                  self.na_terminal_h_text(), self.na_terminal_gap_text()):
@@ -6988,6 +7123,9 @@ class place_hydrogens():
       site_labels_acid = self.site_labels_acid,
       acid_h_unresolved = self.acid_h_unresolved,
       acid_h_supplied_kept = self.acid_h_supplied_kept,
+      site_labels_phenolate = self.site_labels_phenolate,
+      phenol_h_unresolved = self.phenol_h_unresolved,
+      phenol_h_supplied_kept = self.phenol_h_supplied_kept,
       site_labels_metal_nh = self.site_labels_metal_nh,
       metal_nh_unresolved = self.metal_nh_unresolved,
       metal_nh_supplied_kept = self.metal_nh_supplied_kept,
