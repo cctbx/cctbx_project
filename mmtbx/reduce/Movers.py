@@ -440,7 +440,8 @@ class MoverSingleHydrogenRotator(_MoverRotator):
                 hParameters, potentialAcceptors = [],
                 potentialTouches = [],
                 coarseStepDegrees = 10.0,
-                fineStepDegrees = 1.0, preferredOrientationScale = 1.0):
+                fineStepDegrees = 1.0, preferredOrientationScale = 1.0,
+                boundMetals = []):
     """ A Mover that rotates a single Hydrogen around an axis from its bonded partner
        to the single bonded partner of its partner.  This is designed for use with OH,
        SH, and SeH configurations.  For partner-partner atoms that are bonded to a
@@ -468,6 +469,10 @@ class MoverSingleHydrogenRotator(_MoverRotator):
        :param fineStepDegrees: The fine step to take.
        :param preferredOrientationScale: How much to scale the preferred-orientation
        energy by before adding it to the total.
+       :param boundMetals: A list of metal atoms bound to the Hydrogen's neighbor.
+       Orientations that turn the Hydrogen towards one of them (a metal-neighbor-Hydrogen
+       angle below 90 degrees) are not tried as coarse orientations and are not chosen
+       as fine ones, unless no coarse orientation is left.
        Near a potential acceptor, coarse orientations 15 and 30 degrees to either side
        of it are added (after the others) and the fine search covers -10..+9 degrees,
        as in Reduce (RotDonor.cpp).
@@ -632,16 +637,20 @@ class MoverSingleHydrogenRotator(_MoverRotator):
     # it to the list of coarse angles to try. This ensures that we try at least
     # sparsely in all directions.
 
+    def addSpacedAngles(sofar, angles):
+      # Append each of the angles that is at least 45 degrees from all in sofar.
+      for ang in angles:
+        minAng = 360
+        for a in sofar:
+          diff = abs(a - ang)
+          if diff < minAng:
+            minAng = diff
+        if minAng >= 45:
+          sofar.append(ang)
+
     sofar = [bestTouchAngle]
     sofar.extend(acceptorAngles)
-    for ang in self._coarseAngles:
-      minAng = 360
-      for a in sofar:
-        diff = abs(a - ang)
-        if diff < minAng:
-          minAng = diff
-      if minAng >= 45:
-        sofar.append(ang)
+    addSpacedAngles(sofar, self._coarseAngles)
 
     # A conjugated O-H always tries both in-plane orientations, so that the preferred pose
     # is evaluated even when other candidates crowd it out of the list above.
@@ -649,6 +658,36 @@ class MoverSingleHydrogenRotator(_MoverRotator):
       for ang in (0.0, 180.0):
         if all(abs((ang - m + 180) % 360 - 180) > 5 for m in sofar):
           sofar.append(ang)
+
+    # Drop the angles that turn the Hydrogen towards a bound metal (it is on the
+    # metal's side of the plane through the neighbor perpendicular to the metal
+    # bond) and fill the gaps with the other coarse angles, as above. If no
+    # coarse angle is away from the metals, keep them all.
+    def awayFromMetals(ang):
+      h = rvec3(self._posesFor([ang])[0][0])
+      x = rvec3(neighbor.xyz)
+      for m in boundMetals:
+        if (rvec3(m.xyz) - x).dot(h - x) > 0:
+          return False
+      return True
+    avoidMetals = False
+    if len(boundMetals) > 0:
+      away = [ang for ang in self._coarseAngles if awayFromMetals(ang)]
+      if len(away) > 0:
+        avoidMetals = True
+        sofar = [ang for ang in sofar if awayFromMetals(ang)]
+        addSpacedAngles(sofar, away)
+        # A fine step can still cross the plane; this large negative preference,
+        # added to the one above, keeps the Optimizer from choosing it.
+        otherPreference = self._preferenceFunction
+        def metalSidePreference(degrees):
+          preference = 0.0
+          if otherPreference is not None:
+            preference = otherPreference(degrees)
+          if not awayFromMetals(degrees):
+            preference -= 1000.0
+          return preference
+        self._preferenceFunction = metalSidePreference
 
     # These are the primary coarse angles; the Optimizer may also refine the best of
     # them when one of the angles added below wins (NumPrimaryCoarsePositions()).
@@ -672,6 +711,8 @@ class MoverSingleHydrogenRotator(_MoverRotator):
         offsets.extend([degrees - 15, degrees + 15])
       if overlap < -0.9:
         offsets.extend([degrees - 30, degrees + 30])
+    if avoidMetals:
+      offsets = [ang for ang in offsets if awayFromMetals(ang)]
     for ang in offsets:
       if all(abs((ang - m + 180) % 360 - 180) > 5 for m in sofar):
         sofar.append(ang)

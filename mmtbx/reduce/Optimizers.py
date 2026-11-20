@@ -3175,6 +3175,10 @@ class Optimizer(object):
           # O-H & N-H bond len == 1.0, S-H bond len == 1.3
           XHbondlen = Movers.NominalXHBondLength(neighbor)
           candidates = []
+          # Metals bound to the neighbor, by the window that placement uses for
+          # atoms on metals; symmetry copies included. The rotator does not turn
+          # its Hydrogen towards them.
+          boundMetals = []
           for n in nearby:
             # We don't count bonded atoms.
             if not n in bonded:
@@ -3183,6 +3187,10 @@ class Optimizer(object):
               d = (Helpers.rvec3(neighbor.xyz) - Helpers.rvec3(n.xyz)).length()
               if d <= XHbondlen + self._extraAtomInfo.getMappingFor(n).vdwRadius + polarHydrogenRadius:
                 candidates.append(n)
+              nElement = n.element.strip().upper()
+              if (nElement in reduce_hydrogen.METAL_ELEMENTS and
+                  reduce_hydrogen.in_metal_window(neighbor.element.strip().upper(), nElement, d)):
+                boundMetals.append(n)
 
           # See if each candidate atom is a potential acceptor or a flip partner from
           # Histidine or NH2 flips (which may be moved into that atom's position during a flip).
@@ -3205,7 +3213,7 @@ class Optimizer(object):
           oldXYZ = a.xyz
           self._movers.append(Movers.MoverSingleHydrogenRotator(a, bondedNeighborLists, self._extraAtomInfo,
                                                                 hParameters, potentialAcceptors,
-                                                                potentialTouches))
+                                                                potentialTouches, boundMetals = boundMetals))
           # The constructor turned the Hydrogen to its starting orientation; move its
           # spatial-query entry along with it.
           newXYZ = a.xyz
