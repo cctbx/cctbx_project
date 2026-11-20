@@ -25,6 +25,7 @@ atom at 0.5 without labels) are reported, not labelled. The overlap graph of
 C, ...), ligands first, then by occupancy, keeping labels already present.
 """
 from __future__ import absolute_import, division, print_function
+from cctbx.eltbx import chemical_elements
 from libtbx import group_args
 from iotbx.pdb import common_residue_names_get_class
 
@@ -35,9 +36,7 @@ LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 # mmtbx.solvent.ordered_solvent uses the same number so that its output
 # needs no labelling here.
 DISTANCE_CUTOFF = 2.2
-METALS = frozenset("""LI BE NA MG AL K CA SC TI V CR MN FE CO NI CU ZN GA RB
-  SR Y ZR NB MO TC RU RH PD AG CD IN SN CS BA LA CE PR ND PM SM EU GD TB DY
-  HO ER TM YB LU HF TA W RE OS IR PT AU HG TL PB BI TH U""".split())
+METALS = chemical_elements.metals_upper_set()
 
 def is_metal(atom):
   """
