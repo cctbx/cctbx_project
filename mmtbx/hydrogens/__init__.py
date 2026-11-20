@@ -490,8 +490,10 @@ def fit_rotatable2(model, fmodel, reset_h=True, mapper=None):
   if(mapper is None): sites_for_fmodel = model.get_sites_cart()
   else:               sites_for_fmodel = mapper.shrink(model.get_sites_cart())
   fmodel.xray_structure.set_sites_cart(sites_for_fmodel)
+  # Back to the caller's mask params (new mask manager: the mask is
+  # recomputed below)
   if(mpih):
-    mask_params.ignore_hydrogens=False
+    mask_params.ignore_hydrogens=True
     fmodel.update(mask_params=mask_params)
   fmodel.update_xray_structure(update_f_calc=True, update_f_mask=True)
   fmodel.update_all_scales()
