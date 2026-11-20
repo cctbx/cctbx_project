@@ -586,6 +586,7 @@ molprobity_tests = [
   "$D/regression/tst_reduce2_chain_start_ligands.py",
   "$D/regression/tst_reduce2_terminal_nh3.py",
   "$D/regression/tst_reduce2_metal_neutral_nh2.py",
+  "$D/regression/tst_reduce2_metal_hydroxyl.py",
   "$D/regression/tst_reduce2_metal_acid.py",
   "$D/regression/tst_reduce2_metal_phenol.py",
   "$D/regression/tst_reduce2_metal_alkoxide.py",

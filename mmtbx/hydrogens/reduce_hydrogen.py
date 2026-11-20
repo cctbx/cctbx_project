@@ -1383,6 +1383,29 @@ def _compatible(a, b):
   alt_a, alt_b = a.parent().altloc, b.parent().altloc
   return alt_a == '' or alt_b == '' or alt_a == alt_b
 
+def in_metal_window(element_x, element_metal, distance):
+  """Tell whether an atom and a metal are at bonding distance.
+
+  Parameters
+  ----------
+  element_x, element_metal : str
+    The elements of the atom and of the metal, upper case.
+  distance : float
+    Their distance in A.
+
+  Returns
+  -------
+  bool
+    True if the distance is within THIOL_METAL_WINDOW of the summed cctbx
+    covalent radii; False also if an element has no covalent radius.
+  """
+  r_x = _covalent_radius(element_x)
+  r_metal = _covalent_radius(element_metal)
+  if r_x is None or r_metal is None:
+    return False
+  r = r_x + r_metal
+  return r + THIOL_METAL_WINDOW[0] <= distance <= r + THIOL_METAL_WINDOW[1]
+
 def metal_contact_pairs(sites, elements, parents, metals, crystal_symmetry,
                         model_index=None):
   """
@@ -1407,8 +1430,7 @@ def metal_contact_pairs(sites, elements, parents, metals, crystal_symmetry,
     i_x, i_m = subset[x], subset[y]
     if (model_index is not None and
         model_index[i_x] != model_index[i_m]): continue
-    r = _covalent_radius(elements[i_x]) + _covalent_radius(elements[i_m])
-    if not (r + THIOL_METAL_WINDOW[0] <= d <= r + THIOL_METAL_WINDOW[1]):
+    if not in_metal_window(elements[i_x], elements[i_m], d):
       continue
     result.append((i_x, i_m, rt))
   return result

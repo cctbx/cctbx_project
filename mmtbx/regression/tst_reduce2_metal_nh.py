@@ -13,6 +13,7 @@ from iotbx.cli_parser import run_program
 from mmtbx.programs import reduce2
 from mmtbx.hydrogens.reduce_hydrogen import residue_is_amino_acid
 from mmtbx.monomer_library import server
+from scitbx import matrix
 
 # 1xmk: the ATCUN-type Ni site (Gly 288 chain start, Ser 289 and His 290
 # amide N, His 290 ND1)
@@ -411,11 +412,16 @@ def test_ligand_n_kept():
     '(geometric))'], description
 
 def test_sulfonamide():
-  '''Sulfonamide N on Zn: ethoxzolamide loses HN1A and keeps HN1, and on a
-  rerun is left alone; with the deposited D supplied as HN1 it keeps only
-  HN1; 3QR NAZ keeps no H'''
+  '''Sulfonamide N on Zn: ethoxzolamide loses HN1A and keeps HN1, which the
+  Optimizer turns off the Zn (Zn-N1-HN1 at least 90 degrees), and on a rerun
+  is left alone; with the deposited D supplied as HN1 it keeps only HN1; 3QR
+  NAZ keeps no H'''
   h, description, log = run('tst_reduce2_metal_nh_6bcc', pdb_6bcc)
   assert h_on(h, 302, 'N1') == ['HN1'], h_on(h, 302, 'N1')
+  sites = dict((a.name.strip(), matrix.col(a.xyz)) for a in h.atoms())
+  angle = (sites['ZN'] - sites['N1']).angle(sites['HN1'] - sites['N1'],
+    deg=True)
+  assert angle >= 90, angle
   assert section(description, NOT_PLACED) == ['HN1A EZL A 302  (N1  EZL A '
     '302 - ZN    ZN A 301 1.99 A (geometric))'], description
   # reduce2's output again: N1 has its one H, so nothing is judged
