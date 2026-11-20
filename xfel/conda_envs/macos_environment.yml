@@ -1,0 +1,88 @@
+name: macos_env
+channels:
+ - conda-forge
+ - cctbx
+ - nodefaults
+
+dependencies:
+ # conda compilers
+ - c-compiler
+ - cxx-compiler
+ - scons
+
+ # python
+ - python
+ - pip
+ - biopython
+ - ipython
+
+ # testing
+ - pytest
+ - pytest-xdist
+
+ # documentation
+ - docutils
+ - numpydoc
+ - sphinx
+
+ # graphics
+ - pillow
+ - reportlab
+ - wxpython>=4.2.0=*_5
+ - pyopengl
+ - python.app
+
+ # HDF5
+ - h5py
+ - hdf5plugin<=6
+
+ # other
+ - libsvm
+ - mrcfile
+ - psutil
+ - mpi4py
+ - pandas
+ - pybind11
+ - setuptools
+ - natsort
+
+ # cctbx channel
+ - libsvm_py
+
+ # dials
+ - jinja2
+ - msgpack-python
+ - msgpack-c
+ - msgpack-cxx
+ - ordered-set
+ - python-blosc
+ - scikit-learn
+ - tqdm
+ - eigen
+ - dials-data
+ - pint
+ - nxmx
+ - gemmi
+ - hatchling
+
+ # xia2
+ - tabulate
+
+ # Phenix
+ - send2trash
+ - PyRTF
+
+ # xfel gui
+ - mysql
+ - mysqlclient
+ - pydrive2
+
+ # Avoid numpy 1.21.[01234]
+ # See https://github.com/cctbx/cctbx_project/issues/627
+ - numpy=1.20|>=1.21.5
+
+ # boost
+ # conda-forge froze boost/boost-cpp at 1.85. Those headers do not compile with
+ # the clang in current Xcode (boost/mpl enum cast, fixed in boost 1.87).
+ - libboost-devel
+ - libboost-python-devel
