@@ -111,6 +111,14 @@ probe
     .type = bool
     .short_caption = Override polar hydrogen radius
     .help = Override the radius of polar Hydrogens with to ensure it has the expected value. (-usepolarh in probe)
+
+  extrema_dots = False
+    .type = bool
+    .short_caption = Exact worst-overlap dots
+    .help = For each atom pair that can clash, also score dots placed at the points where its \
+            overlap is largest, so that the worst overlap of a pair does not depend on where \
+            the dot sphere happens to fall (or on the orientation of the model). Only bumps \
+            are kept from these dots. (-EXTREMA in probe)
 }
 """
 
