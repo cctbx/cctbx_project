@@ -10,6 +10,7 @@
   -x-1/2,-y+2,z-1/2 (P 21 21 21).
 - his_zn: the same His with a Zn 2.05 A from NE2 in the asymmetric unit;
   his_zn_altlocs puts the His in conformer A and the Zn in conformer B.
+- glu_zn: frag with a Zn 2.0 A from OE2 of Glu 143.
 - frag_his_split: frag with His 56 split, A complete, B truncated after CG
   (or complete).
 - frag_two_his: frag with a copy of His 56 (His 256) in empty space.
@@ -199,6 +200,16 @@ def his_zn_str():
   centre = sum([xyz[n] for n in ring], matrix.col((0, 0, 0))) / 5
   zn = xyz["NE2"] + (xyz["NE2"] - centre).normalize() * 2.05
   lines.append("HETATM  666 ZN    ZN A 397    %8.3f%8.3f%8.3f  1.00  9.61"
+    "          ZN" % tuple(zn))
+  return "\n".join(lines + ["END", ""])
+
+def glu_zn_str():
+  # frag with a Zn 2.0 A from OE2 of Glu 143, on the line from CD through OE2
+  lines = [l for l in frag_str.splitlines() if not l.startswith("END")]
+  xyz = dict((l[12:16].strip(), matrix.col((float(l[30:38]), float(l[38:46]),
+    float(l[46:54])))) for l in lines if l[17:26] == "GLU A 143")
+  zn = xyz["OE2"] + (xyz["OE2"] - xyz["CD"]).normalize() * 2.0
+  lines.append("HETATM 9001 ZN    ZN A 397    %8.3f%8.3f%8.3f  1.00  9.61"
     "          ZN" % tuple(zn))
   return "\n".join(lines + ["END", ""])
 
@@ -521,6 +532,16 @@ def test_his_next_to_symmetry_mate_metal():
   out0, desc0, _ = run("tst_reduce2_protonation_7", his_cd_str)
   assert [n for n in h_names(out0, 354) if n in ("HD1", "HE2")] == ["HD1"]
 
+def test_acid_next_to_zn():
+  '''The state is kept with a Zn at OE2, where the automatic rule takes the H
+  of an acid O on a metal away, and the conflict is listed.'''
+  out, desc, _ = run("tst_reduce2_protonation_glu_zn", glu_zn_str(),
+    [("resseq 143", "protonated")])
+  assert "HE2" in h_names(out, 143), h_names(out, 143)
+  assert ("  GLU A 143: protonated on OE2, as set; OE2 2.00 A from ZN A 397\n"
+    ) in desc, desc
+  assert "Acid H not placed" not in desc, desc
+
 def test_acid_chi_beyond_90():
   # protonated Asp/Glu named against IUPAC: the H is on the input's
   # OD2/OE2 and the O keep their names (A38). Control: without a state the
@@ -842,6 +863,7 @@ if __name__ == "__main__":
   test_presence_per_conformer()
   test_his_with_glycan_link_split()
   test_his_next_to_symmetry_mate_metal()
+  test_acid_next_to_zn()
   test_acid_chi_beyond_90()
   test_sorry()
   print("OK")
