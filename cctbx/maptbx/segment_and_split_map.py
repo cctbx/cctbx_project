@@ -12256,7 +12256,7 @@ def run(args,
           params.output_files.shifted_ncs_file)
     else:
       shifted_ncs_file = None
-    if params.output_files.shifted_ncs_file:
+    if params.output_files.shifted_pdb_file:
         shifted_pdb_file = os.path.join(
           tracking_data.params.output_files.output_directory,
           params.output_files.shifted_pdb_file)
