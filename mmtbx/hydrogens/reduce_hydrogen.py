@@ -1273,6 +1273,11 @@ PHENOLATE_METAL_ELEMENTS = frozenset((
   'AL SC TI V CR FE CU GA Y ZR IN HF BI TH U PU '
   'LA CE PR ND PM SM EU GD TB DY HO ER TM YB LU').split())
 
+# alcohols bound to these lose their H: Ti(IV), Zr(IV), Hf(IV), V(IV/V) and
+# Mo and W (IV-VI); not Mo and V in an Fe-S cofactor (FeMo-co, FeV-co), where
+# they are M(III) and the homocitrate alcohol keeps its H
+ALKOXIDE_METAL_ELEMENTS = frozenset(('TI', 'ZR', 'HF', 'V', 'MO', 'W'))
+
 # images of one metal atom closer than this are one metal site
 METAL_SITE_IMAGE_DISTANCE = 2.0
 
@@ -1289,6 +1294,9 @@ ACID_H_SUPPLIED_NOTE = ('kept as supplied; acids bound to metals are '
 
 PHENOL_H_SUPPLIED_NOTE = ('kept as supplied; phenols bound to Fe, Cu and '
   'ions of charge +3 or more are usually deprotonated')
+
+ALKOXIDE_H_SUPPLIED_NOTE = ('kept as supplied; alcohols bound to Ti, Zr, Hf, '
+  'V, Mo or W are usually deprotonated')
 
 METAL_NH_SUPPLIED_NOTE = ('kept as supplied; backbone amide N and '
   'thymine/uracil N3 bound to metals are usually deprotonated')
@@ -1431,7 +1439,8 @@ class metal_h_sites(object):
   restraints, not counting metals or metal-coordination proxies.
   Contacts: bond proxies with origin "metal coordination" (simple and asu), and
   atoms of self.metals within THIOL_METAL_WINDOW of the summed cctbx
-  covalent radii; same MODEL; across crystal_symmetry (None: no symmetry).
+  covalent radii; same MODEL; across crystal_symmetry (None: no symmetry);
+  only the metal atoms that _metal_counts() accepts.
   Verdict per H site, from the metals of a compatible conformer (blank or the
   same altloc) with occupancy > 0. One metal site is a connected component of
   the images of one metal atom (one name in one residue_group), with an edge
@@ -1460,6 +1469,10 @@ class metal_h_sites(object):
 
   def _candidates(self, atoms, elements, heavy, h_on):
     raise NotImplementedError
+
+  def _metal_counts(self, metal):
+    # whether metal, an atom of self.metals, counts for this class
+    return True
 
   def __init__(self, model, crystal_symmetry=None):
     self.contacts = []
@@ -1515,9 +1528,11 @@ class metal_h_sites(object):
     for i_x in parents:
       for i_m, rt in proxied.get(i_x, []):
         if elements[i_m] not in self.metals: continue
+        if not self._metal_counts(atoms[i_m]): continue
         record(i_x, i_m, rt, working_cs, 'metal coordination proxy')
     metals = [i for i, e in enumerate(elements) if e in self.metals
-              and _covalent_radius(e) is not None]
+              and _covalent_radius(e) is not None
+              and self._metal_counts(atoms[i])]
     for i_x, i_m, rt in metal_contact_pairs([a.xyz for a in atoms], elements,
         parents, metals, crystal_symmetry, model_index):
       record(i_x, i_m, rt, crystal_symmetry, 'geometric')
@@ -1748,6 +1763,42 @@ class phenol_metal_sites(metal_h_sites):
                 self._in_multiple_bond(atoms[j])):
               phenol = True
         if phenol:
+          candidates.append((i_o, i_h, True))
+    return candidates
+
+class alkoxide_metal_sites(metal_h_sites):
+  '''
+  Alcohols bound to Ti, Zr, Hf, V, Mo or W. Alcohol: an O with exactly one
+  non-metal heavy neighbour (counted by residue and atom name), a C in no
+  double, triple, aromatic or delocalized bond (_unsaturated_atoms()), in the
+  bond restraints of the H site's conformer, carrying that H. Covered:
+  alkoxide. Metals: ALKOXIDE_METAL_ELEMENTS, not in a residue with Fe.
+  '''
+  metals = ALKOXIDE_METAL_ELEMENTS
+  covered = 'alkoxide'
+  state = 'alcohol'
+
+  def __init__(self, model, crystal_symmetry=None):
+    self._mon_lib_srv = model.get_mon_lib_srv()
+    self._unsaturated = {}
+    metal_h_sites.__init__(self, model, crystal_symmetry)
+
+  def _metal_counts(self, metal):
+    for a in metal.parent().parent().atoms():
+      if _atom_element(a) == 'FE':
+        return False
+    return True
+
+  def _candidates(self, atoms, elements, heavy, h_on):
+    candidates = []
+    for i_o, hs in h_on.items():
+      if elements[i_o] != 'O': continue
+      for i_h in hs:
+        i_c = _one_heavy_neighbour(atoms, heavy, i_o, atoms[i_h])
+        if i_c is None or elements[i_c] != 'C': continue
+        c = atoms[i_c]
+        if c.name.strip() not in _unsaturated_atoms(c.parent().resname,
+            self._mon_lib_srv, self._unsaturated):
           candidates.append((i_o, i_h, True))
     return candidates
 
@@ -2319,6 +2370,18 @@ def metal_phenol_text(not_placed=(), unresolved=(), supplied=(), hint=None):
     supplied = f'Supplied phenol H at metal sites: {PHENOL_H_SUPPLIED_NOTE}'),
     not_placed, unresolved, supplied, hint)
 
+def metal_alkoxide_text(not_placed=(), unresolved=(), supplied=(), hint=None):
+  '''
+  Report of alcohols bound to Ti, Zr, Hf, V, Mo or W (alkoxide_metal_sites),
+  as metal_thiol_text().
+  '''
+  return _metal_h_text(group_args(
+    not_placed = METAL_ALKOXIDE_NOT_PLACED,
+    unresolved = 'Alcohol H placed at metal sites with unresolved protonation',
+    supplied = ('Supplied alcohol H at metal sites: '
+      f'{ALKOXIDE_H_SUPPLIED_NOTE}')),
+    not_placed, unresolved, supplied, hint)
+
 def metal_nh_text(not_placed=(), unresolved=(), supplied=(), reported=(),
                   hint=None):
   '''
@@ -2394,6 +2457,8 @@ METAL_ACID_NOT_PLACED = ('Acid H not placed: the O is bound to a metal, '
   'taken as deprotonated')
 METAL_PHENOL_NOT_PLACED = ('Phenol H not placed: the O is bound to a metal, '
   'taken as phenolate')
+METAL_ALKOXIDE_NOT_PLACED = ('Alcohol H not placed: the O is bound to Ti, Zr, '
+  'Hf, V, Mo or W, taken as alkoxide')
 METAL_NH_NOT_PLACED = ('N-H not placed: backbone amide N or thymine/uracil '
   'N3 bound to a metal, taken as deprotonated')
 # a neutral NH2 (orient_metal_bound_neutral_nh2()) with a metal of
@@ -2473,6 +2538,9 @@ NOT_PLACED_CAUSES = [group_args(key=k, short=s, title=t, hint=h, listed_in=l,
   ('metal_phenolate', 'metal phenolate',
    'Phenol O bound to Fe, Cu or a metal ion usually of charge +3 or more, '
    'taken as phenolate', None, METAL_PHENOL_NOT_PLACED),
+  ('metal_alkoxide', 'metal alkoxide',
+   'Alcohol O bound to Ti, Zr, Hf, V, Mo or W, taken as alkoxide', None,
+   METAL_ALKOXIDE_NOT_PLACED),
   ('metal_nh', 'metal-bound N',
    'Backbone amide N or thymine/uracil N3 bound to a metal, taken as '
    'deprotonated', None, METAL_NH_NOT_PLACED),
@@ -3536,6 +3604,10 @@ class place_hydrogens():
     self.site_labels_phenolate  = list()
     self.phenol_h_unresolved    = list()
     self.phenol_h_supplied_kept = list()
+    # and for alcohols bound to metals (alkoxide_metal_sites)
+    self.site_labels_alkoxide     = list()
+    self.alkoxide_h_unresolved    = list()
+    self.alkoxide_h_supplied_kept = list()
     # the same for backbone amide N and T/U N3 bound to metals
     # (metal_nh_sites), and the other N-H next to a metal, kept
     self.site_labels_metal_nh   = list()
@@ -3826,6 +3898,7 @@ class place_hydrogens():
     self.exclude_H_on_metal_thiolates()
     self.exclude_H_on_metal_acids()
     self.exclude_H_on_metal_phenolates()
+    self.exclude_H_on_metal_alkoxides()
     self.exclude_H_on_metal_bound_N()
     if self.metal_bound_amines_as_nh2:
       self.convert_metal_bound_amines()
@@ -4652,6 +4725,17 @@ class place_hydrogens():
       PHENOLATE_METAL_ELEMENTS, self.site_labels_phenolate,
       self.phenol_h_unresolved, self.phenol_h_supplied_kept,
       cause='metal_phenolate')
+
+  def exclude_H_on_metal_alkoxides(self):
+    '''
+    An alcohol (alkoxide_metal_sites()) bound to Ti, Zr, Hf, V, Mo or W, not
+    in a residue with Fe, is taken as an alkoxide: as
+    exclude_H_on_metal_thiolates().
+    '''
+    self._exclude_H_at_metal_sites(alkoxide_metal_sites,
+      ALKOXIDE_METAL_ELEMENTS, self.site_labels_alkoxide,
+      self.alkoxide_h_unresolved, self.alkoxide_h_supplied_kept,
+      cause='metal_alkoxide')
 
   def exclude_H_on_metal_bound_N(self):
     '''
@@ -6987,6 +7071,17 @@ class place_hydrogens():
 
 # ------------------------------------------------------------------------------
 
+  def metal_alkoxide_text(self):
+    '''
+    The report of alcohols bound to Ti, Zr, Hf, V, Mo or W, as
+    metal_thiol_text().
+    '''
+    return metal_alkoxide_text(self.site_labels_alkoxide,
+      self.alkoxide_h_unresolved, self.alkoxide_h_supplied_kept,
+      self.supplied_h_hint)
+
+# ------------------------------------------------------------------------------
+
   def metal_nh_text(self):
     '''
     The report of N-H at metals (show(), reduce2's description); '' if
@@ -7032,7 +7127,8 @@ class place_hydrogens():
       print(self.unknown_atoms_text(verbose), file=log)
     #
     for text in (self.metal_thiol_text(), self.metal_acid_text(),
-                 self.metal_phenol_text(), self.metal_nh_text(),
+                 self.metal_phenol_text(), self.metal_alkoxide_text(),
+                 self.metal_nh_text(),
                  self.metal_amine_text(), self.chain_start_kept_text(),
                  self.nh2_side_fixed_text(),
                  self.na_terminal_h_text(), self.na_terminal_gap_text()):
@@ -7075,6 +7171,9 @@ class place_hydrogens():
       site_labels_phenolate = self.site_labels_phenolate,
       phenol_h_unresolved = self.phenol_h_unresolved,
       phenol_h_supplied_kept = self.phenol_h_supplied_kept,
+      site_labels_alkoxide = self.site_labels_alkoxide,
+      alkoxide_h_unresolved = self.alkoxide_h_unresolved,
+      alkoxide_h_supplied_kept = self.alkoxide_h_supplied_kept,
       site_labels_metal_nh = self.site_labels_metal_nh,
       metal_nh_unresolved = self.metal_nh_unresolved,
       metal_nh_supplied_kept = self.metal_nh_supplied_kept,
