@@ -68,6 +68,13 @@ except Exception as e:
         "langchain RAG stack (chromadb) not usable: %s: %s"
         % (type(e).__name__, e))
 
+_GOOGLE_SKIP_REASON = None
+try:
+    import httpx
+    from langchain_google_genai import ChatGoogleGenerativeAI
+except Exception as e:
+    _GOOGLE_SKIP_REASON = "langchain-google-genai not available: %s" % e
+
 
 def _skip_if_deps_missing(cls):
     """Class decorator: skip all tests in a class if dependencies are missing."""
@@ -450,6 +457,78 @@ class TestIntegration(unittest.TestCase):
         self.assertIn('valid_keywords', prompt.input_variables)
 
 
+_ZERO_QUOTA = ("Quota exceeded for metric: generativelanguage.googleapis.com/"
+               "generate_content_free_tier_requests, limit: 0")
+
+
+def _gemini(handler):
+    """A Gemini chat model whose HTTP requests go to handler."""
+    return ChatGoogleGenerativeAI(
+        model="gemini-2.5-flash", google_api_key="test", max_retries=0,
+        client_args={"transport": httpx.MockTransport(handler)})
+
+
+def _gemini_error(code, status, message="test"):
+    """A Gemini chat model whose requests fail as the Gemini API does."""
+    def handler(request):
+        return httpx.Response(code, json={"error": {
+            "code": code, "message": message, "status": status}})
+    return _gemini(handler)
+
+
+@_skip_if_deps_missing
+@unittest.skipIf(_GOOGLE_SKIP_REASON is not None, _GOOGLE_SKIP_REASON)
+class TestGoogleErrors(unittest.TestCase):
+    """Gemini API errors reach the user as specific messages."""
+
+    def _log_info_error(self, llm):
+        import asyncio
+        from libtbx.langchain.analysis.log_info import get_log_info
+        # A log marker keeps summarize_log_text from skipping the LLM call
+        result = asyncio.run(get_log_info(
+            "phenix.refine log", llm, None, provider="google"))
+        return result.error
+
+    def _analyzer_error(self, llm):
+        import asyncio
+        from libtbx import group_args
+        from libtbx.langchain.analysis.analyzer import analyze_log_summary
+        result = asyncio.run(analyze_log_summary(
+            group_args(analysis_payload="payload"), llm, None))
+        return result.error
+
+    def test_log_info_permission_denied(self):
+        llm = _gemini_error(403, "PERMISSION_DENIED")
+        self.assertEqual(self._log_info_error(llm),
+                         "Google AI API key is invalid")
+
+    def test_log_info_resource_exhausted(self):
+        llm = _gemini_error(429, "RESOURCE_EXHAUSTED")
+        self.assertEqual(self._log_info_error(llm),
+                         "Google AI API quota exceeded")
+
+    def test_log_info_zero_quota(self):
+        llm = _gemini_error(429, "RESOURCE_EXHAUSTED", _ZERO_QUOTA)
+        self.assertEqual(self._log_info_error(llm),
+                         "Google API key is not activated")
+
+    def test_analyzer_deadline_exceeded(self):
+        llm = _gemini_error(504, "DEADLINE_EXCEEDED")
+        self.assertIn("Network timeout with Google",
+                      self._analyzer_error(llm))
+
+    def test_analyzer_client_timeout(self):
+        def handler(request):
+            raise httpx.ReadTimeout("timed out", request=request)
+        self.assertIn("Network timeout with Google",
+                      self._analyzer_error(_gemini(handler)))
+
+    def test_analyzer_resource_exhausted(self):
+        llm = _gemini_error(429, "RESOURCE_EXHAUSTED")
+        self.assertIn("Google API quota exceeded",
+                      self._analyzer_error(llm))
+
+
 def run_all_tests():
     """Run all tests using unittest runner, compatible with run_all_tests.py."""
     if _SKIP_REASON:
@@ -461,7 +540,7 @@ def run_all_tests():
     suite = unittest.TestSuite()
     for cls in [TestCoreModule, TestAnalysisModule, TestRAGModule,
                 TestKnowledgeModule, TestAgentModule,
-                TestUtilsModule, TestIntegration]:
+                TestUtilsModule, TestIntegration, TestGoogleErrors]:
         suite.addTests(loader.loadTestsFromTestCase(cls))
     runner = unittest.TextTestRunner(verbosity=2)
     result = runner.run(suite)
