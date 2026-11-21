@@ -23,6 +23,7 @@ import iotbx.pdb
 import libtbx.phil
 from cctbx import crystal
 from cctbx.crystal import super_cell
+from cctbx.eltbx import chemical_elements
 from iotbx.pdb.utils import check_for_missing_elements
 from libtbx import group_args
 from scitbx import matrix
@@ -62,18 +63,11 @@ _WATER_SYM_EQUIV_TOL = 0.5
 _WATER_BASIN_SEED = 0
 _WATER_BASIN_RELAX = 2        # relaxation sweeps after each random kick
 # Cations within _WATER_CATION_RADIUS of the water O are repellers, keeping
-# both H in the hemisphere away from them, rather than acceptors.
-_WATER_CATION_ELEMENTS = frozenset({
-  "LI", "NA", "K", "RB", "CS",                                # alkali
-  "BE", "MG", "CA", "SR", "BA",                               # alkaline earth
-  "SC", "TI", "V", "CR", "MN", "FE", "CO", "NI", "CU", "ZN",  # 3d
-  "Y", "ZR", "NB", "MO", "TC", "RU", "RH", "PD", "AG", "CD",  # 4d
-  "HF", "TA", "W", "RE", "OS", "IR", "PT", "AU", "HG",        # 5d
-  "AL", "GA", "IN", "SN", "SB", "TL", "PB", "BI",             # p-block
-  "LA", "CE", "PR", "ND", "PM", "SM", "EU", "GD",             # lanthanides
-  "TB", "DY", "HO", "ER", "TM", "YB", "LU",
-  "TH", "U",                                                  # actinides
-})
+# both H in the hemisphere away from them, rather than acceptors: the metals,
+# Sb (the Sb(III) ion) and As (the centre of arsenate and cacodylate, like the
+# Mo, W and V of molybdate, tungstate and vanadate).
+_WATER_CATION_ELEMENTS = chemical_elements.metals_upper_set() | frozenset(
+  ('AS', 'SB'))
 _WATER_CATION_RADIUS = 3.0
 _WATER_METAL_COORD_RADIUS = 2.6  # max first-shell metal bond (A)
 _WATER_H1_ACC_ALIGN = 0.7        # min cos(O-H, O->acceptor) to donate to it

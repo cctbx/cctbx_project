@@ -21,6 +21,10 @@ def exercise():
   su = chemical_elements.proper_and_isotopes_upper_set()
   assert len(su) == len(lc) + 2
   assert list(su) == list(stl.set.stl_string(lu+["D", "T"]))
+  sm = chemical_elements.metals_upper_set()
+  assert len(sm) == 87
+  assert set(lu) - sm == set("H HE B C N O F NE SI P S CL AR GE AS SE BR KR "
+    "SB TE I XE AT RN".split()), sorted(set(lu) - sm)
   print("OK")
 
 if (__name__ == "__main__"):
