@@ -342,8 +342,10 @@ class minimizer(object):
       gq.append(flex.sum(g[start:end]))
     self.n_fun += 1
     if(self.target_scale is None):
+      # A start target at rounding level (model fits the data exactly) must
+      # not be scaled: the scaled gradients would be amplified noise.
       self.target_scale = 1
-      if(f > 0): self.target_scale = 1/f
+      if(f > 1.e-12): self.target_scale = 1/f
     gx = self.gradients_wrt_x(x = self.x, gq = gq)
     return self.x, f*self.target_scale, gx*self.target_scale
 
