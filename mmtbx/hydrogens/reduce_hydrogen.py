@@ -1712,10 +1712,20 @@ def _oxoacid_centre(atoms, elements, heavy, h_on, i_x, i_o, h):
 
 class acid_metal_sites(metal_h_sites):
   '''
-  Acids bound to metals: an O carrying H whose one non-metal heavy
-  neighbour is an acid centre (_oxoacid_centre(): carboxylic, phosphoric,
-  phosphonic, sulfonic or arsenic acid) in the bond restraints of the H
-  site's conformer. Covered: deprotonated. Metals: METAL_ELEMENTS.
+  Acids bound to metals.
+
+  An O carrying H whose one non-metal heavy neighbour is an acid centre
+  (_oxoacid_centre(): carboxylic, phosphoric, phosphonic, sulfonic or arsenic
+  acid) in the bond restraints of the H site's conformer. Covered:
+  deprotonated. Metals: METAL_ELEMENTS. Contacts and verdicts as in
+  metal_h_sites.
+
+  Parameters
+  ----------
+  model : mmtbx.model.manager
+    The processed model.
+  crystal_symmetry : cctbx.crystal.symmetry, optional
+    The symmetry of the contacts; None: no symmetry.
   '''
   covered = 'deprotonated'
   state = 'acid'
@@ -1734,12 +1744,21 @@ class acid_metal_sites(metal_h_sites):
 class phenol_metal_sites(metal_h_sites):
   '''
   Phenols bound to Fe, Cu or a metal ion usually of charge +3 or more.
+
   Phenol: an O with exactly one non-metal heavy neighbour (counted by
   residue and atom name) in the bond restraints of the H site's conformer,
   carrying that H: a C in a double, triple, aromatic or delocalized bond
   (_unsaturated_atoms(); also enols; acids are left to acid_metal_sites), or
   an N in such a bond or bonded to such an atom (hydroxamic acids, N-hydroxy
   heterocycles). Covered: phenolate. Metals: PHENOLATE_METAL_ELEMENTS.
+  Contacts and verdicts as in metal_h_sites.
+
+  Parameters
+  ----------
+  model : mmtbx.model.manager
+    The processed model.
+  crystal_symmetry : cctbx.crystal.symmetry, optional
+    The symmetry of the contacts; None: no symmetry.
   '''
   metals = PHENOLATE_METAL_ELEMENTS
   covered = 'phenolate'
@@ -1779,11 +1798,21 @@ class phenol_metal_sites(metal_h_sites):
 
 class alkoxide_metal_sites(metal_h_sites):
   '''
-  Alcohols bound to Ti, Zr, Hf, V, Mo or W. Alcohol: an O with exactly one
-  non-metal heavy neighbour (counted by residue and atom name), a C in no
-  double, triple, aromatic or delocalized bond (_unsaturated_atoms()), in the
-  bond restraints of the H site's conformer, carrying that H. Covered:
-  alkoxide. Metals: ALKOXIDE_METAL_ELEMENTS, not in a residue with Fe.
+  Alcohols bound to Ti, Zr, Hf, V, Mo or W.
+
+  Alcohol: an O with exactly one non-metal heavy neighbour (counted by
+  residue and atom name), a C in no double, triple, aromatic or delocalized
+  bond (_unsaturated_atoms()), in the bond restraints of the H site's
+  conformer, carrying that H. Covered: alkoxide. Metals:
+  ALKOXIDE_METAL_ELEMENTS, not in a residue with Fe. Contacts and verdicts as
+  in metal_h_sites.
+
+  Parameters
+  ----------
+  model : mmtbx.model.manager
+    The processed model.
+  crystal_symmetry : cctbx.crystal.symmetry, optional
+    The symmetry of the contacts; None: no symmetry.
   '''
   metals = ALKOXIDE_METAL_ELEMENTS
   covered = 'alkoxide'
@@ -1815,14 +1844,23 @@ class alkoxide_metal_sites(metal_h_sites):
 
 class bridging_metal_sites(metal_h_sites):
   '''
-  O-H bridging two metals: an O with exactly one non-metal heavy neighbour
-  (counted by residue and atom name), an N or a C that is no acid centre
-  (_oxoacid_centre()), in the bond restraints of the H site's conformer,
-  carrying that H (alcohols, phenols, N-OH). Two metal sites must coexist
-  (one has a blank altloc, or they share one); the verdict is from the less
-  covered site of the best such pair, and an O with no such pair is not
-  counted. Covered: deprotonated. Metals: NH_METAL_ELEMENTS (Ca and alkali
-  bridges keep the H).
+  O-H bridging two metals.
+
+  An O with exactly one non-metal heavy neighbour (counted by residue and
+  atom name), an N or a C that is no acid centre (_oxoacid_centre()), in the
+  bond restraints of the H site's conformer, carrying that H (alcohols,
+  phenols, N-OH). Two metal sites must coexist (one has a blank altloc, or
+  they share one); the verdict is from the less covered site of the best such
+  pair, and an O with no such pair is not counted. Covered: deprotonated.
+  Metals: NH_METAL_ELEMENTS (Ca and alkali bridges keep the H). Contacts and
+  verdicts as in metal_h_sites.
+
+  Parameters
+  ----------
+  model : mmtbx.model.manager
+    The processed model.
+  crystal_symmetry : cctbx.crystal.symmetry, optional
+    The symmetry of the contacts; None: no symmetry.
   '''
   metals = NH_METAL_ELEMENTS
   covered = 'deprotonated'
@@ -1902,11 +1940,30 @@ class metal_nh_sites(metal_h_sites):
 
   def is_azolium_n(self, atoms, heavy, h_on, i_n, h):
     '''
-    Whether N i_n, carrying H h, is an azolium N: in a double, triple,
-    aromatic or delocalized bond (_unsaturated_atoms()), with two heavy
-    neighbours joined by a path of at most four bonds that avoids it (a five-
-    or six-membered ring) through another N that carries H, all in the
-    conformer of h.
+    Tell whether an N that carries H is an azolium N.
+
+    Azolium N: in a double, triple, aromatic or delocalized bond
+    (_unsaturated_atoms()), with two heavy neighbours joined by a path of at
+    most four bonds that avoids it (a five- or six-membered ring) through
+    another N that carries H, all in the conformer of the H.
+
+    Parameters
+    ----------
+    atoms : iotbx.pdb.hierarchy.af_shared_atom
+      The atoms of the model.
+    heavy : dict
+      The non-metal heavy neighbours (bond restraints) of each atom, i_seq to
+      list of i_seq.
+    h_on : dict
+      The H on each atom, i_seq to list of i_seq.
+    i_n : int
+      The i_seq of the N.
+    h : iotbx.pdb.hierarchy.atom
+      An H on the N; only atoms in its conformer count.
+
+    Returns
+    -------
+    bool
     '''
     n = atoms[i_n]
     if n.name.strip() not in _unsaturated_atoms(n.parent().resname,
@@ -2421,12 +2478,18 @@ def reported_metal_h_rows(sites, key):
 
 def metal_h_rules():
   '''
-  The rules that take H off atoms bound to metals, in the order placement
-  applies them (a bridge decides before the phenol and alcohol rules). Each:
-  site_class; cause, of its not_placed records and its key in
-  place_hydrogens.metal_h; and the titles of its report sections:
-  not_placed, unresolved, supplied, and reported (of the candidates the
-  class only lists; None if it lists none).
+  Describe the rules that take H off atoms bound to metals.
+
+  In the order placement applies them (a bridge decides before the phenol
+  and alcohol rules).
+
+  Returns
+  -------
+  list of libtbx.group_args
+    One per rule: site_class; cause, of its not_placed records and its key
+    in place_hydrogens.metal_h; and the titles of its report sections:
+    not_placed, unresolved, supplied, and reported (of the candidates the
+    class only lists; None if it lists none).
   '''
   rows = (
     (thiol_metal_sites, 'metal_thiolate', METAL_THIOL_NOT_PLACED,
@@ -2459,10 +2522,28 @@ def metal_h_rules():
 def metal_h_text(rule, not_placed=(), unresolved=(), supplied=(), hint=None,
                  reported=()):
   '''
-  Report of one rule of metal_h_rules(): H not placed [(label, contacts)],
-  messages of unresolved sites, supplied H kept (supplied_metal_h()) and how
-  to drop them (hint), and the candidates the rule only lists [(label,
-  contacts)]; '' if there is nothing to report.
+  Write the report of one rule that takes H off atoms bound to metals.
+
+  Parameters
+  ----------
+  rule : libtbx.group_args
+    A rule of metal_h_rules().
+  not_placed : sequence of (str, str)
+    The H not placed, (label, contacts).
+  unresolved : sequence of str
+    The messages of the unresolved sites.
+  supplied : sequence of (str, str, str)
+    The supplied H kept (supplied_metal_h()), (label, contacts,
+    connectivity).
+  hint : str, optional
+    How to drop the supplied H.
+  reported : sequence of (str, str)
+    The candidates the rule only lists, (label, contacts).
+
+  Returns
+  -------
+  str
+    The report; '' if there is nothing to report.
   '''
   lines = []
   if not_placed:
@@ -4773,6 +4854,8 @@ class place_hydrogens():
 
   def exclude_H_at_metal_sites(self):
     '''
+    Remove the H that reduce2 built on atoms bound to metals.
+
     The rules of metal_h_rules(), in their order: an atom that a rule's site
     class finds bound to a metal is taken as deprotonated (A4, A5). An H
     that reduce2 built on it is removed when the site is covered, and kept
@@ -7093,9 +7176,16 @@ class place_hydrogens():
 
   def metal_h_texts(self):
     '''
-    The reports of the rules of metal_h_rules() that have something to
-    report, in their order (show(), reduce2's description). supplied_h_hint,
-    if set, says how to drop the supplied H.
+    Write the reports of the rules that take H off atoms bound to metals.
+
+    For show() and reduce2's description; supplied_h_hint, if set, says how
+    to drop the supplied H.
+
+    Returns
+    -------
+    list of str
+      The reports of the rules of metal_h_rules() that have something to
+      report, in their order.
     '''
     texts = []
     for rule in metal_h_rules():

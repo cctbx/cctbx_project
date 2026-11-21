@@ -533,8 +533,8 @@ def test_his_next_to_symmetry_mate_metal():
   assert [n for n in h_names(out0, 354) if n in ("HD1", "HE2")] == ["HD1"]
 
 def test_acid_next_to_zn():
-  # The state is kept with a Zn at OE2, where the automatic rule takes the H
-  # of an acid O on a metal away, and the conflict is listed.
+  '''The state is kept with a Zn at OE2, where the automatic rule takes the H
+  of an acid O on a metal away, and the conflict is listed.'''
   out, desc, _ = run("tst_reduce2_protonation_glu_zn", glu_zn_str(),
     [("resseq 143", "protonated")])
   assert "HE2" in h_names(out, 143), h_names(out, 143)
