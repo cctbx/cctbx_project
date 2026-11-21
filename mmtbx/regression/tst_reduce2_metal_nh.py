@@ -417,15 +417,17 @@ def test_sulfonamide():
 
 def test_azolium():
   '''Imidazolium on Zn (4PE3) loses HN1 on the bound N1 and keeps HN3; the
-  neutral imidazole of OPV on Fe (6MFL) keeps H2 on the bound NAM'''
+  neutral imidazole of OPV on Fe (6MFL) is no azolium: the dictionary's H2 on
+  the bound NAM is listed, not removed'''
   h, description, log = run('tst_reduce2_metal_nh_4pe3', pdb_4pe3)
   assert h_on(h, 402, 'N1') == [] and h_on(h, 402, 'N3') == ['HN3'], (
     h_on(h, 402, 'N1'), h_on(h, 402, 'N3'))
   assert section(description, NOT_PLACED) == ['HN1 IMD A 402  (N1  IMD A 402 '
     '- ZN    ZN A 407 2.02 A (geometric))'], description
   h, description, log = run('tst_reduce2_metal_nh_6mfl', pdb_6mfl)
-  assert h_on(h, 402, 'NAM') == ['H2'], h_on(h, 402, 'NAM')
   assert NOT_PLACED not in description, description
+  assert section(description, REPORTED) == ['NAM OPV A 402 (H2)  (NAM OPV A '
+    '402 - FE    FE A 401 2.14 A (geometric))'], description
 
 def test_conformer_without_peptide_c():
   # Ser 289 H/A: Gly 288 C(A) and CA(A), an amide; H/B: no C of its
