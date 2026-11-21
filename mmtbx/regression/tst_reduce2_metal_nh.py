@@ -181,7 +181,7 @@ END
 """
 
 # 6BCC (neutron, carbonic anhydrase II): ethoxzolamide N1, a primary
-# sulfonamide, on Zn 301 (1.99 A); one D on N1
+# sulfonamide, on Zn 301 (1.99 A); one D on N1 (DN1, as HN1 in pdb_6bcc_h)
 pdb_6bcc = """\
 CRYST1   42.800   41.700   72.900  90.00 104.60  90.00 P 1 21 1
 HETATM 5202 ZN    ZN A 301      -6.880  -1.575  15.379  1.00 15.07          ZN
@@ -203,6 +203,10 @@ HETATM 5218  S1  EZL A 302      -6.072   0.956  16.948  1.00 15.13           S
 HETATM 5219  S2  EZL A 302      -6.250   3.503  15.347  1.00 16.10           S
 END
 """
+pdb_6bcc_h = pdb_6bcc.replace('HETATM 5213  N1 ', (
+  'HETATM 5212  HN1 EZL A 302      -4.920  -0.808  16.798  1.00 18.86'
+  '           H\nHETATM 5213  N1 '))
+assert pdb_6bcc_h != pdb_6bcc
 
 # 6GCY (neutron): 3QR NAZ, an N between C=O and SO2, on Zn 301 (2.02 A);
 # no D on NAZ
@@ -407,11 +411,25 @@ def test_ligand_n_kept():
     '(geometric))'], description
 
 def test_sulfonamide():
-  '''Sulfonamide N on Zn: ethoxzolamide keeps HN1A; 3QR NAZ keeps no H'''
+  '''Sulfonamide N on Zn: ethoxzolamide loses HN1A and keeps HN1, and on a
+  rerun is left alone; with the deposited D supplied as HN1 it keeps only
+  HN1; 3QR NAZ keeps no H'''
   h, description, log = run('tst_reduce2_metal_nh_6bcc', pdb_6bcc)
-  assert h_on(h, 302, 'N1') == ['HN1A'], h_on(h, 302, 'N1')
-  assert section(description, NOT_PLACED) == ['HN1 EZL A 302  (N1  EZL A 302 '
-    '- ZN    ZN A 301 1.99 A (geometric))'], description
+  assert h_on(h, 302, 'N1') == ['HN1'], h_on(h, 302, 'N1')
+  assert section(description, NOT_PLACED) == ['HN1A EZL A 302  (N1  EZL A '
+    '302 - ZN    ZN A 301 1.99 A (geometric))'], description
+  # reduce2's output again: N1 has its one H, so nothing is judged
+  with open('tst_reduce2_metal_nh_6bcc_out.pdb') as f:
+    out = f.read()
+  h, description, log = run('tst_reduce2_metal_nh_6bcc_rerun', out,
+    ['approach=optimize'])
+  assert h_on(h, 302, 'N1') == ['HN1'], h_on(h, 302, 'N1')
+  assert SUPPLIED not in description, description
+  # the deposited D supplied as HN1 is kept: the built H after it is the one
+  # judged
+  h, description, log = run('tst_reduce2_metal_nh_6bcc_h', pdb_6bcc_h,
+    ['keep_existing_H=True'])
+  assert h_on(h, 302, 'N1') == ['HN1'], h_on(h, 302, 'N1')
   h, description, log = run('tst_reduce2_metal_nh_6gcy', pdb_6gcy)
   assert h_on(h, 302, 'NAZ') == [], h_on(h, 302, 'NAZ')
 
