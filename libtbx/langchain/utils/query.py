@@ -10,7 +10,6 @@ import time
 import os
 
 import openai
-from google.api_core import exceptions as google_exceptions
 # v118.G2b: GoogleGenerativeAIError and retriever functions moved to
 # function-body scope below.  langchain_google_genai._common and
 # rag.retriever both import optional packages (langchain_chroma) that
@@ -115,7 +114,7 @@ def query_docs(query_text, llm=None, embeddings=None,
             print("OpenAI API key is invalid")
             return None
 
-        except (google_exceptions.ResourceExhausted, GoogleGenerativeAIError) as e:
+        except GoogleGenerativeAIError as e:
             error_text = str(e).lower()
             if "you exceeded your current quota" in error_text:
                 if "limit: 0" in error_text:
