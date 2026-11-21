@@ -132,7 +132,7 @@ def test_6lzb_hydroxamate():
       pdb_str)
     assert 'H9' not in names and 'H8' in names, (metal, sorted(names))
     assert NOT_PLACED in description, description
-    assert 'Phenol H' not in description, description
+    assert 'Phenol, enol or N-OH H' not in description, description
 
 def test_6lzb_listed_once():
   '''H9, judged by the bridge and by the phenol rule, is listed once. Ga at
@@ -159,7 +159,7 @@ def test_6lzb_listed_once():
     metals('CO', 0.5, 'GA', 1.))
   assert 'H9' not in names, sorted(names)
   assert description.count(h9) == 1, description
-  assert 'Phenol H not placed' in description, description
+  assert 'Phenol, enol or N-OH H not placed' in description, description
   names, description = run('tst_reduce2_metal_bridging_once_ca',
     metals('CA', 1., 'CA', 1.))
   assert 'H9' in names, sorted(names)

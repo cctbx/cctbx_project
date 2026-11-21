@@ -94,7 +94,8 @@ def test_bicarbonate():
     assert lines[lines.index(NOT_PLACED) + 1] == ('  HO3 BCT A   1  (O3  BCT'
       f' A   1 - {metal}    {metal} A   2 2.00 A (geometric))'), (metal,
       description)
-    assert 'Phenol H' not in description, (metal, description)
+    assert 'Phenol, enol or N-OH H' not in description, (metal,
+      description)
 
 def test_supplied_h_kept():
   '''A supplied HOP3 on the O on Mn stays and is listed, with add

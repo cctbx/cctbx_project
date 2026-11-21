@@ -162,9 +162,9 @@ HETATM 4831 CU    CU A 700      23.768   7.991  29.515  1.00 24.89          CU
 END
 """
 
-NOT_PLACED = ('Phenol H not placed: the O is bound to a metal, taken as '
-  'phenolate')
-SUPPLIED = 'Supplied phenol H at metal sites'
+NOT_PLACED = ('Phenol, enol or N-OH H not placed: the O is bound to a metal, '
+  'taken as deprotonated')
+SUPPLIED = 'Supplied phenol, enol or N-OH H at metal sites'
 
 def run(prefix, pdb_str, args=()):
   '''reduce2 on a model string; returns the hierarchy of its model and the

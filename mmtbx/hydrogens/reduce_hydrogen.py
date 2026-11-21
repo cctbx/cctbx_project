@@ -1292,8 +1292,8 @@ THIOL_H_SUPPLIED_NOTE = ('kept as supplied; thiols bound to metals are usually '
 ACID_H_SUPPLIED_NOTE = ('kept as supplied; acids bound to metals are '
   'deprotonated')
 
-PHENOL_H_SUPPLIED_NOTE = ('kept as supplied; phenols bound to Fe, Cu and '
-  'ions of charge +3 or more are usually deprotonated')
+PHENOL_H_SUPPLIED_NOTE = ('kept as supplied; phenols, enols and N-OH bound to '
+  'Fe, Cu and ions of charge +3 or more are usually deprotonated')
 
 ALKOXIDE_H_SUPPLIED_NOTE = ('kept as supplied; alcohols bound to Ti, Zr, Hf, '
   'V, Mo or W are usually deprotonated')
@@ -2501,8 +2501,10 @@ def metal_h_rules():
      'Supplied hydroxyl H at bridging metal sites: '
      f'{BRIDGING_H_SUPPLIED_NOTE}', None),
     (phenol_metal_sites, 'metal_phenolate', METAL_PHENOL_NOT_PLACED,
-     'Phenol H placed at metal sites with unresolved protonation',
-     f'Supplied phenol H at metal sites: {PHENOL_H_SUPPLIED_NOTE}', None),
+     'Phenol, enol or N-OH H placed at metal sites with unresolved '
+     'protonation',
+     'Supplied phenol, enol or N-OH H at metal sites: '
+     f'{PHENOL_H_SUPPLIED_NOTE}', None),
     (alkoxide_metal_sites, 'metal_alkoxide', METAL_ALKOXIDE_NOT_PLACED,
      'Alcohol H placed at metal sites with unresolved protonation',
      f'Supplied alcohol H at metal sites: {ALKOXIDE_H_SUPPLIED_NOTE}', None),
@@ -2625,8 +2627,8 @@ METAL_ACID_NOT_PLACED = ('Acid H not placed: the O is bound to a metal, '
   'taken as deprotonated')
 METAL_BRIDGING_NOT_PLACED = ('Hydroxyl H not placed: the O bridges two '
   'metals, taken as deprotonated')
-METAL_PHENOL_NOT_PLACED = ('Phenol H not placed: the O is bound to a metal, '
-  'taken as phenolate')
+METAL_PHENOL_NOT_PLACED = ('Phenol, enol or N-OH H not placed: the O is bound '
+  'to a metal, taken as deprotonated')
 METAL_ALKOXIDE_NOT_PLACED = ('Alcohol H not placed: the O is bound to Ti, Zr, '
   'Hf, V, Mo or W, taken as alkoxide')
 METAL_NH_NOT_PLACED = ('N-H not placed: backbone amide N, thymine/uracil N3, '
@@ -2710,8 +2712,8 @@ NOT_PLACED_CAUSES = [group_args(key=k, short=s, title=t, hint=h, listed_in=l,
    'Hydroxyl O bridging two metals, taken as deprotonated', None,
    METAL_BRIDGING_NOT_PLACED),
   ('metal_phenolate', 'metal phenolate',
-   'Phenol O bound to Fe, Cu or a metal ion usually of charge +3 or more, '
-   'taken as phenolate', None, METAL_PHENOL_NOT_PLACED),
+   'Phenol, enol or N-OH O bound to Fe, Cu or a metal ion usually of charge +3 '
+   'or more, taken as deprotonated', None, METAL_PHENOL_NOT_PLACED),
   ('metal_alkoxide', 'metal alkoxide',
    'Alcohol O bound to Ti, Zr, Hf, V, Mo or W, taken as alkoxide', None,
    METAL_ALKOXIDE_NOT_PLACED),
