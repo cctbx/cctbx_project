@@ -1990,6 +1990,91 @@ def Test():
   except Exception as e:
     return "Movers.Test() MoverSingleHydrogenRotator pair: Exception during test: "+str(e)+"\n"+traceback.format_exc()
 
+  # Test the MoverSingleHydrogenRotator class next to bound metals.
+  try:
+    # The atoms of the pair test above: the Hydrogen turns around the Z axis on a circle at
+    # z = 1, starting at -X. A rotation by d degrees puts it at an azimuth of 180 +/- d.
+    def pairRotator(potentialAcceptors, boundMetals):
+      h = pdb.hierarchy.atom()
+      h.element = "H"
+      h.name = "H"
+      h.xyz = [ 1.0, 1.0, 1.0 ]
+      n = pdb.hierarchy.atom()
+      n.name = "C"
+      n.xyz = [ 0.0, 0.0, 0.0 ]
+      p = pdb.hierarchy.atom()
+      p.name = "C"
+      p.xyz = [ 0.0, 0.0,-1.0 ]
+      f1 = pdb.hierarchy.atom()
+      f1.name = "C1"
+      f1.xyz = [ 1.0, 0.0,-2.0 ]
+      f2 = pdb.hierarchy.atom()
+      f2.name = "C2"
+      f2.xyz = [-1.0, 0.0,-2.0 ]
+      ag = pdb.hierarchy.atom_group()
+      for a in [ h, n, p, f1, f2 ]:
+        ag.append_atom(a)
+      rg = pdb.hierarchy.residue_group()
+      rg.append_atom_group(ag)
+      c = pdb.hierarchy.chain()
+      c.append_residue_group(rg)
+      m = pdb.hierarchy.model()
+      m.append_chain(c)
+      m.atoms().reset_i_seq()
+      bondedNeighborLists = { h: [ n ], n: [ h, p ], p: [ n, f1, f2 ], f1: [ p ], f2: [ p ] }
+      atoms = c.atoms()
+      extrasMap = probe.ExtraAtomInfoMap(atoms, [ probe.ExtraAtomInfo() for a in atoms ])
+      class Item:
+        def __init__(self, paramN, paramA2):
+          self.n = paramN
+          self.a2 = paramA2
+      hParams = { h.i_seq: Item(0, f1.i_seq) }
+      return MoverSingleHydrogenRotator(h, bondedNeighborLists, extrasMap, hParams,
+        potentialAcceptors, boundMetals = boundMetals)
+
+    def atomAt(xyz):
+      a = pdb.hierarchy.atom()
+      a.xyz = xyz
+      return a
+
+    # The smallest metal-neighbor-Hydrogen angle of a Hydrogen position (the neighbor is at
+    # the origin).
+    def metalAngle(xyz, metals):
+      return min(rvec3(m.xyz).angle(rvec3(xyz), deg=True) for m in metals)
+
+    # One metal at +X: every Hydrogen with x > 0 is turned towards it. An acceptor at an
+    # azimuth of 95 degrees, 1 A from the neighbor, adds near-acceptor angles 15 and 30
+    # degrees to either side; those at 80 and 65 degrees are on the metal's side.
+    metals = [ atomAt([ 2.0, 0.0, 0.0 ]) ]
+    acc = atomAt([ math.cos(95*math.pi/180), math.sin(95*math.pi/180), 0.0 ])
+    mover = pairRotator([ acc ], metals)
+    positions = mover.CoarsePositions().positions
+    if mover.NumPrimaryCoarsePositions() == len(positions):
+      return "Movers.Test() MoverSingleHydrogenRotator metal: no near-acceptor orientation"
+    for pos in positions:
+      if metalAngle(pos[0], metals) < 90 - 1e-6:
+        return "Movers.Test() MoverSingleHydrogenRotator metal: coarse orientation towards the metal"
+    if mover._preferenceFunction(0) < -1 or mover._preferenceFunction(180) > -999:
+      return "Movers.Test() MoverSingleHydrogenRotator metal: bad preference function"
+
+    # Metals on two sides, at -X and +X and above the plane of the neighbor: every orientation
+    # is turned towards one. The farthest from them is at an azimuth of 90 degrees; those
+    # within 15 degrees of it are kept: 80 degrees (rotation 100) but not 65 (rotation 115).
+    metals = [ atomAt([ 2.0, 0.0, 0.5 ]), atomAt([-2.0, 0.0, 0.5 ]) ]
+    farthest = metalAngle([ 0.0, math.sqrt(2), 1.0 ], metals)
+    mover = pairRotator([], metals)
+    positions = mover.CoarsePositions().positions
+    if len(positions) == 0:
+      return "Movers.Test() MoverSingleHydrogenRotator metals: no coarse orientation"
+    for pos in positions:
+      if metalAngle(pos[0], metals) < farthest - 15 - 1e-6:
+        return "Movers.Test() MoverSingleHydrogenRotator metals: coarse orientation towards a metal"
+    if mover._preferenceFunction(100) < -1 or mover._preferenceFunction(115) > -999:
+      return "Movers.Test() MoverSingleHydrogenRotator metals: bad preference function"
+
+  except Exception as e:
+    return "Movers.Test() MoverSingleHydrogenRotator metal: Exception during test: "+str(e)+"\n"+traceback.format_exc()
+
   try:
     # Construct a MoverSingleHydrogenRotator that has an atom that starts out at 45 degrees around Z
     # that is bonded to a neighbor and partner that are vertical and then partner is bonded to three
