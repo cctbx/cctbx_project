@@ -1,11 +1,11 @@
 """reduce2 placement at acids bound to metals: an O-H whose O has one heavy
 neighbour, an oxoacid centre (carboxylic, phosphoric or phosphonic, sulfonic
-or arsenic acid), and is bound to a metal is taken as deprotonated, and
-reduce2 does not build its H. Bicarbonate keeps its H; a supplied H is kept
-and listed.
+or arsenic acid, bicarbonate), and is bound to a metal is taken as
+deprotonated, and reduce2 does not build its H. A supplied H is kept and
+listed.
 Models: 6IHT, phosphoserine X 3 and Mn 303 (O3P 2.25 A, in the window; O2P
 2.40 A, outside it); bicarbonate D 401 of 3WU2 with a Zn placed 2.0 A from
-O3, on the C-O3 line.
+O3, on the C-O3 line, and a copy of it 10 A away without a metal.
 """
 from libtbx.utils import null_out
 from iotbx.cli_parser import run_program
@@ -35,6 +35,10 @@ HETATM    2  O1  BCT A   1     -25.291 -59.027  18.508  1.00 20.00           O
 HETATM    3  O2  BCT A   1     -24.215 -59.207  20.449  1.00 20.00           O
 HETATM    4  O3  BCT A   1     -25.936 -57.757  20.169  1.00 20.00           O
 HETATM    5 ZN    ZN A   2     -27.205 -56.356  20.823  1.00 20.00          ZN
+HETATM    6  C   BCT A   3     -25.131 -58.646  29.754  1.00 20.00           C
+HETATM    7  O1  BCT A   3     -25.291 -59.027  28.508  1.00 20.00           O
+HETATM    8  O2  BCT A   3     -24.215 -59.207  30.449  1.00 20.00           O
+HETATM    9  O3  BCT A   3     -25.936 -57.757  30.169  1.00 20.00           O
 END
 """
 
@@ -77,11 +81,19 @@ def test_6iht_phosphoserine():
   assert lines[lines.index(NOT_PLACED) + 1] == ('  HOP3 SEP X   3  (O3P SEP X'
     '   3 - MN    MN A 303 2.25 A (geometric))'), description
 
-def test_bicarbonate_kept():
-  '''Bicarbonate on Zn through O3 keeps HO3'''
-  names, description = run('tst_reduce2_metal_acid_bct', pdb_bct_zn)
-  assert 'HO3' in names, sorted(names)
-  assert NOT_PLACED not in description, description
+def test_bicarbonate():
+  '''Bicarbonate on Zn or Fe through O3 loses HO3 and is listed with the
+  acids; the one without a metal keeps it'''
+  for metal in ('ZN', 'FE'):
+    pdb_str = pdb_bct_zn.replace('ZN    ZN', f'{metal}    {metal}').replace(
+      '20.00          ZN', f'20.00          {metal}')
+    names, description = run(f'tst_reduce2_metal_acid_bct_{metal}', pdb_str)
+    assert 'HO3' in names, (metal, sorted(names))
+    lines = description.splitlines()
+    assert NOT_PLACED in lines, (metal, description)
+    assert lines[lines.index(NOT_PLACED) + 1] == ('  HO3 BCT A   1  (O3  BCT'
+      f' A   1 - {metal}    {metal} A   2 2.00 A (geometric))'), (metal,
+      description)
 
 def test_supplied_h_kept():
   '''A supplied HOP3 on the O on Mn stays and is listed, with add
@@ -100,6 +112,6 @@ def test_supplied_h_kept():
 
 if __name__ == '__main__':
   test_6iht_phosphoserine()
-  test_bicarbonate_kept()
+  test_bicarbonate()
   test_supplied_h_kept()
   print('OK')

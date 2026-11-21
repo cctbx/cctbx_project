@@ -1632,16 +1632,14 @@ def _oxoacid_centre(atoms, elements, heavy, h_on, i_x, i_o, h):
   Whether atom i_x, the heavy neighbour of O i_o that carries H h, is the
   centre of an acid group: a C, P, S or As bonded to another O that has no
   other heavy neighbour and no H, in the conformer of h. A C must have three
-  neighbours (H counted), not three O: carbonic acid and bicarbonate are
-  left out.
+  neighbours (H counted).
   '''
   if elements[i_x] not in ('C', 'P', 'S', 'AS'): return False
   nb = {}
   for j in heavy.get(i_x, []) + h_on.get(i_x, []):
     if _compatible(atoms[j], h): nb[_residue_atom(atoms[j])] = j
-  if elements[i_x] == 'C':
-    if len(nb) != 3 or all(elements[j] == 'O' for j in nb.values()):
-      return False
+  if elements[i_x] == 'C' and len(nb) != 3:
+    return False
   for j in nb.values():
     if elements[j] != 'O': continue
     if _residue_atom(atoms[j]) == _residue_atom(atoms[i_o]): continue
@@ -1657,8 +1655,8 @@ class acid_metal_sites(metal_h_sites):
   Acids bound to metals.
 
   An O carrying H whose one non-metal heavy neighbour is an acid centre
-  (_oxoacid_centre(): carboxylic, phosphoric, phosphonic, sulfonic or arsenic
-  acid) in the bond restraints of the H site's conformer. Covered:
+  (_oxoacid_centre(): carboxylic, carbonic, phosphoric, phosphonic, sulfonic
+  or arsenic acid) in the bond restraints of the H site's conformer. Covered:
   deprotonated. Metals: METAL_ELEMENTS. Contacts and verdicts as in
   metal_h_sites.
 
@@ -4566,9 +4564,9 @@ class place_hydrogens():
     '''
     Remove the H that reduce2 built on acids bound to metals.
 
-    An acid (acid_metal_sites(): carboxylic, phosphoric, phosphonic,
-    sulfonic or arsenic acid) bound to a metal is taken as deprotonated: as
-    exclude_H_on_metal_thiolates().
+    An acid (acid_metal_sites(): carboxylic, carbonic, phosphoric,
+    phosphonic, sulfonic or arsenic acid) bound to a metal is taken as
+    deprotonated: as exclude_H_on_metal_thiolates().
     '''
     self._exclude_H_at_metal_sites(acid_metal_sites, METAL_ELEMENTS,
       self.site_labels_acid, self.acid_h_unresolved,
