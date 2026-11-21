@@ -1907,10 +1907,12 @@ class metal_nh_sites(metal_h_sites):
   '''
   N-H bound to metals (A5): backbone amide N with a preceding residue,
   thymine/uracil N3, sulfonamide N and azolium N are judged (covered:
-  deprotonated); of a sulfonamide N only the first H of each conformer, so a
-  primary sulfonamide keeps the second (R-SO2-NH-). Other N with H, not His
-  ring N, are reported only. Metals: NH_METAL_ELEMENTS. Each H is classified
-  with the heavy neighbours of its own conformer.
+  deprotonated). Deprotonation takes one H per conformer, the last in atom
+  order, and only off an N that carries all its H (three less its heavy
+  neighbours): a primary sulfonamide keeps one (R-SO2-NH-), and an N that
+  already lost its H is reported only. Other N with H, not His ring N, are
+  reported only. Metals: NH_METAL_ELEMENTS. Each H is classified with the
+  heavy neighbours of its own conformer.
   '''
   metals = NH_METAL_ELEMENTS
   covered = 'deprotonated'
@@ -2035,13 +2037,16 @@ class metal_nh_sites(metal_h_sites):
       for i_h in hs:
         kind = self.n_class(atoms, heavy, h_on, i_n, i_h)
         if kind == 'his': continue
-        judged = kind in ('amide', 'N3', 'azolium')
-        if kind == 'sulfonamide':
-          # one H per conformer, the first: an NH2 keeps the second
-          judged = True
-          for j in hs:
-            if j < i_h and _compatible(atoms[j], atoms[i_h]):
-              judged = False
+        judged = kind in ('amide', 'N3', 'sulfonamide', 'azolium')
+        if judged:
+          # deprotonation takes one H, the last of the conformer (a built H
+          # comes after a supplied one), off an N that carries all its H:
+          # three less its heavy neighbours
+          h = atoms[i_h]
+          same = [j for j in hs if _compatible(atoms[j], h)]
+          nb = set(_residue_atom(atoms[k]) for k in heavy.get(i_n, [])
+                   if _compatible(atoms[k], h))
+          judged = i_h == max(same) and len(same) == 3 - len(nb)
         candidates.append((i_n, i_h, judged))
     return candidates
 
