@@ -818,6 +818,16 @@ HETATM    5  O   HOH C   1      10.000  10.000   0.900  1.00 20.00           O
 END
 """
 
+# HOH A 1 on the 2-fold axis (x,x,0), HOH A 2 (with H) 2.97 A away
+raw_records_special_position = """\
+CRYST1   51.891   51.891   43.035  90.00  90.00  90.00 P 43 21 2
+HETATM    1  O   HOH A   1      27.856  27.856   0.000  1.00 10.00           O
+HETATM    2  O   HOH A   2      27.176  28.603  -2.812  1.00 10.00           O
+HETATM    3  H1  HOH A   2      27.818  28.908  -3.486  1.00 10.00           H
+HETATM    4  H2  HOH A   2      27.242  28.049  -3.617  1.00 10.00           H
+END
+"""
+
 def _model_without_mcl(records):
   params = mmtbx.model.manager.get_default_pdb_interpretation_params()
   params.pdb_interpretation.restraints_library.mcl=False
@@ -895,6 +905,30 @@ def exercise_long_existing_bond_keeps_max_distance(mon_lib_srv, ener_lib):
   assert grm.is_bonded_atoms(3, 4)
   assert grm.is_bonded_atoms(0, 1)
 
+def exercise_add_bond_to_atom_on_special_position(mon_lib_srv, ener_lib):
+  """
+  1g6x: water on a 2-fold axis coordinating a water with H. The new bond
+  makes the H 1-3 neighbors of the atom on the axis; the asu buffer covered
+  one H but not its copy by the 2-fold, and the pair table asserted
+  (j_sym_eq >= 0) when the 1-3 table was built.
+  """
+  model = _model_without_mcl(raw_records_special_position)
+  grm = model.get_restraints_manager().geometry
+  assert grm.site_symmetry_table.is_special_position(i_seq=0)
+  proxy = geometry_restraints.bond_simple_proxy(
+      i_seqs=(0, 1), distance_ideal=2.97, weight=400)
+  grm.add_new_bond_restraints_in_place(
+      proxies=[proxy], sites_cart=model.get_sites_cart(),
+      max_distance_between_connecting_atoms=3.3)
+  assert grm.is_bonded_atoms(0, 1)
+  # 1-3: O1-H1, O1-H2, O2-O2 over the axis and H1-H2
+  pairs_1_3 = []
+  for i, row in enumerate(grm.shell_sym_tables[1]):
+    for j, ops in row.items():
+      assert len(ops) == 1
+      pairs_1_3.append((i, j))
+  assert pairs_1_3 == [(0, 2), (0, 3), (1, 1), (2, 3)], pairs_1_3
+
 def exercise():
   mon_lib_srv = None
   ener_lib = None
@@ -919,6 +953,7 @@ def exercise():
     exercise_bond_over_screw_axis_reversed_pair(mon_lib_srv, ener_lib)
     exercise_add_bond_with_long_existing_bond(mon_lib_srv, ener_lib)
     exercise_long_existing_bond_keeps_max_distance(mon_lib_srv, ener_lib)
+    exercise_add_bond_to_atom_on_special_position(mon_lib_srv, ener_lib)
 
 if (__name__ == "__main__"):
   exercise()
