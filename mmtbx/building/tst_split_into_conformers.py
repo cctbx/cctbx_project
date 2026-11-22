@@ -1161,6 +1161,14 @@ def exercise_stop():
   h = get_hierarchy(s)
   text = expect_sorry(lambda: run_sic(h), "copied into every conformer")
   assert "CL" in text and "OG" in text and "SER A   5" in text, text
+  # the same atom at occupancy 0 is a placeholder, not an alternate encoded
+  # by occupancy: the clash is reported, no stop
+  h0 = get_hierarchy(s)
+  for a in residue_group(h0, 5).atoms():
+    if(a.name.strip() == "OG"): a.set_occ(0)
+  r0 = run_sic(h0)
+  assert len(r0.report.clashes) == 1, r0.report.clashes
+  assert approx_equal(list(occ_of(r0.hierarchy, 5, "OG").values()), [0, 0])
   # full occupancy, three conformers: reported, no stop; neither when the
   # result is read from a file, where the three copies add up to 0.99
   h = get_hierarchy()

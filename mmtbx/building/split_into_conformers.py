@@ -1515,6 +1515,8 @@ def _stop_on_unlabelled_alternates(arrangement, clashes, id_strs):
       if(not a.key_polymer[k]): continue
       if(a.is_split[k] or None in a.copies[k]): continue
       total = sum([a.occ_start[c] for c in a.copies[k] if c is not None])
+      # occupancy 0 marks an atom that is not there, not an alternate
+      if(total < OCCUPANCY_TOLERANCE): continue
       # each copy may come rounded from a file (3 x 0.33)
       if(total < 1 - OCCUPANCY_TOLERANCE*max(1, a.n_slots)):
         lines.append("  %s - %s: %.2f A" % (id_strs[i], id_strs[j], d))
