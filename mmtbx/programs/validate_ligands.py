@@ -420,7 +420,7 @@ is then compared against an Fcalc map.
         scattering_table = self.params.scattering_table,
         model_filename   = _model_fn)
       print('\n', file = self.logger)
-      fmodel.update_all_scales()
+      fmodel.update_all_scales(mosaic = True)
       fmodel.show(log=self.logger, show_header=False)
       print ("r_work=%6.4f r_free=%6.4f"%(fmodel.r_work(), fmodel.r_free()),
         file=self.logger)

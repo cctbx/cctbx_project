@@ -737,7 +737,8 @@ def fmodel_simple(f_obs,
                   outliers_rejection       = True,
                   bulk_solvent_correction  = True,
                   anisotropic_scaling      = True,
-                  log                      = None):
+                  log                      = None,
+                  mosaic                   = False):
   if(r_free_flags is None):
     r_free_flags = f_obs.customized_copy(
       data = flex.bool(f_obs.data().size(), False))
@@ -764,7 +765,8 @@ def fmodel_simple(f_obs,
       mask_params    = mask_params,
       twin_law       = None)
     fmodel.update_all_scales(params = bss_params, log = log,
-        optimize_mask=optimize_mask, remove_outliers=outliers_rejection)
+        optimize_mask=optimize_mask, remove_outliers=outliers_rejection,
+        mosaic=mosaic)
     r_work = fmodel.r_work()
     for twin_law in twin_laws:
       if(twin_law is not None):

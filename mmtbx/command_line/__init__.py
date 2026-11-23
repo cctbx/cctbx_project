@@ -226,6 +226,8 @@ class load_model_and_data(object):
   create_log_buffer: store log output for later output to file
   remove_unknown_scatterers: delete atoms with scattering type 'X' (only \
     used when process_pdb_file=False)
+  mosaic: use the mosaic bulk-solvent model for the fmodel (see \
+    mmtbx.f_model.manager.update_all_scales)
   generate_input_phil: specifies that the master_phil object is a string \
     containing onky the app-specific options, and automatically add the \
     standard input parameters
@@ -288,7 +290,8 @@ class load_model_and_data(object):
       usage_string=None,
       create_log_buffer=False,
       remove_unknown_scatterers=False,
-      generate_input_phil=False):
+      generate_input_phil=False,
+      mosaic=False):
     import mmtbx.monomer_library.pdb_interpretation
     import mmtbx.monomer_library.server
     import mmtbx.utils
@@ -554,7 +557,8 @@ class load_model_and_data(object):
           r_free_flags=self.r_free_flags,
           skip_twin_detection=skip_twin_detection,
           target_name=target_name,
-          log=self.log)
+          log=self.log,
+          mosaic=mosaic)
       else :
         if ((twin_law is not None) and (self.hl_coeffs is not None)):
           raise Sorry("Automatic twin law determination not supported when "+
@@ -570,7 +574,8 @@ class load_model_and_data(object):
           params=None,
           log=self.log,
           optimize_mask=True,
-          show=True)
+          show=True,
+          mosaic=mosaic)
       self.fmodel.info().show_rfactors_targets_scales_overall(out=self.log)
     # SEQUENCE
     if (params.input.sequence is not None):

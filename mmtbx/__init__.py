@@ -175,9 +175,15 @@ class fmodels(object):
         nproc               = 1,
         log                 = None,
         apply_back_trace    = False,
-        refine_hd_scattering=None):
+        refine_hd_scattering=None,
+        mosaic              = False):
     """
-    ...
+    Update structure factors and all scales of the X-ray and neutron fmodel.
+
+    mosaic : bool
+        Passed to update_all_scales of the X-ray fmodel (mosaic bulk-solvent
+        model, see mmtbx.f_model.manager.update_all_scales). The neutron
+        fmodel never uses it.
     """
     if log is None: log = self.log
     from mmtbx.refinement import print_statistics
@@ -199,7 +205,8 @@ class fmodels(object):
         optimize_mask        = optimize_mask,
         nproc                = nproc,
         apply_back_trace     = apply_back_trace,
-        refine_hd_scattering = refine_hd_scattering)
+        refine_hd_scattering = refine_hd_scattering,
+        mosaic               = mosaic)
       self.fmodel_x.show(log = log, suffix = msg)
     if(self.fmodel_n is not None):
       msg = "Neutron:"

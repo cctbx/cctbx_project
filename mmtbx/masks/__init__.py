@@ -586,7 +586,7 @@ class mask_from_xray_structure(object):
       shrink_truncation_radius = shrink_truncation_radius)
     self.asu_mask.compute(xrs.sites_frac(), atom_radii)
     self.mask_data = self.asu_mask.mask_data_whole_uc()
-    if(for_structure_factors):
+    if(for_structure_factors and xrs.space_group().order_z() != 1):
       self.mask_data = self.mask_data / xrs.space_group().order_z()
     if(in_asu):
       assert p1

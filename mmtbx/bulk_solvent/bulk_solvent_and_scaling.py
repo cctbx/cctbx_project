@@ -9,6 +9,28 @@ import boost_adaptbx.boost.python as bp
 from six.moves import range
 ext = bp.import_ext("mmtbx_f_model_ext")
 
+# Settings of the mosaic bulk-solvent model (mmtbx.bulk_solvent.mosaic), also
+# used by programs that have their own mosaic scope.
+mosaic_params_str = """\
+    volume_min = 50
+      .type = float
+      .help = Isolated regions smaller than this volume (A^3, all symmetry \
+              copies in the unit cell counted together) get no bulk \
+              solvent at all. Occupancies between 0 (empty) and 1 (as the \
+              main bulk solvent) are fitted for the larger ones. \
+              50 A^3 is about the volume of two water molecules, smaller \
+              regions cannot hold disordered solvent. Increase to fit \
+              fewer regions.
+    algorithm = *alg4 alg2
+      .type = choice(multi=False)
+      .expert_level = 3
+      .help = Search for region occupancies. alg4 (default) uses phases of \
+              the current model and solves for all regions at once. alg2 \
+              uses no phases (minimization against intensities) and is \
+              slower. Both use work reflections only and keep occupancies \
+              between 0 and 1.
+"""
+
 master_params = iotbx.phil.parse("""\
   mode = slow *fast
     .type = choice(multi=False)
@@ -127,6 +149,15 @@ master_params = iotbx.phil.parse("""\
         .type = float
     }
   }
+  mosaic
+    .help = Settings of the mosaic bulk-solvent model (Afonine et al., \
+            Protein Sci. 2024, 33, e4909): isolated regions of the solvent \
+            mask (pockets, cavities) get individual occupancies relative to \
+            the main bulk solvent. These are settings only. Whether the \
+            model is used is decided by the program, for example \
+            main.mosaic in phenix.refine. X-ray data, one mask, not twinned.
+  {
+""" + mosaic_params_str + """  }
 """)
 
 _fix_b_cart_names = ["b11", "b22", "b33", "b12", "b13", "b23"]
@@ -257,6 +288,12 @@ def validate_params(params, fast, twinned=False, n_masks=1):
   n_masks : int
       Number of bulk-solvent masks.
   """
+  mosaic = getattr(params, "mosaic", None)
+  if(mosaic is not None and
+     (mosaic.volume_min is None or mosaic.volume_min < 0)):
+    from libtbx.utils import Sorry
+    raise Sorry("mosaic.volume_min must be zero or positive (it is %s)."%
+      str(mosaic.volume_min))
   changed = non_default_slow_parameters(params)
   if(twinned):
     if(params.mode == "slow" or len(changed) > 0):

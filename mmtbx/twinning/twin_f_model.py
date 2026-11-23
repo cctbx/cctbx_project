@@ -824,7 +824,11 @@ the percentage of R-free reflections).
   def update_all_scales(self, params=None, log=None, show=False,
                         optimize_mask=False, nproc=None, fast=False,
                         remove_outliers=False,refine_hd_scattering=False,
-                        apply_back_trace=False, update_f_part1=False):
+                        apply_back_trace=False, update_f_part1=False,
+                        mosaic=False):
+    # mosaic (mosaic bulk-solvent model): not available for twinned data
+    if(mosaic and log is not None):
+      print("mosaic: skipped (twinned data)", file=log)
     self.update_solvent_and_scale(log=log,
       params=params,
       apply_back_trace=apply_back_trace,

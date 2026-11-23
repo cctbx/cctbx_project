@@ -152,7 +152,7 @@ def run(args,
     f_obs          = f_obs,
     r_free_flags   = r_free_flags,
     twin_law       = params.twin_law)
-  fmodel.update_all_scales(update_f_part1=True)
+  fmodel.update_all_scales(update_f_part1=True, mosaic=True)
   fmodel.show(log=log, show_header=False, show_approx=False)
   print("  r_work: %6.4f"%fmodel.r_work(), file=log)
   if(test_flag_value is not None):
@@ -213,7 +213,7 @@ def run(args,
       f_obs          = fmodel.f_obs().select(tmp_sel),
       r_free_flags   = fmodel.r_free_flags().select(tmp_sel),
       twin_law       = params.twin_law)
-    fmodel.update_all_scales(update_f_part1=True)
+    fmodel.update_all_scales(update_f_part1=True, mosaic=True)
     fmodel.show(log=log, show_header=False, show_approx=False)
     print("  r_work: %6.4f"%fmodel.r_work(), file=log)
     if(test_flag_value is not None):

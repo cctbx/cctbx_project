@@ -2422,8 +2422,11 @@ class manager(object):
               # ADP
               if filter_adp:
                 if(anisotropy[i_seq] < self.params.anisotropy_min): keep = False
-                if(b_isos[i_seq] < self.params.b_iso_min or
-                   b_isos[i_seq] > self.params.b_iso_max): keep = False
+                # B at a limit stays: a value refined with that limit as
+                # the bound comes back as the limit give or take rounding
+                # errors (-4.e-15 for b_iso_min=0)
+                if(b_isos[i_seq] < self.params.b_iso_min - 1.e-6 or
+                   b_isos[i_seq] > self.params.b_iso_max + 1.e-6): keep = False
               #
               if filter_map and r_work*100 > 5.:
                 good_map = maps_.score_atom(
