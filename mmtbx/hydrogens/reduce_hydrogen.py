@@ -3645,6 +3645,7 @@ class place_hydrogens():
     # heavy neighbour (2e4i BGM 14 -> BGM 15)
     self.exclude_H_on_esterified_O()
     self.exclude_H_without_link_angle()
+    self.add_shared_parent_h_restraints()
     # Return if no H have been placed
     sel_h = self.model.get_hd_selection()
     if sel_h.count(True) == 0: return
@@ -4137,6 +4138,148 @@ class place_hydrogens():
     lines.append('boundaries do not establish experimental termini.')
     return '\n'.join(lines)
 
+  def add_shared_parent_h_restraints(self):
+    '''
+    Microheterogeneity site (iotbx.pdb.altloc_completion: residue groups of
+    one position with more than one residue name) with an atom without
+    altloc: 1ejg Pro A 22 / Ser B, C 22, one blank N labelled PRO. The atom
+    belongs to every conformer of the site, but pdb_interpretation gives it
+    to the residue it is labelled with only: Ser B and C have no N, so no
+    N-H bond and no CA-N-H angle, and their amide H was a lone H, removed
+    (parent atom not in the model). The Ser CA is joined to the N by a bond
+    of automatic linking and nothing else (two residue groups, as read from
+    a PDB file), or not at all (one residue group, mmCIF).
+
+    For each H without a bond whose parent in its dictionary is not in its
+    own residue but is one such blank atom of the site, bonded to a non-H
+    atom of the H's atom group (by a bond restraint, or by distance and a
+    bond of the dictionary of the H's residue, which is then added): add
+    the bond and the angles at the parent
+    that the dictionary of the H's residue defines, with the atoms of the
+    H's conformer, and move the H off its bogus site to the bond length
+    from the parent, away from the parent's neighbours in the conformer
+    (the bond is added by distance). add_link_h_restraints() then adds what
+    the peptide link defines for an amide H. No non-H atom is touched.
+
+    Only reduce2 places H from these restraints, so this is not the whole
+    fix: refinement does not restrain these residues properly either, and
+    the place for that is pdb_interpretation
+    (mmtbx/monomer_library/tst_pdb_interpretation_microheterogeneity.py).
+    '''
+    from iotbx.pdb.altloc_completion import microheterogeneity_sites
+    from iotbx.pdb.altloc_completion import bonded as bonded_by_distance
+    sites = microheterogeneity_sites(self.model.get_hierarchy())
+    if not sites: return
+    grm = self.model.get_restraints_manager().geometry
+    atoms = self.model.get_atoms()
+    sites_cart = self.model.get_sites_cart()
+    bps, asu = grm.get_all_bond_proxies(sites_cart = sites_cart)
+    bonds = {}
+    for proxy in list(bps) + list(asu):
+      if   isinstance(proxy, ext.bond_simple_proxy): i,j = proxy.i_seqs
+      elif isinstance(proxy, ext.bond_asu_proxy):    i,j = proxy.i_seq, proxy.j_seq
+      else: continue
+      bonds.setdefault(i, []).append(j)
+      bonds.setdefault(j, []).append(i)
+    is_h = lambda a: a.element.strip().upper() in ('H', 'D')
+    new_bonds, new_angles = [], []
+    added = set()
+    for rgs in sites:
+      # the blank non-H atoms of the site, by name
+      blank = {}
+      for rg in rgs:
+        for ag in rg.atom_groups():
+          if ag.altloc != '': continue
+          for a in ag.atoms():
+            if not is_h(a): blank.setdefault(a.name.strip(), []).append(a)
+      if not blank: continue
+      for rg in rgs:
+        for ag in rg.atom_groups():
+          if ag.altloc == '': continue
+          lone = [a for a in ag.atoms() if is_h(a) and not bonds.get(a.i_seq)]
+          if not lone: continue
+          # its own residue: this group and the blank one of its name
+          own = [g for g in rg.atom_groups()
+                 if g.altloc == '' and g.resname == ag.resname] + [ag]
+          def find(name):
+            for g in own:
+              a = g.get_atom(name)
+              if a is not None: return a
+            shared = blank.get(name, [])
+            return shared[0] if len(shared) == 1 else None
+          mlq = mon_lib_query(residue=ag, mon_lib_srv=self.query_mon_lib_srv,
+            raise_sorry=False)[0]
+          if mlq is None: continue
+          parent_of = _h_parent_names(ag, self.query_mon_lib_srv)
+          for h in lone:
+            h_name = h.name.strip()
+            if h_name not in parent_of: h_name = normalized_name(h).strip()
+            p_name = parent_of.get(h_name)
+            if not p_name: continue
+            if any(g.get_atom(p_name) is not None for g in own): continue
+            parent = find(p_name)
+            if parent is None: continue
+            # the neighbours of the parent in the H's conformer; one of them
+            # in the H's atom group
+            near = [atoms[j] for j in set(bonds.get(parent.i_seq, []))
+                    if not is_h(atoms[j])
+                    and atoms[j].parent().altloc in ('', ag.altloc)]
+            if not [a for a in near
+                    if a.parent().memory_id() == ag.memory_id()]:
+              # no bond restraint to the H's atom group: the dictionary's,
+              # where the atoms are at bonding distance
+              for b in mlq.bond_list:
+                names = [b.atom_id_1, b.atom_id_2]
+                if p_name not in names or b.value_dist is None: continue
+                names.remove(p_name)
+                x = ag.get_atom(names[0])
+                if x is None or is_h(x): continue
+                if not bonded_by_distance(parent, x): continue
+                near.append(x)
+                key = tuple(sorted([parent.i_seq, x.i_seq]))
+                if key in added: continue
+                added.add(key)
+                new_bonds.append(geometry_restraints.bond_simple_proxy(
+                  i_seqs         = key,
+                  distance_ideal = b.value_dist,
+                  weight         = 1./(b.value_dist_esd or 0.02)**2))
+            if not [a for a in near
+                    if a.parent().memory_id() == ag.memory_id()]: continue
+            bond = [b for b in mlq.bond_list
+                    if set([b.atom_id_1, b.atom_id_2]) == set([p_name, h_name])]
+            if not bond or bond[0].value_dist is None: continue
+            ideal = bond[0].value_dist
+            if (self.use_neutron_distances and
+                bond[0].value_dist_neutron is not None):
+              ideal = bond[0].value_dist_neutron
+            esd = bond[0].value_dist_esd or 0.02
+            new_bonds.append(geometry_restraints.bond_simple_proxy(
+              i_seqs         = sorted([parent.i_seq, h.i_seq]),
+              distance_ideal = ideal,
+              weight         = 1./esd**2))
+            for a in mlq.angle_list:
+              ends = [a.atom_id_1, a.atom_id_3]
+              if a.atom_id_2 != p_name or h_name not in ends: continue
+              if a.value_angle is None or not a.value_angle_esd: continue
+              ends.remove(h_name)
+              x = find(ends[0])
+              if x is None or is_h(x): continue
+              new_angles.append(geometry_restraints.angle_proxy(
+                i_seqs      = [x.i_seq, parent.i_seq, h.i_seq],
+                angle_ideal = a.value_angle,
+                weight      = 1./a.value_angle_esd**2))
+            r_p = matrix.col(parent.xyz)
+            away = matrix.col((0, 0, 0))
+            for a in near:
+              away -= (matrix.col(a.xyz) - r_p).normalize()
+            if away.length() < 1.e-3: away = matrix.col((1, 0, 0))
+            sites_cart[h.i_seq] = r_p + ideal*away.normalize()
+    if not new_bonds: return
+    self.model.set_sites_cart(sites_cart)
+    grm.add_new_bond_restraints_in_place(proxies = new_bonds,
+      sites_cart = sites_cart)
+    if new_angles: grm.add_angles_in_place(new_angles)
+
   def add_na_terminal_h_restraints(self):
     '''
     The dihedral riding H needs for the HO5' of a 5'-OH end (na_terminal_h):
@@ -4301,10 +4444,16 @@ class place_hydrogens():
             i_seqs      = [i_c, i_n, i_h],
             angle_ideal = angle_ideal,
             weight      = 1./esd**2))
-        rg_id = rg_n.memory_id()
+        # the residue of N: its residue group, and another one at the same
+        # position (microheterogeneity read from a PDB file: the Ser CA of
+        # 1ejg 22 is bonded to the blank N stored in the Pro residue group)
+        rg_id = (rg_n.parent().memory_id(), rg_n.resid())
+        def position(j):
+          rg_j = atoms[j].parent().parent()
+          return (rg_j.parent().memory_id(), rg_j.resid())
         in_residue = [j for j in set(bonds.get(i_n, []))
                       if elements[j].strip() not in ('H', 'D')
-                      and atoms[j].parent().parent().memory_id() == rg_id]
+                      and position(j) == rg_id]
         i_ca = [j for j in in_residue
                 if atoms[j].name.strip() == 'CA' and same_conf(j, i_h)]
         fallback = False
@@ -6027,6 +6176,16 @@ class place_hydrogens():
           single_altloc = (n_atom_groups == 2 and
             sorted(ag.altloc == '' for ag in ags) == [False, True] and
             ags[0].resname == ags[1].resname)
+          # unless another residue group shares the position
+          # (microheterogeneity as read from a PDB file, 1ejg: Pro 22 blank
+          # N + A, Ser 22 B and C): the altloc is one conformer of several
+          # and the blank atoms belong to all of them, so the H go into the
+          # altloc group (in the blank group Pro's H were in B and C too)
+          site_altloc = single_altloc and (
+            (i_rg > 0 and chain_rgs[i_rg-1].resid() == rg.resid()) or
+            (i_rg+1 < len(chain_rgs) and
+             chain_rgs[i_rg+1].resid() == rg.resid()))
+          if site_altloc: single_altloc = False
           amide_ag = None
           if n_atom_groups > 2:
             amide_ag = _blank_amide_group(rg,
@@ -6040,6 +6199,8 @@ class place_hydrogens():
               continue
             if single_altloc and ag.altloc != '':
               continue
+            if site_altloc and ag.altloc == '':
+              continue
             #print list(ag.atoms().extract_name())
             if exclude_water:
               if(get_class(name=ag.resname) == "common_water"): continue
@@ -6051,6 +6212,10 @@ class place_hydrogens():
             if single_altloc:
               actual += [a.name.strip().upper()
                          for other in ags if other.altloc != ''
+                         for a in other.atoms()]
+            if site_altloc:
+              actual += [a.name.strip().upper()
+                         for other in ags if other.altloc == ''
                          for a in other.atoms()]
             #
             mlq, cif_object = _mon_lib_query_cached(residue=ag, names=names,

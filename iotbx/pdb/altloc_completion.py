@@ -28,6 +28,22 @@ smallest occupancy among its non-hydrogen atoms. If not exactly one
 candidate passes, the case is ambiguous and Sorry is raised. Gaps that stay
 open are reported as truncations. Borrowing never crosses residue groups.
 
+A microheterogeneity site is the exception: the consecutive residue
+groups of a chain with the same residue number and insertion code, when
+they have more than one residue name (1EJG: Pro A 22 and Ser B, C 22; two
+residue groups as read from a PDB file, one from mmCIF). A blank atom
+there belongs to every conformer of the site, but it carries one residue
+name, so the conformers of the other residue do not have it (the N of
+Ser B and C: no N-H bond in the restraints, no H on N, a charge of -1
+each). Such an atom is copied into every conformer of the site that has
+no atom of that name: those of its own residue, and those of the other
+residues that it is bonded to (the tests above), under the residue name
+of the conformer. Its occupancy is divided among them in proportion to
+their label occupancies and the blank atom is removed. This is done
+first, and only if a conformer of another residue takes the atom; one
+that needs it and is not bonded to it is reported as truncated. A site
+with a conformer label in two atom groups is left as it is.
+
 An atom borrowed by every other conformer label of the residue group is
 relabelled blank (shared) with its occupancy unchanged. Otherwise the atom
 is copied into each borrowing conformer at the same coordinates and
@@ -223,7 +239,137 @@ def _blank_atom_group(rg, resname):
   rg.insert_atom_group(0, ag)
   return ag
 
-def run(hierarchy, check_only=False, log=None):
+def microheterogeneity_sites(hierarchy):
+  """Microheterogeneity sites: lists of the consecutive residue groups of
+  a chain with the same residue number and insertion code (one or more),
+  with more than one residue name"""
+  result = []
+  def add(rgs):
+    if (len(set([ag.resname for rg in rgs
+                 for ag in rg.atom_groups()])) < 2): return
+    result.append(rgs)
+  for chain in hierarchy.chains():
+    rgs = []
+    for rg in chain.residue_groups():
+      if (len(rgs) > 0 and rgs[0].resid() != rg.resid()):
+        add(rgs)
+        rgs = []
+      rgs.append(rg)
+    if (len(rgs) > 0): add(rgs)
+  return result
+
+class _distribution(object):
+  """A blank atom of a microheterogeneity site and the conformers
+  (label, atom_group) it is copied into"""
+  def __init__(self, atom):
+    self.atom = atom
+    self.residue_id = _residue_id(atom.parent())
+    self.receivers = []
+
+def _same_residue(rg_a, ag_a, rg_b, ag_b):
+  return rg_a.memory_id() == rg_b.memory_id() and ag_a.resname == ag_b.resname
+
+def _plan_site(rgs, truncated):
+  """The blank atoms of the residue groups rgs of a microheterogeneity
+  site to copy into the conformers of the site; open gaps go to truncated.
+  A residue of the site is the atom groups of one residue group with one
+  residue name. Returns (list of _distribution, {label: occupancy})."""
+  members = [] # (residue group, atom group) of the conformers
+  for rg in rgs:
+    labels = conformer_labels(rg)
+    for ag in rg.atom_groups():
+      if (ag.altloc in labels): members.append((rg, ag))
+  labels = [ag.altloc for rg, ag in members]
+  if (len(set(labels)) != len(labels)): return [], {}
+  occ_r = {}
+  for rg, ag in members:
+    occ_r[ag.altloc] = label_occupancy(rg, ag.altloc)
+  result = []
+  for rg in rgs:
+    for blank_ag in rg.atom_groups():
+      if (blank_ag.altloc != ""): continue
+      blank = list(blank_ag.atoms())
+      own = [ag for r, ag in members if _same_residue(r, ag, rg, blank_ag)]
+      if (len(blank) == 0 or len(own) == 0): continue
+      plans = dict([(a.name, _distribution(a)) for a in blank])
+      taken = False
+      open_gaps = []
+      for other_rg, ag in members:
+        if (_same_residue(other_rg, ag, rg, blank_ag)): continue
+        in_x = [a for g in other_rg.atom_groups()
+          if g.altloc == "" and g.resname == ag.resname for a in g.atoms()]
+        in_x.extend(ag.atoms())
+        names_in_x = set([a.name for a in in_x])
+        gaps = [a for a in blank if a.name not in names_in_x]
+        accepted = True
+        while (accepted):
+          accepted = False
+          for atom in list(gaps):
+            # a hydrogen is anchored by its parent, a heavy atom by a heavy
+            # one
+            if (_nearest(atom, [b for b in in_x if bonded(atom, b)
+                  and not b.element_is_hydrogen()]) is None): continue
+            plans[atom.name].receivers.append((ag.altloc, ag))
+            in_x.append(atom)
+            gaps.remove(atom)
+            accepted = True
+            taken = True
+        if (len(gaps) > 0): open_gaps.append((ag, gaps, in_x))
+      for ag, gaps, in_x in open_gaps:
+        names = sorted([a.name for a in gaps])
+        atom = [a for a in gaps if a.name == names[0]][0]
+        d, anchor = _nearest(atom, in_x)
+        detail = (names[0].strip(), "", d, anchor.name.strip(), ag.altloc)
+        truncated.append((_residue_id(ag), ag.altloc,
+          [n.strip() for n in names], "%s: blank copy is %.1f A from %s %s"
+            % (detail[0], d, detail[3], detail[4]), detail))
+      if (not taken): continue
+      for atom in blank:
+        plan = plans[atom.name]
+        if (len(plan.receivers) == 0): continue
+        # its own conformers first: they lose the blank atom
+        plan.receivers = [(ag.altloc, ag) for ag in own
+          if ag.get_atom(atom.name.strip()) is None] + plan.receivers
+        result.append(plan)
+  return result, occ_r
+
+def _distribute_site_atoms(hierarchy, truncated, inconsistent):
+  """Copy the blank atoms of microheterogeneity sites into the conformers
+  of the sites (module docstring); the hierarchy is edited. Returns the
+  list of (source residue id, atom name, target residue id, target label,
+  occupancy of the copy)."""
+  planned = []
+  for rgs in microheterogeneity_sites(hierarchy):
+    plans, occ_r = _plan_site(rgs, truncated)
+    for plan in plans:
+      weights = [occ_r[y] for y, ag in plan.receivers]
+      if (sum(weights) == 0):
+        raise Sorry("all conformers of residue \"%s\" have zero occupancy; "
+          "cannot split" % plan.residue_id)
+      planned.append((plan, weights))
+  result = []
+  n_inserted = {} # per atom group: the copies lead it, in their order
+  for plan, weights in planned:
+    atom = plan.atom
+    total = atom.occ
+    if (abs(sum(weights) - total) > OCCUPANCY_TOLERANCE and
+        plan.residue_id not in inconsistent):
+      inconsistent.append(plan.residue_id)
+    for (y, ag_y), w in zip(plan.receivers, weights):
+      occ = total * w / sum(weights)
+      result.append(
+        (plan.residue_id, atom.name.strip(), _residue_id(ag_y), y, occ))
+      copy = atom.detached_copy()
+      copy.set_occ(occ)
+      i = n_inserted.get(ag_y.memory_id(), 0)
+      ag_y.insert_atom(i, copy)
+      n_inserted[ag_y.memory_id()] = i + 1
+    ag = atom.parent()
+    ag.remove_atom(atom)
+    if (ag.atoms_size() == 0): ag.parent().remove_atom_group(ag)
+  return result
+
+def run(hierarchy, check_only=False, log=None, microheterogeneity=True):
   """
   Complete partial alternative conformations of every residue group.
 
@@ -235,6 +381,11 @@ def run(hierarchy, check_only=False, log=None):
     Report what would change without editing the hierarchy.
   log : file-like or None
     Receives report_lines(result), one per line.
+  microheterogeneity : bool
+    Copy the blank atoms of microheterogeneity sites into the conformers
+    of the site (module docstring). False: such sites are left as they
+    are, for a caller that gives the conformers these atoms itself
+    (mmtbx.building.split_into_conformers).
 
   Returns
   -------
@@ -244,9 +395,13 @@ def run(hierarchy, check_only=False, log=None):
     shared: list of (residue id, atom name, source label);
     shared_needed_by: per shared entry, the sorted labels that borrowed it;
     copied: list of (residue id, atom name, source label, target label,
-    occupancy of the copy); truncated: list of (residue id, label,
+    occupancy of the copy); distributed: list of (source residue id, atom
+    name, target residue id, target label, occupancy of the copy), the
+    blank atoms of microheterogeneity sites copied into the conformers of
+    the site; truncated: list of (residue id, label,
     atom names, reason); truncated_details: per truncated entry, (atom
-    name, source label, distance, anchor atom name, label);
+    name, source label ("" for a blank atom of a microheterogeneity
+    site), distance, anchor atom name, label);
     inconsistent: list of residue id; changed: bool.
 
   Raises
@@ -259,6 +414,15 @@ def run(hierarchy, check_only=False, log=None):
   if (log is None): log = null_out()
   plans = [] # (rg, labels, occ_r, borrows)
   truncated = []
+  inconsistent = []
+  # first: the copies are atoms of their conformers in what follows.
+  # check_only: on a copy, which is then the one examined
+  distributed = []
+  if (microheterogeneity):
+    if (check_only and len(microheterogeneity_sites(hierarchy)) > 0):
+      hierarchy = hierarchy.deep_copy()
+    distributed = _distribute_site_atoms(hierarchy, truncated=truncated,
+      inconsistent=inconsistent)
   for rg in hierarchy.residue_groups():
     labels = conformer_labels(rg)
     if (len(labels) < 2): continue
@@ -277,7 +441,7 @@ def run(hierarchy, check_only=False, log=None):
       if (sum([occ_r[y] for y in [b.source_label] + borrower_labels]) == 0):
         raise Sorry("all conformers of residue \"%s\" have zero occupancy; "
           "cannot split" % b.residue_id)
-  shared, shared_needed_by, copied, inconsistent = [], [], [], []
+  shared, shared_needed_by, copied = [], [], []
   for rg, labels, occ_r, borrows in plans:
     for b in borrows.values():
       atom, p, rg_id = b.atom, b.source_label, b.residue_id
@@ -310,7 +474,7 @@ def run(hierarchy, check_only=False, log=None):
     if (not check_only):
       for ag in rg.atom_groups():
         if (ag.atoms_size() == 0): rg.remove_atom_group(ag)
-  changed = len(shared) + len(copied) > 0
+  changed = len(shared) + len(copied) + len(distributed) > 0
   if (changed and not check_only):
     hierarchy.atoms_reset_serial()
     hierarchy.atoms().reset_i_seq()
@@ -318,6 +482,7 @@ def run(hierarchy, check_only=False, log=None):
     shared            = shared,
     shared_needed_by  = shared_needed_by,
     copied            = copied,
+    distributed       = distributed,
     truncated         = [t[:4] for t in truncated],
     truncated_details = [t[4] for t in truncated],
     inconsistent      = inconsistent,
@@ -339,6 +504,7 @@ def report_lines(result):
   -------
   list of str
     One line per shared atom, per residue group and pair of labels copied,
+    per blank atom of a microheterogeneity site copied into its conformers,
     and per truncated conformer; empty if nothing happened.
   """
   lines = []
@@ -357,8 +523,19 @@ def report_lines(result):
   for rg_id, p, y in pairs:
     lines.append("%s %s: copied %s -> %s" % (
       rg_id, ", ".join(names[(rg_id, p, y)]), p, y))
+  targets = {} # (source residue id, atom name): its targets, in order
+  for rg_id, name, target_id, y, occ in getattr(result, "distributed", []):
+    key = (rg_id, name)
+    if (key not in targets):
+      targets[key] = []
+    # the residue name where it is not the source's
+    targets[key].append(y if target_id == rg_id
+      else "%s (%s)" % (y, target_id.split()[0]))
+  for (rg_id, name), labels in targets.items():
+    lines.append("%s %s: blank -> %s" % (rg_id, name, ", ".join(labels)))
   for rg_id, (name, p, d, anchor, x) in zip(
       [t[0] for t in result.truncated], result.truncated_details):
     lines.append("%s %s: %s copy is %.1f A from %s, not borrowed; "
-      "truncated in %s" % (rg_id, name, p, d, "%s %s" % (anchor, x), x))
+      "truncated in %s" % (rg_id, name, p if p != "" else "blank", d,
+      "%s %s" % (anchor, x), x))
   return lines

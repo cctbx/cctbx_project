@@ -522,6 +522,7 @@ molprobity_tests = [
   "$D/regression/tst_reduce2_symmetry_optimizer.py",
   "$D/regression/tst_reduce2_capping.py",
   "$D/regression/tst_reduce2_altloc_completion.py",
+  "$D/regression/tst_reduce2_microheterogeneity.py",
   "$D/regression/tst_reduce2_altloc_charge.py",
   "$D/regression/tst_reduce2_his_charges.py",
   "$D/regression/tst_reduce2_his_charges_optimizer.py",
@@ -632,6 +633,8 @@ else:
 tst_list_expected_failures = [
   "$D/monomer_library/tst_pdb_interpretation_2.py",
   "$D/monomer_library/tst_pdb_interpretation_4.py",
+  # an atom shared by the residues of a microheterogeneity site (1ejg 22)
+  "$D/monomer_library/tst_pdb_interpretation_microheterogeneity.py",
   ]
 
 def run():

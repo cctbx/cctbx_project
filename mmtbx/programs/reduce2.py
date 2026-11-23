@@ -3492,7 +3492,10 @@ NOTES:
         print("qmready=True: added OP3 to %d 5' phosphate(s) that lacked it"
           % n_op3, file=self.logger)
       # residues with partial alternative conformations: borrow the atoms
-      # their conformers lack from each other. An ambiguous borrow is a Sorry
+      # their conformers lack from each other. An ambiguous borrow is a Sorry.
+      # A blank atom of a microheterogeneity site (1ejg N of Pro A / Ser B, C
+      # 22) goes into every conformer of the site: without its own N a Ser
+      # conformer gets no H on it and a charge of -1
       completion = self.model.complete_altlocs()
       self._altloc_completion = completion
       lines = altloc_completion.report_lines(completion)

@@ -1612,7 +1612,10 @@ def run(model, clash_distance=2.1, bond_stretch_threshold=0.5,
   for chain in polymer.chains():
     for rg in chain.residue_groups():
       if(not _is_polymer(rg)): chain.remove_residue_group(rg)
-  report.completion = iotbx.pdb.altloc_completion.run(hierarchy=polymer)
+  # microheterogeneity=False: expand() gives every state the blank atoms of
+  # its site
+  report.completion = iotbx.pdb.altloc_completion.run(hierarchy=polymer,
+    microheterogeneity=False)
   expanded = expand(stripped.get_hierarchy(), report.labels,
     completed=polymer, fill_occupancy_to_one=fill_occupancy_to_one)
   report.occupancy_changes = expanded.occupancy_changes
