@@ -1022,6 +1022,13 @@ class phasertng_regression_module(SourceModule):
                'git@gitlab.developers.cam.ac.uk:scm/haematology/readgroup/phasertng_regression.git',
                'https://gitlab.developers.cam.ac.uk/scm/haematology/readgroup/phasertng_regression.git']
 
+# not a libtbx module: phasertng finds it as the sibling folder of phasertng
+class phasertng_webservices_module(SourceModule):
+  module = 'phasertng_webservices'
+  anonymous = ['git',
+               'git@gitlab.developers.cam.ac.uk:scm/haematology/readgroup/phasertng_webservices.git',
+               'https://gitlab.developers.cam.ac.uk/scm/haematology/readgroup/phasertng_webservices.git']
+
 # DIALS repositories
 class labelit_module(SourceModule):
   module = 'labelit'
@@ -1450,7 +1457,7 @@ class Builder(object):
       raise Exception('Unknown access method: %s %s'%(method, str(parameters)))
 
     # add git-lfs steps if needed (should move into Toolbox class)
-    git_lfs_modules = ['phenix_examples', 'phenix_regression', 'chem_data', 'phasertng']
+    git_lfs_modules = ['phenix_examples', 'phenix_regression', 'chem_data', 'phasertng', 'phasertng_webservices']
     if module in git_lfs_modules:
       # prepend path for check
       dev_env = os.path.join('.', 'dev_env', 'bin')
@@ -2230,7 +2237,7 @@ class PhaserBuilder(CCIBuilder):
     return configlst
 
 class PhaserTNGBuilder(PhaserBuilder):
-  CODEBASES = PhaserBuilder.CODEBASES + ['phasertng', 'phaser_voyager', 'voyager_regression']
+  CODEBASES = PhaserBuilder.CODEBASES + ['phasertng', 'phasertng_webservices', 'phaser_voyager', 'voyager_regression']
   LIBTBX = PhaserBuilder.LIBTBX + ['phasertng', 'phaser_voyager', 'voyager_regression']
 
   def add_tests(self):
@@ -2478,6 +2485,7 @@ class PhenixBuilder(CCIBuilder):
     'king',
     'phaser',
     'phasertng',
+    'phasertng_webservices',
     'phasertng_regression',
     'phaser_regression',
     'voyager_regression',
