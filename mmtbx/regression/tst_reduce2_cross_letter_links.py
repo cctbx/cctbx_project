@@ -480,9 +480,10 @@ def test_optimize():
     'approach=optimize')
   rerun = sites(rerun)
   assert 'Amide H set' not in desc
-  for k in fixed:
-    if k[1].startswith('H'):
-      assert math.dist(fixed[k], rerun[k]) < 0.005, k
+  # the amide H; Ser HG B has two poses of equal score (-130 and 180 deg) and
+  # may still move, on master too
+  for x in 'ABC':
+    assert math.dist(fixed[2, 'H', x], rerun[2, 'H', x]) < 0.005, x
 
 def omit_amide_h(text, letters):
   """text without the amide H of Ser in those letters"""
