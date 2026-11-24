@@ -981,9 +981,12 @@ def fit_occupancies(f_obs, atoms, rest, G, algorithm="alg4",
           # with the regions as they are
           x_max = q_max
           if(q_max < NO_LIMIT): x_max = q_max*b
-          q = _fit_bounded(f_obs = f_obs, base = atoms*a + rest*b, G = G,
+          x = _fit_bounded(f_obs = f_obs, base = atoms*a + rest*b, G = G,
             q_max = x_max, q_start = q*b, algorithm = algorithm,
-            normal_matrix = A_regions)/b
+            normal_matrix = A_regions)
+          at_limit = x >= x_max
+          q = x/b
+          q.set_selected(at_limit, q_max) # (q_max*b)/b may not be q_max
         else:
           q = _fit_bounded(f_obs = f_obs, base = atoms*a + rest*b,
             G = [g*b for g in G], q_max = q_max, q_start = q,
