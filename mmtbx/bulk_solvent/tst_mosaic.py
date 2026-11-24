@@ -120,6 +120,27 @@ def exercise_alg4_kernel():
   x = mosaic_ext.alg4(G=[], f_obs=f_obs, base=base, lower=flex.double(),
     upper=flex.double(), x_start=flex.double())
   assert x.size() == 0
+  # normal matrix given (computed once, used for several searches): same
+  # result, to the last digit
+  A = mosaic_ext.normal_matrix(G = G)
+  kw = dict(G=G, f_obs=f_obs, base=base, lower=flex.double(n, -0.5),
+    upper=flex.double(n, 0.5), x_start=flex.double(n, 0), n_cycles=20)
+  x1 = mosaic_ext.alg4(**kw)
+  x2 = mosaic_ext.alg4(normal_matrix=A, **kw)
+  assert (x1 == x2).all_eq(True)
+  x3 = mosaic.alg4(f_obs=f_obs, base=base, G=G, lower=flex.double(n, -0.5),
+    upper=flex.double(n, 0.5), n_cycles=20, normal_matrix=A)
+  assert (x1 == x3).all_eq(True)
+  # a part of the matrix for a part of the terms
+  A2 = A.matrix_copy_block(i_row=1, i_column=1, n_rows=n-1, n_columns=n-1)
+  kw["G"] = G[1:]
+  for k in ["lower", "upper", "x_start"]: kw[k] = kw[k][1:]
+  assert (mosaic_ext.alg4(**kw) ==
+          mosaic_ext.alg4(normal_matrix=A2, **kw)).all_eq(True)
+  # wrong size
+  try: mosaic_ext.alg4(normal_matrix=A, **kw)
+  except RuntimeError: pass
+  else: raise Exception_expected
 
 def exercise_alg2_tg_update():
   """
@@ -248,6 +269,93 @@ def exercise_regions():
   regs0 = mosaic.regions(xray_structure = xrs0,
     mask_params = mmtbx.masks.mask_master_params.extract())
   assert len(regs0.secondary) == 0
+
+def exercise_centred_lattices():
+  """
+  Centred lattices: direct summation uses one of the points related by
+  centring translations; it agrees with FFT of the whole cell, and with the
+  mask structure factors of fmodel.
+  """
+  mp = mmtbx.masks.mask_master_params.extract()
+  n_regions = 0
+  for symbol in ["C 2 2 21", "I 2 2 2", "F 2 2 2", "C 1 2 1"]:
+    xrs = shell_model(space_group_symbol = symbol)
+    assert xrs.space_group().n_ltr() > 1
+    f_obs = abs(xrs.structure_factors(d_min = 3.5).f_calc())
+    regs = mosaic.regions(xray_structure = xrs, mask_params = mp)
+    for f in [f_obs, f_obs.generate_bijvoet_mates()]:
+      sf = mosaic.structure_factors(regions = regs, miller_array = f,
+        d_min = mp.Fmask_res_high)
+      fmodel = mmtbx.f_model.manager(f_obs = f, xray_structure = xrs,
+        mask_params = mp)
+      assert sf.mask_mismatch(f_mask = fmodel.f_masks()[0]) < 1.e-6
+      for r in regs.secondary[:4]:
+        assert r.points.size() % xrs.space_group().n_ltr() == 0
+        a = sf.of_points(r.points, method = "direct")
+        b = sf.of_points(r.points, method = "fft")
+        assert flex.sum(flex.abs(b)) > 0
+        assert flex.sum(flex.abs(a-b))/flex.sum(flex.abs(b)) < 1.e-9, symbol
+        n_regions += 1
+  assert n_regions >= 8, n_regions
+
+def exercise_all_space_groups(numbers=None):
+  """
+  Random structures in all 230 space groups. Every region of the solvent
+  mask (all symmetry copies taken together) obeys the space group symmetry;
+  its structure factors by direct summation (one of the points related by
+  lattice centring) and by FFT of the whole cell agree; all regions
+  together give the mask structure factors of fmodel.
+  """
+  from cctbx.development import random_structure
+  from cctbx import sgtbx, maptbx
+  asu_map_ext = bp.import_ext("cctbx_asymmetric_map_ext")
+  mp = mmtbx.masks.mask_master_params.extract()
+  if(numbers is None): numbers = range(1, 231)
+  n_regions, n_groups_with_regions, n_centred = 0, 0, 0
+  for number in numbers:
+    sgi = sgtbx.space_group_info(number = number)
+    xrs = random_structure.xray_structure(
+      space_group_info       = sgi,
+      elements               = ["C"]*30,
+      volume_per_atom        = 40,
+      min_distance           = 1.5,
+      general_positions_only = False,
+      random_u_iso           = True)
+    f_obs = abs(xrs.structure_factors(d_min = 3.5).f_calc())
+    regs = mosaic.regions(xray_structure = xrs, mask_params = mp)
+    if(regs.main is None): continue
+    sg = xrs.space_group()
+    sf = mosaic.structure_factors(regions = regs, miller_array = f_obs,
+      d_min = mp.Fmask_res_high)
+    fmodel = mmtbx.f_model.manager(f_obs = f_obs, xray_structure = xrs,
+      mask_params = mp)
+    assert sf.mask_mismatch(f_mask = fmodel.f_masks()[0]) < 1.e-6, number
+    total = regs.main.n_points
+    if(len(regs.secondary) > 0): n_groups_with_regions += 1
+    for r in regs.secondary:
+      total += r.n_points
+      assert r.n_points == r.points.size()
+      # symmetry: the map of the region is its own symmetry expansion
+      m = regs.mask_of([r])
+      e = asu_map_ext.asymmetric_map(sg.type(), m).symmetry_expanded_map()
+      maptbx.unpad_in_place(map = e)
+      assert e.all() == m.all()
+      assert flex.max(flex.abs(e.as_1d() - m.as_1d())) < 1.e-9, [
+        sgi.type().lookup_symbol(), r.n_points]
+      assert r.n_points % sg.n_ltr() == 0
+      a = sf.of_points(r.points, method = "direct")
+      b = sf.of_points(r.points, method = "fft")
+      scale = max(flex.max(flex.abs(b)), 1.e-9)
+      assert flex.max(flex.abs(a-b))/scale < 1.e-9, number
+      n_regions += 1
+      if(sg.n_ltr() > 1): n_centred += 1
+    assert approx_equal(total/regs.n_grid, regs.solvent_fraction, 1.e-12)
+  if(len(numbers) == 230):
+    assert n_groups_with_regions > 150, n_groups_with_regions
+    assert n_regions > 300 and n_centred > 100, [n_regions, n_centred]
+  print("space groups: %d, with isolated regions: %d, regions checked: %d "
+    "(centred lattices: %d)"%(len(numbers), n_groups_with_regions, n_regions,
+    n_centred))
 
 def exercise_padded_maps():
   """
@@ -967,6 +1075,8 @@ def run():
   exercise_alg2_tg_update()
   exercise_regions()
   exercise_padded_maps()
+  exercise_all_space_groups()
+  exercise_centred_lattices()
   exercise_region_structure_factors()
   exercise_alg4()
   exercise_algorithm_2()

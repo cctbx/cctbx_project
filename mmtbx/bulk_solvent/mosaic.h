@@ -7,6 +7,8 @@
 #include <boost/python/list.hpp>
 #include <scitbx/math/utils.h>
 #include <mmtbx/error.h>
+#include <scitbx/array_family/accessors/c_grid.h>
+#include <vector>
 
 namespace mmtbx { namespace mosaic {
 
@@ -219,7 +221,9 @@ alg4(
   af::const_ref<double> const& lower,
   af::const_ref<double> const& upper,
   af::const_ref<double> const& x_start,
-  int const& n_cycles = 5)
+  int const& n_cycles = 5,
+  af::const_ref<double, af::c_grid<2> > const& A_given =
+    af::const_ref<double, af::c_grid<2> >(0, af::c_grid<2>(0,0)))
 {
   std::size_t dim = boost::python::len(G_);
   std::size_t size = f_obs.size();
@@ -230,7 +234,16 @@ alg4(
     G[n] = proxy();
     MMTBX_ASSERT(G[n].size() == size);
   }
-  af::versa<double, af::c_grid<2> > A = normal_matrix(G_);
+  // The normal matrix does not depend on the phases: it can be computed
+  // once (normal_matrix) and given here.
+  af::versa<double, af::c_grid<2> > A_own;
+  af::const_ref<double, af::c_grid<2> > A = A_given;
+  if(A.size() == 0 && dim > 0) {
+    A_own = normal_matrix(G_);
+    A = A_own.const_ref();
+  }
+  MMTBX_ASSERT(dim == 0 ||
+    (A.accessor()[0] == dim && A.accessor()[1] == dim));
   af::shared<double> x(dim);
   for(std::size_t n=0; n < dim; n++) {
     x[n] = std::min(upper[n], std::max(lower[n], x_start[n]));
@@ -254,7 +267,7 @@ alg4(
       }
       b[n] = s;
     }
-    x = alg4_solve_bounded(A.const_ref(), b.const_ref(), lower, upper,
+    x = alg4_solve_bounded(A, b.const_ref(), lower, upper,
       x.const_ref());
   }
   return x;

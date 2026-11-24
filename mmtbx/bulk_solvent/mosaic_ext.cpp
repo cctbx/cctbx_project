@@ -51,7 +51,9 @@ namespace {
      arg("lower"),
      arg("upper"),
      arg("x_start"),
-     arg("n_cycles")=5));
+     arg("n_cycles")=5,
+     arg("normal_matrix")=af::versa<double, af::c_grid<2> >(
+       af::c_grid<2>(0,0))));
 
   }
 

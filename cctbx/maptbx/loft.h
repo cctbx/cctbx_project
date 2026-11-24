@@ -2,6 +2,7 @@
 #define CCTBX_MAPTBX_LOFT_H
 
 #include <cctbx/miller.h>
+#include <cctbx/sgtbx/space_group.h>
 #include <cctbx/error.h>
 #include <scitbx/array_family/shared.h>
 #include <scitbx/array_family/tiny.h>
@@ -45,10 +46,19 @@ The sum is carried out one dimension at a time (rows along z, planes of
 rows, planes), which makes the cost per reflection proportional to the
 number of grid planes the region spans, not to its number of points.
 
-No symmetry is used: the list of points must contain all symmetry copies of
-the region (the P1 content of the unit cell), and values are computed for
-exactly the Miller indices given. The values are exact (trigonometric
-factors come from tables exp(2 pi i m/n), m=0..n-1, one per axis).
+The list of points must contain all symmetry copies of the region (the P1
+content of the unit cell), and values are computed for exactly the Miller
+indices given. The values are exact (trigonometric factors come from tables
+exp(2 pi i m/n), m=0..n-1, one per axis).
+
+Symmetry. Rotations do not make the sum cheaper: one copy of a region has
+fewer points, but its transform is then needed at all symmetry-equivalent
+indices. Lattice centring does: all copies related by centring translations
+contribute the same to an allowed reflection and cancel for an absent one.
+If space_group is given and has centring translations, the sum is over one
+point of each set of points related by them, times their number (zero for
+reflections absent because of the centring). The result is the same as
+without space_group.
 
 points: 1d indices into a grid of size n_real=(nx,ny,nz), last index fastest
   (jx*ny*nz + jy*nz + jz), as flex.grid does. Any order.
@@ -128,6 +138,20 @@ loft(
   //                  exp(2 pi i k jy/ny) * z_row(l)
   //   F(h,k,l)     = sum over planes of exp(2 pi i h jx/nx) * y_plane(k,l)
   std::vector<cmplx> ez(nz), ey(ny), z_row(n_rows), y_plane(n_planes);
+  // exp(2 pi i h jx/nx) for each h present and each plane
+  std::vector<long> h_row(nx, -1);
+  std::size_t n_h = 0;
+  for(std::size_t i = 0; i < n_refl; i++) {
+    if(h_row[hm[i]] < 0) h_row[hm[i]] = static_cast<long>(n_h++);
+  }
+  std::vector<cmplx> ex(n_h * n_planes);
+  for(int h = 0; h < nx; h++) {
+    if(h_row[h] < 0) continue;
+    cmplx* e = &ex[h_row[h] * n_planes];
+    for(std::size_t p = 0; p < n_planes; p++) {
+      e[p] = tx[(static_cast<long>(h) * plane_x[p]) % nx];
+    }
+  }
   int l_cur = -1, k_cur = -1;
   for(std::size_t io = 0; io < n_refl; io++) {
     std::size_t ir = order[io];
@@ -167,11 +191,91 @@ loft(
       }
     }
     cmplx f(0, 0);
-    long h = hm[ir];
+    const cmplx* e = &ex[h_row[hm[ir]] * n_planes];
     for(std::size_t p = 0; p < n_planes; p++) {
-      f += tx[(h * plane_x[p]) % nx] * y_plane[p];
+      f += e[p] * y_plane[p];
     }
     result[ir] = f * volume_per_point;
+  }
+  return result;
+}
+
+//! Same using the lattice centring of space_group (see above).
+inline
+af::shared<std::complex<double> >
+loft(
+  af::const_ref<std::size_t>             const& points,
+  af::tiny<int, 3>                       const& n_real,
+  af::const_ref<cctbx::miller::index<> > const& miller_indices,
+  double                                 const& volume_per_point,
+  sgtbx::space_group                     const& space_group)
+{
+  typedef std::complex<double> cmplx;
+  std::size_t n_ltr = space_group.n_ltr();
+  if(n_ltr == 1 || points.size() == 0 || miller_indices.size() == 0) {
+    return loft(points, n_real, miller_indices, volume_per_point);
+  }
+  long n[3] = {n_real[0], n_real[1], n_real[2]};
+  CCTBX_ASSERT(n[0] > 0 && n[1] > 0 && n[2] > 0);
+  std::size_t nyz = static_cast<std::size_t>(n[1]) * n[2];
+  std::size_t n_grid = nyz * n[0];
+  // Centring translations as shifts of grid points
+  std::vector<long> shift;
+  for(std::size_t i = 1; i < n_ltr; i++) {
+    sgtbx::tr_vec const& t = space_group.ltr(i);
+    for(std::size_t k = 0; k < 3; k++) {
+      long num = static_cast<long>(t[k]) * n[k];
+      if(num % t.den() != 0) {
+        throw error(
+          "loft: grid is not compatible with the lattice centring.");
+      }
+      shift.push_back(((num / t.den()) % n[k] + n[k]) % n[k]);
+    }
+  }
+  // One point of each set of points related by centring: the one with the
+  // smallest index. Its images must be in the list.
+  std::vector<std::size_t> sorted(points.begin(), points.end());
+  std::sort(sorted.begin(), sorted.end());
+  CCTBX_ASSERT(sorted.back() < n_grid);
+  af::shared<std::size_t> kept;
+  bool complete = (points.size() % n_ltr == 0);
+  for(std::size_t i = 0; complete && i < sorted.size(); i++) {
+    std::size_t p = sorted[i];
+    long jx = static_cast<long>(p / nyz);
+    long jy = static_cast<long>((p / n[2]) % n[1]);
+    long jz = static_cast<long>(p % n[2]);
+    bool smallest = true;
+    for(std::size_t j = 0; j < shift.size(); j += 3) {
+      std::size_t q = static_cast<std::size_t>((jx + shift[j]) % n[0]) * nyz
+        + static_cast<std::size_t>((jy + shift[j+1]) % n[1]) * n[2]
+        + static_cast<std::size_t>((jz + shift[j+2]) % n[2]);
+      if(!std::binary_search(sorted.begin(), sorted.end(), q)) {
+        complete = false;
+        break;
+      }
+      if(q < p) smallest = false;
+    }
+    if(smallest) kept.push_back(p);
+  }
+  if(!complete || kept.size() * n_ltr != points.size()) {
+    throw error(
+      "loft: points do not obey the lattice centring of the space group.");
+  }
+  af::shared<cmplx> result = loft(
+    kept.const_ref(), n_real, miller_indices, volume_per_point);
+  double factor = static_cast<double>(n_ltr);
+  for(std::size_t i = 0; i < miller_indices.size(); i++) {
+    cctbx::miller::index<> const& h = miller_indices[i];
+    bool allowed = true;
+    for(std::size_t j = 1; j < n_ltr; j++) {
+      sgtbx::tr_vec const& t = space_group.ltr(j);
+      if((h[0]*t[0] + h[1]*t[1] + h[2]*t[2]) % t.den() != 0) {
+        allowed = false;
+        break;
+      }
+    }
+    if(allowed) result[i] *= factor;
+    else        result[i] = cmplx(0, 0);
   }
   return result;
 }

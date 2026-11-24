@@ -727,6 +727,19 @@ namespace {
       arg("miller_indices"),
       arg("volume_per_point")));
 
+    def("loft",
+      (af::shared<std::complex<double> >(*)
+        (af::const_ref<std::size_t> const&,
+         af::tiny<int, 3> const&,
+         af::const_ref<cctbx::miller::index<> > const&,
+         double const&,
+         sgtbx::space_group const&)) loft, (
+      arg("points"),
+      arg("n_real"),
+      arg("miller_indices"),
+      arg("volume_per_point"),
+      arg("space_group")));
+
     def("direct_summation_at_point",
       (std::complex<double>(*)(
         af::const_ref<miller::index<> > const&,

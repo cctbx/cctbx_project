@@ -118,12 +118,13 @@ class regions(object):
       preprocess_against_shallow = False,
       wrapping                   = True)
     del mask
-    # Labels of connected pieces, before symmetry copies are merged
+    # Labels of connected pieces; then the same with all symmetry copies of
+    # a region under one label
     pieces = co.result().as_1d().deep_copy()
-    if(self.space_group.type().number() != 1):
-      co.merge_symmetry_related_regions(space_group = self.space_group)
+    co.merge_symmetry_related_regions(space_group = self.space_group)
     labels = co.result().as_1d()
     counts = co.regions() # label 0: not solvent
+    del co
     self.main = None
     self.secondary = []
     solvent = [(c, i) for i, c in enumerate(counts) if i != 0 and c > 0]
@@ -287,16 +288,20 @@ class structure_factors(object):
     if(self.n_selected == 0 or points.size() == 0):
       if(compact): return flex.complex_double(self.n_selected, 0)
       return flex.complex_double(self.size, 0)
+    # Direct summation is over one of the points related by lattice
+    # centring (same result, see maptbx.loft)
+    space_group = self.regions.space_group
     if(method is None):
       method = "fft"
-      if(_COST_DIRECT*points.size()*self.n_selected <
+      if(_COST_DIRECT*points.size()*self.n_selected/space_group.n_ltr() <
          _COST_FFT*self.regions.n_grid): method = "direct"
     if(method == "direct"):
       data = maptbx.loft(
         points           = points,
         n_real           = self.regions.n_real,
         miller_indices   = self.low.indices(),
-        volume_per_point = self.regions.volume_per_point)
+        volume_per_point = self.regions.volume_per_point,
+        space_group      = space_group)
     else:
       data = self.of_map(
         map_data = self.regions.mask_of_points(points = [points],
@@ -349,7 +354,8 @@ class structure_factors(object):
 # Search for region occupancies
 # ------------------------------------------------------------------------------
 
-def alg4(f_obs, base, G, lower=None, upper=None, x_start=None, n_cycles=5):
+def alg4(f_obs, base, G, lower=None, upper=None, x_start=None, n_cycles=5,
+         normal_matrix=None):
   """
   Phased simultaneous search (Alg4 of Afonine et al., 2024) for the
   coefficients x_n of
@@ -372,12 +378,16 @@ def alg4(f_obs, base, G, lower=None, upper=None, x_start=None, n_cycles=5):
   x_start : flex.double, optional
       Starting values, zero if None; they define the first set of phases.
   n_cycles : int
+  normal_matrix : flex.double (n x n), optional
+      mosaic_ext.normal_matrix(G), if it has been computed already (it is
+      the expensive part and does not depend on f_obs and base).
 
   Returns
   -------
   flex.double
   """
   n = len(G)
+  if(normal_matrix is None): normal_matrix = flex.double(flex.grid(0, 0))
   if(lower is None):   lower   = flex.double(n, -NO_LIMIT)
   if(upper is None):   upper   = flex.double(n,  NO_LIMIT)
   if(x_start is None): x_start = flex.double(n, 0)
@@ -388,7 +398,8 @@ def alg4(f_obs, base, G, lower=None, upper=None, x_start=None, n_cycles=5):
     lower    = lower,
     upper    = upper,
     x_start  = x_start,
-    n_cycles = n_cycles)
+    n_cycles = n_cycles,
+    normal_matrix = normal_matrix)
 
 class minimizer2(object):
   """
@@ -856,10 +867,11 @@ _MAX_FIT_ELEMENTS = 60000000
 # scales of the flat model are used as they are.
 _SCALE_MIN, _SCALE_MAX = 0.5, 2.0
 
-def _fit_with_scales(f_obs, atoms, rest, G, algorithm):
+def _fit_with_scales(f_obs, atoms, rest, G, algorithm, normal_matrix=None):
   """
   a, b and q_n >= 0 of F_model = a*atoms + b*(rest + sum_n q_n G_n).
   Returns (a, b, q), or None if a or b comes out unreasonable.
+  normal_matrix: of [atoms, rest] + G (alg4 only).
   """
   n = len(G)
   if(algorithm == "alg4"):
@@ -868,7 +880,8 @@ def _fit_with_scales(f_obs, atoms, rest, G, algorithm):
       base    = flex.complex_double(f_obs.size(), 0),
       G       = [atoms, rest] + G,
       lower   = flex.double([-NO_LIMIT, -NO_LIMIT] + [0]*n),
-      x_start = flex.double(n+2, 1))
+      x_start = flex.double(n+2, 1),
+      normal_matrix = normal_matrix)
   else:
     x = algorithm_2(
       i_obs = _array(f_obs*f_obs),
@@ -880,15 +893,17 @@ def _fit_with_scales(f_obs, atoms, rest, G, algorithm):
     return x[0], x[1], x[2:]/x[1]
   return None
 
-def _fit_bounded(f_obs, base, G, q_max, q_start, algorithm):
+def _fit_bounded(f_obs, base, G, q_max, q_start, algorithm,
+                 normal_matrix=None):
   """
   0 <= q_n <= q_max of F_model = base + sum_n q_n G_n.
+  normal_matrix: of G (alg4 only).
   """
   n = len(G)
   if(algorithm == "alg4"):
     return alg4(f_obs = f_obs, base = base, G = G,
       lower = flex.double(n, 0), upper = flex.double(n, q_max),
-      x_start = q_start)
+      x_start = q_start, normal_matrix = normal_matrix)
   x = flex.double([1])
   x.extend(q_start)
   x = algorithm_2(
@@ -946,20 +961,37 @@ def fit_occupancies(f_obs, atoms, rest, G, algorithm="alg4",
   if(n == 0): return flex.double()
   if(q_max is None): q_max = NO_LIMIT
   assert q_max > 0
+  # The normal matrix of the search (the expensive part) is computed once
+  # for all terms; its lower right block is the matrix of the regions alone.
+  A, A_regions = None, None
+  if(algorithm == "alg4"):
+    A = mosaic_ext.normal_matrix(G = [atoms, rest] + G)
+    A_regions = A.matrix_copy_block(i_row = 2, i_column = 2, n_rows = n,
+      n_columns = n)
   q = None
   if(refine_scales):
     fit = _fit_with_scales(f_obs = f_obs, atoms = atoms, rest = rest, G = G,
-      algorithm = algorithm)
+      algorithm = algorithm, normal_matrix = A)
     if(fit is not None):
       a, b, q = fit
       if((q > q_max).count(True) > 0):
         q.set_selected(q > q_max, q_max)
-        q = _fit_bounded(f_obs = f_obs, base = atoms*a + rest*b,
-          G = [g*b for g in G], q_max = q_max, q_start = q,
-          algorithm = algorithm)
+        if(algorithm == "alg4"):
+          # same as fitting q with the regions scaled by b: b*q is fitted
+          # with the regions as they are
+          x_max = q_max
+          if(q_max < NO_LIMIT): x_max = q_max*b
+          q = _fit_bounded(f_obs = f_obs, base = atoms*a + rest*b, G = G,
+            q_max = x_max, q_start = q*b, algorithm = algorithm,
+            normal_matrix = A_regions)/b
+        else:
+          q = _fit_bounded(f_obs = f_obs, base = atoms*a + rest*b,
+            G = [g*b for g in G], q_max = q_max, q_start = q,
+            algorithm = algorithm)
   if(q is None):
     q = _fit_bounded(f_obs = f_obs, base = atoms + rest, G = G,
-      q_max = q_max, q_start = flex.double(n, 1), algorithm = algorithm)
+      q_max = q_max, q_start = flex.double(n, 1), algorithm = algorithm,
+      normal_matrix = A_regions)
   q.set_selected(q < 0, 0)
   q.set_selected(q > q_max, q_max)
   return q
