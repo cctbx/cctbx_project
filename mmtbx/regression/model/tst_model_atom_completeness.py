@@ -466,7 +466,7 @@ def exercise_links():
     assert m.is_atom_complete(), m.missing_atoms_by_residue()
     r = m.missing_atoms_by_residue(include_hydrogens=True)
     # N of GLY 1 replaces peptide bond with link: H is still required
-    assert r[" GLY A   1 "] == ["H", "HA1", "HA2"], r[" GLY A   1 "]
+    assert r[" GLY A   1 "] == ["H", "HA2", "HA3"], r[" GLY A   1 "]
     # disulfide: no HG
     assert r[" CYS A   6 "] == ["H", "HA", "HB2", "HB3"], r[" CYS A   6 "]
     # raw view is not affected

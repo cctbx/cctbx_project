@@ -201,9 +201,9 @@ gly_interpreter = interpreter(
     "1hA", "2hA", "3hA"],
   peptide_synonym_patterns,
   mutually_exclusive_pairs=[
-    ("1hA", "2hA", "3hA")],
+    ("3hA", "2hA", "1hA")],
   non_hydrogens=("N","CA","C","O"),
-  hydrogens=("H","HA1","HA2"))
+  hydrogens=("H","HA2","HA3"))
 
 ala_interpreter = interpreter(
   peptide_expected_patterns + [
