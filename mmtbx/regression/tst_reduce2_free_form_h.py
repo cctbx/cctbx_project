@@ -18,6 +18,7 @@ from libtbx.utils import null_out
 from scitbx import matrix
 from mmtbx.hydrogens import reduce_hydrogen
 from mmtbx.hydrogens import tst_add_hydrogen_23 as t23
+from mmtbx.regression import tst_monomer_library_terminal_nh3 as tml
 
 pdb_sam = """\
 CRYST1   30.000   30.000   30.000  90.00  90.00  90.00 P 1
@@ -84,7 +85,8 @@ END
 
 def place(pdb_str, **kw):
   inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
-  model = mmtbx.model.manager(model_input=inp, log=null_out())
+  model = mmtbx.model.manager(model_input=inp,
+    restraint_objects=tml.old_dictionaries(pdb_str), log=null_out())
   o = reduce_hydrogen.place_hydrogens(model=model, stop_for_unknowns=False,
     **kw)
   o.run()

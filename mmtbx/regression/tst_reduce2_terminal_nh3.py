@@ -175,9 +175,16 @@ def run(prefix, pdb_str, *args):
       f.write(pdb_str)
     for p in (out, txt):
       if os.path.exists(p): os.remove(p)
+    cifs = []
+    names = tml.old_residue_names(pdb_str)
+    for comp, text in tml.OLD_DICTIONARIES:
+      if comp not in names: continue
+      cifs.append('tst_reduce2_terminal_nh3_%s_old.cif' % comp)
+      with open(cifs[-1], 'w') as f:
+        f.write(text)
     run_program(program_class=reduce2.Program, logger=StringIO(), args=[fn,
       'output.filename=' + out, 'output.description_file_name=' + txt,
-      'overwrite=True'] + list(args))
+      'overwrite=True'] + cifs + list(args))
     with open(txt) as f:
       description = f.read()
     _runs[key] = (iotbx.pdb.input(out).construct_hierarchy(), description,
@@ -188,10 +195,13 @@ _mon_lib_srv = []
 def reread(fn):
   """The output processed as phenix.refine reads it: the model, the
   residue names with their modifications."""
-  m = mmtbx.model.manager(model_input=iotbx.pdb.input(fn), log=null_out())
+  with open(fn) as f:
+    restraint_objects = tml.old_dictionaries(f.read())
+  m = mmtbx.model.manager(model_input=iotbx.pdb.input(fn),
+    restraint_objects=restraint_objects, log=null_out())
   m.process(make_restraints=True)
   if not _mon_lib_srv:
-    _mon_lib_srv.append(mmtbx.monomer_library.server.server())
+    _mon_lib_srv.append(tml.server())
     _mon_lib_srv.append(mmtbx.monomer_library.server.ener_lib())
   p = pdb_interpretation.process(mon_lib_srv=_mon_lib_srv[0],
     ener_lib=_mon_lib_srv[1], log=null_out(), pdb_inp=iotbx.pdb.input(fn),

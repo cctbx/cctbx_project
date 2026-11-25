@@ -7,10 +7,8 @@ NH3-<comp>); mod_NH3 is not applied where it would take a carbon H's name;
 SCY (H2 on N) and standard residues keep mod_NH3.
 """
 from __future__ import absolute_import, division, print_function
-import os
 import iotbx.cif
 import iotbx.pdb
-import libtbx.load_env
 import mmtbx.monomer_library.server
 from libtbx.utils import null_out
 from mmtbx.monomer_library import pdb_interpretation, terminal_nh3
@@ -183,12 +181,625 @@ ATOM     55 HG23 VAL A   2      21.751  12.045 -51.474  1.00 43.67           H
 END
 """
 
+# GeoStd 0A0, 01W and 004 as they were until 2026-11-24 (free forms: 0A0
+# with HN1, HN2 on N, 01W with H1N, H2N, H3N, 004 with HN, HNA); GeoStd now
+# has one N-H named H (0A0, 01W) or H, HNA (004)
+cif_0a0 = """\
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+_chem_comp.initial_date
+_chem_comp.modified_date
+_chem_comp.source
+ 0A0  0A0  '2-methyl-L-aspartic acid '  L-peptide  17  10  .  2012-08-28  2023-10-30
+;
+Directly from eLBOW using geometry from QM method PBEh-3c with CPCM solvent model
+Validated by Mogul as GRAND
+Added dihedrals for adding hydrogens : 2023-10-30
+;
+
+data_comp_0A0
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.charge
+_chem_comp_atom.partial_charge
+_chem_comp_atom.x
+_chem_comp_atom.y
+_chem_comp_atom.z
+ 0A0  N     N  NH2    0  -0.814  24.1008   8.1126  -14.1049
+ 0A0  CA    C  CT     0  -0.033  23.4170   9.3744  -13.8160
+ 0A0  C     C  C      0   0.409  24.0336  10.6057  -14.5448
+ 0A0  O     O  O      0  -0.620  23.7262  11.7356  -14.1079
+ 0A0  CB    C  CH2    0  -0.541  23.3767   9.5772  -12.3036
+ 0A0  CG    C  C      0   0.407  24.7209   9.7277  -11.5659
+ 0A0  OD1   O  O      0  -0.601  25.7799   9.6850  -12.2307
+ 0A0  OD2   O  OC    -1  -0.623  24.6411   9.8793  -10.3289
+ 0A0  OXT   O  OC    -1  -0.617  24.7248  10.3756  -15.5605
+ 0A0  CM    C  CH3    0  -0.640  21.9789   9.2475  -14.3349
+ 0A0  HN1   H  HNH2   0   0.311  24.2673   8.0856  -15.1048
+ 0A0  HN2   H  HNH2   0   0.324  25.0263   8.1971  -13.6983
+ 0A0  HBC1  H  HCH2   0   0.211  22.7740  10.4605  -12.0793
+ 0A0  HBC2  H  HCH2   0   0.201  22.8378   8.7366  -11.8484
+ 0A0  HMC1  H  HCH3   0   0.207  21.4774   8.3908  -13.8786
+ 0A0  HMC2  H  HCH3   0   0.208  21.3925  10.1397  -14.1125
+ 0A0  HMC3  H  HCH3   0   0.210  21.9621   9.1017  -15.4186
+
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.type
+_chem_comp_bond.value_dist
+_chem_comp_bond.value_dist_esd
+_chem_comp_bond.value_dist_neutron
+ 0A0  N   CA    single  1.458  0.019  1.458
+ 0A0  N   HN1   single  0.890  0.020  1.040
+ 0A0  N   HN2   single  0.890  0.020  1.040
+ 0A0  CA  C     single  1.525  0.021  1.525
+ 0A0  CA  CB    single  1.530  0.020  1.530
+ 0A0  CA  CM    single  1.534  0.020  1.534
+ 0A0  C   O     deloc   1.231  0.020  1.231
+ 0A0  C   OXT   deloc   1.250  0.020  1.250
+ 0A0  CB  CG    single  1.541  0.020  1.541
+ 0A0  CB  HBC1  single  0.970  0.020  1.090
+ 0A0  CB  HBC2  single  0.970  0.020  1.090
+ 0A0  CG  OD1   deloc   1.251  0.020  1.251
+ 0A0  CG  OD2   deloc   1.249  0.020  1.249
+ 0A0  CM  HMC1  single  0.970  0.020  1.090
+ 0A0  CM  HMC2  single  0.970  0.020  1.090
+ 0A0  CM  HMC3  single  0.970  0.020  1.090
+
+loop_
+_chem_comp_angle.comp_id
+_chem_comp_angle.atom_id_1
+_chem_comp_angle.atom_id_2
+_chem_comp_angle.atom_id_3
+_chem_comp_angle.value_angle
+_chem_comp_angle.value_angle_esd
+ 0A0  HN2   N   HN1   104.33  3.000
+ 0A0  HN2   N   CA    105.98  3.000
+ 0A0  HN1   N   CA    107.11  3.000
+ 0A0  CM    CA  CB    108.75  3.000
+ 0A0  CM    CA  C     106.15  3.000
+ 0A0  CB    CA  C     110.10  1.900
+ 0A0  CM    CA  N     107.44  3.000
+ 0A0  CB    CA  N     110.50  1.700
+ 0A0  C     CA  N     111.00  2.800
+ 0A0  OXT   C   O     125.91  3.000
+ 0A0  OXT   C   CA    116.97  3.000
+ 0A0  O     C   CA    120.80  1.700
+ 0A0  HBC2  CB  HBC1  105.26  3.000
+ 0A0  HBC2  CB  CG    107.74  3.000
+ 0A0  HBC1  CB  CG    107.70  3.000
+ 0A0  HBC2  CB  CA    108.79  3.000
+ 0A0  HBC1  CB  CA    108.99  3.000
+ 0A0  CG    CB  CA    117.67  3.000
+ 0A0  OD2   CG  OD1   125.77  3.000
+ 0A0  OD2   CG  CB    115.49  3.000
+ 0A0  OD1   CG  CB    118.74  3.000
+ 0A0  HMC3  CM  HMC2  107.63  3.000
+ 0A0  HMC3  CM  HMC1  107.59  3.000
+ 0A0  HMC2  CM  HMC1  108.03  3.000
+ 0A0  HMC3  CM  CA    111.14  3.000
+ 0A0  HMC2  CM  CA    111.55  3.000
+ 0A0  HMC1  CM  CA    110.73  3.000
+
+loop_
+_chem_comp_tor.comp_id
+_chem_comp_tor.id
+_chem_comp_tor.atom_id_1
+_chem_comp_tor.atom_id_2
+_chem_comp_tor.atom_id_3
+_chem_comp_tor.atom_id_4
+_chem_comp_tor.value_angle
+_chem_comp_tor.value_angle_esd
+_chem_comp_tor.period
+ 0A0  Var_01  OD1   CG  CB  CA     0.36  30.0  3
+ 0A0  Var_02  HBC1  CB  CA  N   -173.92  30.0  3
+ 0A0  Var_03  HBC2  CB  CA  N    -59.65  30.0  3
+ 0A0  Var_04  HMC1  CM  CA  N     57.06  30.0  3
+ 0A0  Var_05  HMC2  CM  CA  N    177.41  30.0  3
+ 0A0  Var_06  HMC3  CM  CA  N    -62.46  30.0  3
+ 0A0  Var_07  HN1   N   CA  C    -44.45  30.0  3
+ 0A0  Var_08  HN2   N   CA  C     66.50  30.0  3
+
+loop_
+_chem_comp_chir.comp_id
+_chem_comp_chir.id
+_chem_comp_chir.atom_id_centre
+_chem_comp_chir.atom_id_1
+_chem_comp_chir.atom_id_2
+_chem_comp_chir.atom_id_3
+_chem_comp_chir.volume_sign
+ 0A0  chir_01  CA  C  CB  CM  negativ
+
+loop_
+_chem_comp_plane_atom.comp_id
+_chem_comp_plane_atom.plane_id
+_chem_comp_plane_atom.atom_id
+_chem_comp_plane_atom.dist_esd
+ 0A0  plan-1  CA   0.020
+ 0A0  plan-1  C    0.020
+ 0A0  plan-1  O    0.020
+ 0A0  plan-1  OXT  0.020
+ 0A0  plan-2  CB   0.020
+ 0A0  plan-2  CG   0.020
+ 0A0  plan-2  OD1  0.020
+ 0A0  plan-2  OD2  0.020
+"""
+
+cif_01w = """\
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+_chem_comp.initial_date
+_chem_comp.modified_date
+_chem_comp.source
+ 01W  01W  (2S)-2-ammonio-4-[(2,4-dinitrophenyl)amino]butanoate  L-peptide  32  20  .  2012-08-28  2023-10-30
+;
+Directly from eLBOW using geometry from QM method PBEh-3c with CPCM solvent model
+Validated by Mogul as GRAND
+Added dihedrals for adding hydrogens : 2023-10-30
+;
+
+data_comp_01W
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.charge
+_chem_comp_atom.partial_charge
+_chem_comp_atom.x
+_chem_comp_atom.y
+_chem_comp_atom.z
+ 01W  O52   O  O     -1  -0.387  -13.9087  38.8704  -21.2752
+ 01W  N5    N  N      1   0.320  -13.5582  38.9413  -20.1180
+ 01W  O5    O  O      0  -0.384  -13.9641  39.7780  -19.3418
+ 01W  C5    C  CR6    0   0.243  -12.6074  37.9788  -19.6293
+ 01W  C6    C  CR16   0  -0.246  -12.1797  38.0269  -18.2967
+ 01W  C7    C  CR16   0  -0.356  -11.2891  37.1047  -17.8342
+ 01W  C4    C  CR16   0  -0.342  -12.1239  37.0105  -20.4753
+ 01W  C3    C  CR6    0   0.208  -11.2119  36.0724  -20.0136
+ 01W  N3    N  N      1   0.348  -10.7606  35.1008  -20.9746
+ 01W  O32   O  O     -1  -0.410   -9.9391  34.2727  -20.6256
+ 01W  O3    O  O      0  -0.376  -11.2090  35.1382  -22.0965
+ 01W  C2    C  CR6    0   0.432  -10.7559  36.0747  -18.6583
+ 01W  N13   N  NH1    0  -0.658   -9.8885  35.1995  -18.1551
+ 01W  C1    C  CH2    0  -0.325   -9.4693  35.1359  -16.7712
+ 01W  CB    C  CH2    0  -0.466  -10.5069  34.4330  -15.8965
+ 01W  CA    C  CH1    0  -0.228  -10.0428  34.2662  -14.4516
+ 01W  N     N  NT3    1  -0.790  -11.0306  33.4248  -13.7175
+ 01W  C     C  C      0   0.453   -9.9654  35.6304  -13.7108
+ 01W  O     O  O      0  -0.580  -10.9605  35.9098  -13.0157
+ 01W  OXT   O  OC    -1  -0.564   -8.9480  36.2995  -13.9254
+ 01W  H6    H  HCR6   0   0.307  -12.5465  38.7870  -17.6221
+ 01W  H7    H  HCR6   0   0.302  -10.9821  37.1722  -16.8013
+ 01W  H4    H  HCR6   0   0.328  -12.4474  36.9737  -21.5047
+ 01W  HN13  H  HNH1   0   0.422   -9.5540  34.4766  -18.7714
+ 01W  H11   H  HCH2   0   0.283   -8.5357  34.5747  -16.7558
+ 01W  H21   H  HCH2   0   0.269   -9.2370  36.1311  -16.3986
+ 01W  H1B   H  HCH2   0   0.260  -11.4543  34.9795  -15.9134
+ 01W  H2B   H  HCH2   0   0.268  -10.7001  33.4477  -16.3305
+ 01W  HA    H  HCH1   0   0.294   -9.0846  33.7474  -14.4219
+ 01W  H1N   H  HNT3   0   0.466  -10.6007  32.9349  -12.9334
+ 01W  H2N   H  HNT3   0   0.447  -11.7269  34.0709  -13.3202
+ 01W  H3N   H  HNT3   0   0.461  -11.4947  32.7226  -14.2933
+
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.type
+_chem_comp_bond.value_dist
+_chem_comp_bond.value_dist_esd
+_chem_comp_bond.value_dist_neutron
+ 01W  O3   N3    double    1.209  0.020  1.209
+ 01W  N3   O32   single    1.218  0.020  1.218
+ 01W  N3   C3    single    1.439  0.020  1.439
+ 01W  O52  N5    single    1.211  0.020  1.211
+ 01W  C4   C3    aromatic  1.387  0.020  1.387
+ 01W  C4   C5    aromatic  1.374  0.020  1.374
+ 01W  C3   C2    aromatic  1.430  0.020  1.430
+ 01W  N5   C5    single    1.439  0.020  1.439
+ 01W  N5   O5    double    1.211  0.020  1.211
+ 01W  C5   C6    aromatic  1.400  0.020  1.400
+ 01W  C2   N13   single    1.331  0.020  1.331
+ 01W  C2   C7    aromatic  1.423  0.020  1.423
+ 01W  N13  C1    single    1.447  0.020  1.447
+ 01W  C6   C7    aromatic  1.363  0.020  1.363
+ 01W  C1   CB    single    1.528  0.020  1.528
+ 01W  CB   CA    single    1.521  0.033  1.521
+ 01W  CA   C     single    1.525  0.021  1.525
+ 01W  CA   N     single    1.458  0.019  1.458
+ 01W  C    O     deloc     1.231  0.020  1.231
+ 01W  C    OXT   deloc     1.237  0.020  1.237
+ 01W  C6   H6    single    0.930  0.020  1.080
+ 01W  C7   H7    single    0.930  0.020  1.080
+ 01W  C4   H4    single    0.930  0.020  1.080
+ 01W  N13  HN13  single    0.860  0.020  1.020
+ 01W  C1   H11   single    0.970  0.020  1.090
+ 01W  C1   H21   single    0.970  0.020  1.090
+ 01W  CB   H1B   single    0.970  0.020  1.090
+ 01W  CB   H2B   single    0.970  0.020  1.090
+ 01W  CA   HA    single    0.970  0.020  0.970
+ 01W  N    H1N   single    0.890  0.020  1.040
+ 01W  N    H2N   single    0.890  0.020  1.040
+ 01W  N    H3N   single    0.890  0.020  1.040
+
+loop_
+_chem_comp_angle.comp_id
+_chem_comp_angle.atom_id_1
+_chem_comp_angle.atom_id_2
+_chem_comp_angle.atom_id_3
+_chem_comp_angle.value_angle
+_chem_comp_angle.value_angle_esd
+ 01W  C5    N5   O5   117.77  3.000
+ 01W  O5    N5   O52  123.76  3.000
+ 01W  C5    N5   O52  118.46  3.000
+ 01W  C4    C5   C6   120.18  3.000
+ 01W  C6    C5   N5   120.14  3.000
+ 01W  C4    C5   N5   119.67  3.000
+ 01W  H6    C6   C7   119.07  3.000
+ 01W  H6    C6   C5   120.98  3.000
+ 01W  C7    C6   C5   119.95  3.000
+ 01W  H7    C7   C2   119.52  3.000
+ 01W  H7    C7   C6   117.91  3.000
+ 01W  C2    C7   C6   122.56  3.000
+ 01W  H4    C4   C3   119.42  3.000
+ 01W  H4    C4   C5   120.38  3.000
+ 01W  C3    C4   C5   120.20  3.000
+ 01W  C2    C3   N3   122.27  3.000
+ 01W  C2    C3   C4   121.60  3.000
+ 01W  N3    C3   C4   116.13  3.000
+ 01W  O3    N3   O32  122.50  3.000
+ 01W  O32   N3   C3   118.65  3.000
+ 01W  O3    N3   C3   118.85  3.000
+ 01W  N13   C2   C3   124.41  3.000
+ 01W  N13   C2   C7   120.09  3.000
+ 01W  C3    C2   C7   115.50  3.000
+ 01W  HN13  N13  C1   117.22  3.000
+ 01W  HN13  N13  C2   117.20  3.000
+ 01W  C1    N13  C2   125.39  3.000
+ 01W  H21   C1   H11  106.47  3.000
+ 01W  H21   C1   CB   111.70  3.000
+ 01W  H11   C1   CB   109.69  3.000
+ 01W  H21   C1   N13  110.43  3.000
+ 01W  H11   C1   N13  106.52  3.000
+ 01W  CB    C1   N13  111.77  3.000
+ 01W  H2B   CB   H1B  106.91  3.000
+ 01W  H2B   CB   CA   109.31  3.000
+ 01W  H1B   CB   CA   109.42  3.000
+ 01W  H2B   CB   C1   107.88  3.000
+ 01W  H1B   CB   C1   110.45  3.000
+ 01W  CA    CB   C1   112.68  3.000
+ 01W  HA    CA   C    110.00  3.000
+ 01W  HA    CA   N    110.00  3.000
+ 01W  C     CA   N    111.00  2.800
+ 01W  HA    CA   CB   109.00  3.000
+ 01W  N     CA   CB   110.40  1.500
+ 01W  C     CA   CB   110.50  1.500
+ 01W  H3N   N    H2N  110.01  3.000
+ 01W  H3N   N    H1N  107.18  3.000
+ 01W  H2N   N    H1N  106.85  3.000
+ 01W  H3N   N    CA   114.33  3.000
+ 01W  H2N   N    CA   106.50  3.000
+ 01W  H1N   N    CA   111.74  3.000
+ 01W  OXT   C    O    129.26  3.000
+ 01W  OXT   C    CA   120.80  1.700
+ 01W  O     C    CA   120.80  1.700
+
+loop_
+_chem_comp_tor.comp_id
+_chem_comp_tor.id
+_chem_comp_tor.atom_id_1
+_chem_comp_tor.atom_id_2
+_chem_comp_tor.atom_id_3
+_chem_comp_tor.atom_id_4
+_chem_comp_tor.value_angle
+_chem_comp_tor.value_angle_esd
+_chem_comp_tor.period
+ 01W  CONST_01  C2    C3   C4   C5     0.00   0.0  0
+ 01W  CONST_02  C2    C7   C6   C5     0.00   0.0  0
+ 01W  CONST_03  C3    C4   C5   C6     0.00   0.0  0
+ 01W  CONST_04  C3    C2   C7   C6     0.00   0.0  0
+ 01W  CONST_05  C4    C3   C2   C7     0.00   0.0  0
+ 01W  CONST_06  C4    C5   C6   C7     0.00   0.0  0
+ 01W  CONST_07  C3    C4   C5   N5   180.00   0.0  0
+ 01W  CONST_08  C7    C6   C5   N5   180.00   0.0  0
+ 01W  CONST_09  N3    C3   C4   C5   180.00   0.0  0
+ 01W  CONST_10  N13   C2   C7   C6   180.00   0.0  0
+ 01W  CONST_11  N3    C3   C2   C7   180.00   0.0  0
+ 01W  CONST_12  N13   C2   C3   C4   180.00   0.0  0
+ 01W  CONST_13  H7    C7   C6   C5   180.00   0.0  0
+ 01W  CONST_14  H4    C4   C5   C6   180.00   0.0  0
+ 01W  CONST_15  H6    C6   C5   C4   180.00   0.0  0
+ 01W  CONST_16  C4    C5   N5   O52    0.00   0.0  0
+ 01W  CONST_17  C6    C5   N5   O52  180.00   0.0  0
+ 01W  CONST_18  C4    C5   N5   O5   180.00   0.0  0
+ 01W  CONST_19  C6    C5   N5   O5     0.00   0.0  0
+ 01W  CONST_20  C1    N13  C2   C7     0.00   0.0  0
+ 01W  CONST_21  O3    N3   C3   C4     0.00   0.0  0
+ 01W  CONST_22  O32   N3   C3   C4   180.00   0.0  0
+ 01W  CONST_23  C1    N13  C2   C3   180.00   0.0  0
+ 01W  CONST_24  C2    C3   N3   O32    0.00   0.0  0
+ 01W  CONST_25  C2    C3   N3   O3   180.00   0.0  0
+ 01W  CONST_26  HN13  N13  C2   C7   180.00   0.0  0
+ 01W  Var_01    CB    C1   N13  C2    79.46  30.0  3
+ 01W  Var_02    CA    CB   C1   N13  175.93  30.0  3
+ 01W  Var_03    HA    CA   CB   C1   -55.12  30.0  3
+ 01W  Var_04    H1N   N    CA   CB   153.77  30.0  3
+ 01W  Var_05    H2N   N    CA   CB   -89.90  30.0  3
+ 01W  Var_06    H3N   N    CA   CB    31.81  30.0  3
+
+loop_
+_chem_comp_chir.comp_id
+_chem_comp_chir.id
+_chem_comp_chir.atom_id_centre
+_chem_comp_chir.atom_id_1
+_chem_comp_chir.atom_id_2
+_chem_comp_chir.atom_id_3
+_chem_comp_chir.volume_sign
+ 01W  chir_01  CA  CB  C  N  negativ
+
+loop_
+_chem_comp_plane_atom.comp_id
+_chem_comp_plane_atom.plane_id
+_chem_comp_plane_atom.atom_id
+_chem_comp_plane_atom.dist_esd
+ 01W  plan-1  N5    0.020
+ 01W  plan-1  C5    0.020
+ 01W  plan-1  C6    0.020
+ 01W  plan-1  C7    0.020
+ 01W  plan-1  C4    0.020
+ 01W  plan-1  C3    0.020
+ 01W  plan-1  N3    0.020
+ 01W  plan-1  C2    0.020
+ 01W  plan-1  N13   0.020
+ 01W  plan-1  H6    0.020
+ 01W  plan-1  H7    0.020
+ 01W  plan-1  H4    0.020
+ 01W  plan-2  O52   0.020
+ 01W  plan-2  N5    0.020
+ 01W  plan-2  O5    0.020
+ 01W  plan-2  C5    0.020
+ 01W  plan-3  C3    0.020
+ 01W  plan-3  N3    0.020
+ 01W  plan-3  O32   0.020
+ 01W  plan-3  O3    0.020
+ 01W  plan-4  C2    0.020
+ 01W  plan-4  N13   0.020
+ 01W  plan-4  C1    0.020
+ 01W  plan-4  HN13  0.020
+ 01W  plan-5  CA    0.020
+ 01W  plan-5  C     0.020
+ 01W  plan-5  O     0.020
+ 01W  plan-5  OXT   0.020
+"""
+
+cif_004 = """\
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+_chem_comp.initial_date
+_chem_comp.modified_date
+_chem_comp.source
+ 004  004  '(2S)-amino(phenyl)ethanoic acid'  L-peptide  19  11  .  2012-08-28  2025-11-30
+;
+Directly from eLBOW using geometry from QM method PBEh-3c with CPCM solvent model
+Validated by Mogul as PERFECT
+Added dihedrals for adding hydrogens : 2023-10-30
+Idealise E
+;
+
+data_comp_004
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.charge
+_chem_comp_atom.partial_charge
+_chem_comp_atom.x
+_chem_comp_atom.y
+_chem_comp_atom.z
+ 004  C    C  C      0   0.408  30.7797   2.4184  52.6942
+ 004  N    N  NH2    0  -0.804  32.2461   0.6198  53.5997
+ 004  O    O  O      0  -0.591  31.4760   3.1699  53.4008
+ 004  CA   C  CH1    0  -0.297  31.2046   0.9146  52.6343
+ 004  CB   C  CR6    0   0.172  29.9962   0.0351  52.8450
+ 004  CE   C  CR16   0  -0.277  27.6949  -1.5239  53.2362
+ 004  CD1  C  CR16   0  -0.242  28.3991  -1.0237  54.3249
+ 004  CD2  C  CR16   0  -0.243  28.1412  -1.2423  51.9521
+ 004  CG1  C  CR16   0  -0.293  29.5376  -0.2537  54.1295
+ 004  CG2  C  CR16   0  -0.326  29.2810  -0.4712  51.7636
+ 004  OXT  O  OC    -1  -0.593  29.8013   2.7283  51.9926
+ 004  HN   H  HNH2   0   0.333  32.8126  -0.1535  53.2782
+ 004  HNA  H  HNH2   0   0.338  32.8455   1.4299  53.6796
+ 004  HA   H  HCH1   0   0.217  31.5389   0.7611  51.5951
+ 004  HE   H  HCR6   0   0.244  26.8119  -2.1314  53.3879
+ 004  HD1  H  HCR6   0   0.242  28.0608  -1.2377  55.3314
+ 004  HD2  H  HCR6   0   0.243  27.6032  -1.6266  51.0943
+ 004  HG1  H  HCR6   0   0.235  30.0898   0.1152  54.9841
+ 004  HG2  H  HCR6   0   0.234  29.6262  -0.2668  50.7561
+
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.type
+_chem_comp_bond.value_dist
+_chem_comp_bond.value_dist_esd
+_chem_comp_bond.value_dist_neutron
+ 004  C    O    deloc     1.231  0.020  1.231
+ 004  C    OXT  deloc     1.243  0.019  1.243
+ 004  N    HN   single    0.890  0.010  1.040
+ 004  N    HNA  single    0.890  0.010  1.040
+ 004  CA   C    single    1.525  0.022  1.525
+ 004  CA   N    single    1.458  0.022  1.458
+ 004  CA   CB   single    1.521  0.012  1.521
+ 004  CA   HA   single    0.970  0.010  0.970
+ 004  CB   CG1  aromatic  1.394  0.010  1.394
+ 004  CE   CD1  aromatic  1.390  0.010  1.390
+ 004  CE   HE   single    0.930  0.014  1.080
+ 004  CD1  HD1  single    0.930  0.014  1.080
+ 004  CD2  CE   aromatic  1.388  0.014  1.388
+ 004  CD2  HD2  single    0.930  0.014  1.080
+ 004  CG1  CD1  aromatic  1.388  0.014  1.388
+ 004  CG1  HG1  single    0.930  0.010  1.080
+ 004  CG2  CB   aromatic  1.392  0.010  1.392
+ 004  CG2  CD2  aromatic  1.389  0.010  1.389
+ 004  CG2  HG2  single    0.930  0.010  1.080
+
+loop_
+_chem_comp_angle.comp_id
+_chem_comp_angle.atom_id_1
+_chem_comp_angle.atom_id_2
+_chem_comp_angle.atom_id_3
+_chem_comp_angle.value_angle
+_chem_comp_angle.value_angle_esd
+ 004  OXT  C    CA   120.80  3.000
+ 004  CA   C    O    120.80  3.000
+ 004  OXT  C    O    127.60  1.432
+ 004  HNA  N    HN   107.80  1.000
+ 004  HNA  N    CA   108.39  1.000
+ 004  HN   N    CA   110.25  1.000
+ 004  HA   CA   CB   109.00  3.000
+ 004  HA   CA   N    110.00  3.000
+ 004  CB   CA   N    110.40  2.166
+ 004  HA   CA   C    110.00  3.000
+ 004  CB   CA   C    110.50  3.000
+ 004  N    CA   C    111.00  3.000
+ 004  CG2  CB   CG1  118.13  1.000
+ 004  CG2  CB   CA   120.99  1.785
+ 004  CG1  CB   CA   120.84  1.785
+ 004  HE   CE   CD2  120.38  3.000
+ 004  CD2  CE   CD1  119.26  1.000
+ 004  HE   CE   CD1  120.37  3.000
+ 004  HD1  CD1  CG1  119.77  3.000
+ 004  CG1  CD1  CE   120.33  1.000
+ 004  HD1  CD1  CE   119.91  3.000
+ 004  HD2  CD2  CG2  119.81  3.000
+ 004  CG2  CD2  CE   120.13  1.000
+ 004  HD2  CD2  CE   120.06  3.000
+ 004  HG1  CG1  CD1  119.76  3.000
+ 004  HG1  CG1  CB   119.28  3.000
+ 004  CD1  CG1  CB   120.95  1.000
+ 004  HG2  CG2  CD2  119.47  3.000
+ 004  HG2  CG2  CB   119.32  3.000
+ 004  CD2  CG2  CB   121.21  1.000
+
+loop_
+_chem_comp_tor.comp_id
+_chem_comp_tor.id
+_chem_comp_tor.atom_id_1
+_chem_comp_tor.atom_id_2
+_chem_comp_tor.atom_id_3
+_chem_comp_tor.atom_id_4
+_chem_comp_tor.value_angle
+_chem_comp_tor.value_angle_esd
+_chem_comp_tor.period
+ 004  CONST_01  CE   CD1  CG1  CB      0.00   0.0  0
+ 004  CONST_02  CE   CD2  CG2  CB      0.00   0.0  0
+ 004  CONST_03  CG2  CD2  CE   CD1     0.00   0.0  0
+ 004  CONST_04  CG2  CB   CG1  CD1     0.00   0.0  0
+ 004  CONST_05  CG1  CD1  CE   CD2     0.00   0.0  0
+ 004  CONST_06  CG1  CB   CG2  CD2     0.00   0.0  0
+ 004  CONST_07  CD1  CG1  CB   CA    180.00   0.0  0
+ 004  CONST_08  CD2  CG2  CB   CA    180.00   0.0  0
+ 004  CONST_09  HD1  CD1  CG1  CB    180.00   0.0  0
+ 004  CONST_10  HD2  CD2  CG2  CB    180.00   0.0  0
+ 004  CONST_11  HG1  CG1  CD1  CE    180.00   0.0  0
+ 004  CONST_12  HG2  CG2  CD2  CE    180.00   0.0  0
+ 004  CONST_13  HE   CE   CD1  CG1   180.00   0.0  0
+ 004  Var_01    HA   CA   CB   CG1   164.02  30.0  3
+ 004  Var_02    HN   N    CA   CB     84.84  30.0  3
+ 004  Var_03    HNA  N    CA   CB   -157.37  30.0  3
+
+loop_
+_chem_comp_chir.comp_id
+_chem_comp_chir.id
+_chem_comp_chir.atom_id_centre
+_chem_comp_chir.atom_id_1
+_chem_comp_chir.atom_id_2
+_chem_comp_chir.atom_id_3
+_chem_comp_chir.volume_sign
+ 004  chir_01  CA  C  N  CB  negativ
+
+loop_
+_chem_comp_plane_atom.comp_id
+_chem_comp_plane_atom.plane_id
+_chem_comp_plane_atom.atom_id
+_chem_comp_plane_atom.dist_esd
+ 004  plan-1  CA   0.020
+ 004  plan-1  CB   0.020
+ 004  plan-1  CE   0.020
+ 004  plan-1  CD1  0.020
+ 004  plan-1  CD2  0.020
+ 004  plan-1  CG1  0.020
+ 004  plan-1  CG2  0.020
+ 004  plan-1  HE   0.020
+ 004  plan-1  HD1  0.020
+ 004  plan-1  HD2  0.020
+ 004  plan-1  HG1  0.020
+ 004  plan-1  HG2  0.020
+ 004  plan-2  C    0.020
+ 004  plan-2  O    0.020
+ 004  plan-2  CA   0.020
+ 004  plan-2  OXT  0.020
+"""
+
+OLD_DICTIONARIES = (('0A0', cif_0a0), ('01W', cif_01w), ('004', cif_004))
+
+def old_residue_names(pdb_str):
+  """the residue names in pdb_str that have an old dictionary here"""
+  found = set(l[17:20] for l in pdb_str.splitlines()
+    if l.startswith(('ATOM', 'HETATM')))
+  return [comp for comp, text in OLD_DICTIONARIES if comp in found]
+
+def old_dictionaries(pdb_str):
+  """restraint objects of the old dictionaries of the residues in pdb_str;
+  None if it has none of them"""
+  names = old_residue_names(pdb_str)
+  result = [(comp + '_old.cif', iotbx.cif.reader(input_string=text).model())
+    for comp, text in OLD_DICTIONARIES if comp in names]
+  return result or None
+
+def server():
+  """a monomer library server with the old dictionaries"""
+  srv = mmtbx.monomer_library.server.server()
+  for comp, text in OLD_DICTIONARIES:
+    srv.process_cif_object(cif_object=iotbx.cif.reader(
+      input_string=text).model(), file_name=comp + '_old.cif')
+  return srv
+
 _srv = []
 def interpret(pdb_str):
   """residue names with their modifications; {atom name of residue 1:
   sorted bonded atom names}; {(name, name): N-CA ideal}"""
   if not _srv:
-    _srv.append(mmtbx.monomer_library.server.server())
+    _srv.append(server())
     _srv.append(mmtbx.monomer_library.server.ener_lib())
   p = pdb_interpretation.process(mon_lib_srv=_srv[0], ener_lib=_srv[1],
     pdb_inp=iotbx.pdb.input(source_info=None, lines=pdb_str),
@@ -288,16 +899,11 @@ def test_replacement_cif():
   # a CIF for 0A0 loaded into the same server after a first interpretation
   # (N-H esd 0.03, neutron 1.08): the generated HN3 takes the new values
   # with the dictionary's HN1 and HN2, as in a fresh server
-  path = libtbx.env.find_in_repositories(
-    relative_path='chem_data/geostd/0/data_0A0.cif', test=os.path.isfile)
-  if path is None:
-    print('Skipping test_replacement_cif: chem_data not available')
-    return
-  srv = mmtbx.monomer_library.server.server()
+  srv = server()
   ener_lib = mmtbx.monomer_library.server.ener_lib()
   assert n_h_values(srv, ener_lib) == dict((h, (1.04, 0.02))
     for h in ('HN1', 'HN2', 'HN3')), n_h_values(srv, ener_lib)
-  text = open(path).read()
+  text = cif_0a0
   old = 'single  0.890  0.020  1.040'
   assert text.count(old) == 2, text.count(old)
   cif = iotbx.cif.reader(input_string=text.replace(old,
@@ -327,7 +933,7 @@ def test_n_h_values():
   # one value set for the three N-H: the dictionary's own where its N-H
   # agree (0A0), else mod_NH3's (TSY and 2KZ: 0.86 and 0.89; NPH: no
   # neutron value)
-  srv = mmtbx.monomer_library.server.server()
+  srv = server()
   own = mod_n_h(srv, '0A0')
   assert sorted(own) == ['HN1', 'HN2', 'HN3'], own
   assert set(own.values()) == set([(0.89, 0.02, 1.04)]), own

@@ -127,7 +127,8 @@ def test_sam_sah_standalone():
     assert 'N %s A 406: no peptide bond' % resname in text, text
 
 def test_01w_amq():
-  # 01W, whose dictionary is NH3 (H1N, H2N, H3N): all three; AMQ (no C=O,
+  # 01W, whose old dictionary (tml.OLD_DICTIONARIES, supplied by ff.place())
+  # is NH3 (H1N, H2N, H3N): all three; AMQ (no C=O,
   # undetermined in pdb_interpretation): H and HN2; no next residue makes 01W
   # (an amino acid) ambiguous, AMQ standalone
   for pdb_str, resname, names, why in (

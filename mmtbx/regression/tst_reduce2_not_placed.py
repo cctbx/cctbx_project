@@ -27,6 +27,7 @@ from mmtbx.hydrogens import tst_add_hydrogen_16 as t16
 from mmtbx.hydrogens import tst_add_hydrogen_17 as t17
 from mmtbx.hydrogens import tst_add_hydrogen_19 as t19
 from mmtbx.hydrogens import tst_add_hydrogen_23 as t23
+from mmtbx.regression import tst_monomer_library_terminal_nh3 as tml
 from mmtbx.regression import tst_reduce2_metal_nh as tnh
 from mmtbx.regression import tst_reduce2_metal_thiol as tth
 from mmtbx.regression import tst_reduce2_blank_parent_split as tbp
@@ -111,7 +112,8 @@ def dne(resseq='2'):
   return '\n'.join(l.replace('DNE G   2', 'DNE G %3s' % resseq)
     for l in t23.pdb_str.splitlines() if 'HT7' not in l) + '\n'
 
-# geostd ideal coordinates of 0A0 and 004 as residue 1: their dictionaries
+# geostd ideal coordinates of 0A0 and 004 as residue 1: their old dictionaries
+# (tml.OLD_DICTIONARIES, supplied by place())
 # name the H on N HN1, HN2 (0A0) and HN, HNA (004); chain-start placement adds
 # H1, H2, H3, names these dictionaries do not know
 pdb_0a0 = """\
@@ -292,6 +294,8 @@ def pdb_water_no_o():
 
 def place(pdb_str, restraint_objects=None, **kw):
   inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
+  if restraint_objects is None:
+    restraint_objects = tml.old_dictionaries(pdb_str)
   model = mmtbx.model.manager(model_input=inp,
     restraint_objects=restraint_objects, log=null_out())
   o = reduce_hydrogen.place_hydrogens(model=model, stop_for_unknowns=False,
