@@ -18,6 +18,14 @@ resources:
     source: 'Update data cache'
   - pipeline: build_cache
     source: 'Update build cache'
+  - pipeline: ci
+    source: 'CI'
+
+# the pipeline whose latest run on master has the test timings, which order
+# the tests longest first; branch runs only read them
+variables:
+  - name: timings_pipeline
+    value: $(resources.pipeline.ci.pipelineID)
 
 stages:
 - stage: Preparation

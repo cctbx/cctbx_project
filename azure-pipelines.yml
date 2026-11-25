@@ -22,6 +22,12 @@ resources:
   - pipeline: build_cache
     source: 'Update build cache'
 
+# the pipeline whose latest run on master has the test timings, which order
+# the tests longest first; runs on master save the updated timings
+variables:
+  - name: timings_pipeline
+    value: $(System.DefinitionId)
+
 stages:
 - stage: Preparation
   displayName: Download
