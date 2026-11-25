@@ -395,6 +395,188 @@ def test_pivot_no_error():
 # Entry point
 # ===========================================================
 
+# ===========================================================
+# The step's own error decides (the ERROR TEXT part of a step log)
+# ===========================================================
+
+def _step_log(log_text, error_text):
+  """A step log as the agent writes it."""
+  return (
+    "WORKING DIRECTORY: /tmp/run\n"
+    "COMMAND THAT WAS RUN: phenix.autosol data.sca\n"
+    "LOG TEXT: %s\n"
+    "ERROR TEXT: %s\n" % (log_text, error_text))
+
+
+def test_phrase_in_output_is_not_terminal():
+  """A terminal phrase in what the program printed is not the step's
+  error (AutoSol quotes a refinement message and carries on)."""
+  log = _step_log(
+    "NOTE: ERROR MESSAGE FROM REFINEMENT:\n"
+    "Polymer crosses special position element:\n"
+    "NOTE: Refinement against original data did not work..."
+    "using working refinement\n"
+    "Traceback (most recent call last):\n"
+    "  File 'sub.py', line 1\n"
+    "RuntimeError: in a nested job, recovered\n"
+    "3 waters killed\n",
+    "Sorry: Not enough heavy-atom sites found")
+  r = classify_error(log, "phenix.autosol")
+  assert_equal(r["category"], RETRYABLE,
+    "Phrases in the output must not make the failure terminal")
+  assert_in("Not enough heavy-atom sites", r["error_message"])
+
+
+def test_terminal_in_error_text():
+  """The same phrase in the step's own error is terminal."""
+  log = _step_log(
+    "Starting refinement\n",
+    "Sorry: Polymer crosses special position element:")
+  r = classify_error(log, "phenix.refine")
+  assert_equal(r["category"], TERMINAL,
+    "A terminal phrase in the step's error is TERMINAL")
+
+
+def test_traceback_ending_in_sorry_is_not_a_crash():
+  """An input error raised inside the agent's process is logged with
+  the traceback of the agent's launcher, ending in a Sorry."""
+  log = (
+    "WORKING DIRECTORY: /tmp/run\n"
+    "COMMAND THAT WAS RUN: phenix.xtriage data.mtz\n"
+    "ERROR TEXT: No reflection arrays available.\n"
+    "Traceback (most recent call last):\n"
+    "  File \"ai_agent.py\", line 6881, in _try_native_execution\n"
+    "    launcher()\n"
+    "exceptions.Sorry_No_array_of_the_required_type: "
+    "No reflection arrays available.\n")
+  r = classify_error(log, "phenix.xtriage")
+  assert_false(r["is_terminal"],
+    "A traceback that ends in a Sorry is not a crash")
+  assert_equal(r["category"], RETRYABLE,
+    "The Sorry of the traceback is the error")
+  assert_equal(r["error_message"], "No reflection arrays available.")
+  for last_line in ["Sorry: no data", "libtbx.utils.Sorry: no data",
+                    "libtbx.utils.Sorry"]:
+    r = classify_error(
+      "Traceback (most recent call last):\n"
+      "  File 'x.py', line 1\n" + last_line)
+    assert_false(r["is_terminal"], last_line)
+
+
+def test_plain_error_text_is_still_an_error():
+  """A failed step whose own error has no known word is RETRYABLE, so
+  that the failure is counted; the words in its output do not matter."""
+  log = _step_log(
+    "Refining\nR-free = 0.25\n",
+    "The program exited with code 1")
+  r = classify_error(log, "phenix.refine")
+  assert_equal(r["category"], RETRYABLE,
+    "A plain error text must still be an error")
+  assert_equal(r["error_message"], "The program exited with code 1")
+  # a text with no ERROR TEXT part and no error is still NO_ERROR
+  r = classify_error("Refining\nR-free = 0.25\n")
+  assert_equal(r["category"], NO_ERROR)
+
+
+def test_last_error_text_part_is_the_steps_own():
+  """An 'ERROR TEXT:' line inside the output (the log of a nested
+  job) is not the step's own error; the last one is."""
+  log = _step_log(
+    "nested log follows\n"
+    "ERROR TEXT: Segmentation fault in a nested job\n"
+    "recovered\n",
+    "Sorry: Not enough sites")
+  r = classify_error(log, "phenix.autosol")
+  assert_equal(r["category"], RETRYABLE)
+  assert_equal(r["error_message"], "Not enough sites")
+
+
+def test_error_part_ends_at_the_next_label():
+  """Label information written after the error is not the error."""
+  log = _step_log(
+    "Refining\n",
+    "Sorry: Model and data do not match\n"
+    "MTZ LABEL INFO: multiple data arrays found; "
+    "no reflection data found in column FOBS")
+  r = classify_error(log, "phenix.refine")
+  assert_equal(r["category"], RETRYABLE,
+    "Label information must not decide the class")
+  assert_equal(r["error_message"], "Model and data do not match")
+
+
+def test_traceback_text_does_not_decide():
+  """A traceback that ends in a Sorry is classed by that Sorry, not
+  by the source lines it shows."""
+  traceback = (
+    "Traceback (most recent call last):\n"
+    "  File \"example.py\", line 3, in run\n"
+    "    raise Sorry(\"No data\" if no_data else\n"
+    "                \"Polymer crosses special position\")\n")
+  r = classify_error(traceback + "libtbx.utils.Sorry: No data\n")
+  assert_equal(r["category"], RETRYABLE,
+    "A phrase in a traceback's source lines must not be terminal")
+  assert_equal(r["error_message"], "No data")
+  # the same phrase as the message of the Sorry is terminal
+  r = classify_error(
+    traceback + "libtbx.utils.Sorry: Polymer crosses special position\n")
+  assert_equal(r["category"], TERMINAL)
+  # a Sorry with no message is still an error
+  r = classify_error(traceback + "libtbx.utils.Sorry\n")
+  assert_equal(r["category"], RETRYABLE,
+    "A Sorry with no message must be RETRYABLE")
+
+
+def test_step_log_with_empty_error_part_is_an_error():
+  """The agent writes the label only for a failed step, so a step log
+  with nothing after it is still a failure to count."""
+  log = _step_log("All done\n", "")
+  r = classify_error(log, "phenix.refine")
+  assert_equal(r["category"], RETRYABLE,
+    "An empty error part must not be NO_ERROR")
+
+
+def test_correctable_error_found_in_output():
+  """With an error part that says nothing specific, a label or
+  parameter complaint in the program's output is still found."""
+  log = _step_log(
+    "Reading data\nmultiple data arrays found in data.mtz\n",
+    "The program exited with code 1")
+  r = classify_error(log, "phenix.polder")
+  assert_equal(r["category"], LABEL_ERROR,
+    "A label complaint in the output should give LABEL_ERROR")
+  # but a specific Sorry in the error part comes first
+  log = _step_log(
+    "Reading data\nmultiple data arrays found in data.mtz\n",
+    "Sorry: Selection is empty")
+  r = classify_error(log, "phenix.polder")
+  assert_equal(r["category"], RETRYABLE)
+  assert_equal(r["error_message"], "Selection is empty")
+
+
+def test_killed_as_a_whole_word():
+  """'killed' inside another word or name is not a kill."""
+  for text in ["12 unskilled guesses", "killed_atoms=3"]:
+    r = classify_error(text)
+    assert_false(r["is_terminal"], text)
+  for text in ["Killed", "Killed: 9", "received SIGKILL"]:
+    r = classify_error(text)
+    assert_equal(r["category"], TERMINAL, text)
+
+
+def test_sorry_as_an_error_line():
+  """A parameter name or the ordinary word is not a Sorry error."""
+  for text in ["    raise_sorry = False\n    background = True",
+               "we are sorry to say this took a while"]:
+    r = classify_error(text)
+    assert_equal(r["category"], NO_ERROR, text)
+  # only as Phenix prints it
+  r = classify_error("SORRY: no data")
+  assert_equal(r["category"], NO_ERROR)
+  r = classify_error("Done\n  Sorry: no data found in file\n")
+  assert_equal(r["category"], RETRYABLE)
+  assert_equal(r["error_message"], "no data found in file")
+
+
 def run_all_tests():
   run_tests_with_fail_fast()
 
