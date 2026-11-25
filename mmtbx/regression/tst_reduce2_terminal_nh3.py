@@ -775,6 +775,24 @@ def test_supplied_nh3_in_one_conformer():
   else:
     raise AssertionError('no stop')
 
+def test_restraint_file_not_kept():
+  # the same input, supplied D not kept: they are not interpreted; remove
+  # removes them and nothing else, add rebuilds the terminus. run() gives
+  # the 0A0 dictionary as a restraint file
+  pdb_str, _ = supplied_layout(('', 'A', 'B'), 'D')
+  assert tml.old_residue_names(pdb_str) == ['0A0']
+  h, _, _ = run('0A0_layout_D_nh3_one_conformer_remove', pdb_str,
+    'approach=remove')
+  supplied = iotbx.pdb.input(source_info=None,
+    lines=pdb_str).construct_hierarchy()
+  assert sorted(a.id_str() for a in h.atoms()) == sorted(a.id_str()
+    for a in supplied.atoms() if not is_hd(a)), [a.id_str()
+    for a in h.atoms()]
+  h, _, out = run('0A0_layout_D_nh3_one_conformer_rebuilt', pdb_str,
+    'approach=add', 'keep_existing_H=False')
+  assert h_on_n(h) == ['HN1', 'HN2', 'HN3'], h_on_n(h)
+  check_reread('0A0_layout_D_nh3_one_conformer_rebuilt', out, '0A0')
+
 def test_other_stop_unchanged():
   # the same layout with a duplicated GLY CA (the reviewer's case): the
   # duplicate-atom stop comes first and is passed on unchanged
@@ -851,6 +869,7 @@ if __name__ == '__main__':
   test_mixed_imine()
   test_blank_n_ca_supplied_split()
   test_supplied_nh3_in_one_conformer()
+  test_restraint_file_not_kept()
   test_other_stop_unchanged()
   test_old_reduce_input()
   print('OK')

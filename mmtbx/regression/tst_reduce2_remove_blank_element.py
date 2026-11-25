@@ -13,6 +13,7 @@ from six.moves import cStringIO as StringIO
 from iotbx.cli_parser import CCTBXParser
 from mmtbx.programs import reduce2
 from mmtbx.regression import tst_monomer_library_terminal_nh3 as tml
+from mmtbx.regression import tst_reduce2_terminal_nh3 as tnh3
 
 CRYST1 = 'CRYST1   90.000   90.000   90.000  90.00  90.00  90.00 P 1\n'
 MERCURY = ('HETATM  999 HG    HG C   1      40.000  40.000  40.000  1.00 '
@@ -324,6 +325,27 @@ def test_not_loaded():
     else:
       raise AssertionError('no stop')
 
+def test_interpretation_stops():
+  """the interpretation for a blank element stops: 0A0 (its restraint file)
+  with terminal NH3 names in conformer B only, on a shared N, and the
+  element of the GLY CA blank. The Sorry gives the number of blank element
+  columns and the interpretation's message with its atom record"""
+  pdb_str, xyz = tnh3.supplied_layout(('', 'A', 'B'), 'D')
+  lines = pdb_str.splitlines()
+  ca = [i for i, l in enumerate(lines)
+    if l[12:16] == ' CA ' and l[17:20] == 'GLY']
+  assert len(ca) == 1, ca
+  lines[ca[0]] = lines[ca[0]][:76] + '  '
+  try:
+    run('split_n_blank_ca', '\n'.join(lines) + '\n', tml.cif_0a0)
+  except Sorry as e:
+    assert str(e).startswith('1 atom(s) of the input have a blank element '
+      'column.'), str(e)
+    assert 'Conflicting nonbonded energy type symbols:' in str(e), str(e)
+    assert '"HETATM    1  N   0A0 A   1 .*.     N  "' in str(e), str(e)
+  else:
+    raise AssertionError('no stop')
+
 if __name__ == '__main__':
   test_blank_element_removed()
   test_heavy_atom_by_restraint_file()
@@ -331,4 +353,5 @@ if __name__ == '__main__':
   test_callers_model()
   test_model_id()
   test_not_loaded()
+  test_interpretation_stops()
   print('OK')

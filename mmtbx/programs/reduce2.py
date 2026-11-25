@@ -3536,23 +3536,6 @@ NOTES:
 
     self._input_renames = []
     self._placement_renames = []
-    if self.data_manager.has_restraints():
-      self.model.set_stop_for_unknowns(self.params.stop_on_any_missing_hydrogen)
-      # default interpretation parameters without the IUPAC flip (B23): a
-      # restraint file must not decide the names. optimize and remove keep the
-      # input names; add and place rename once, in placement.
-      no_flip = mmtbx.model.manager.get_default_pdb_interpretation_params()
-      no_flip.pdb_interpretation.flip_symmetric_amino_acids = False
-      sites_before = reduce_hydrogen.atom_group_sites(self.model.get_hierarchy())
-      self.model.process(make_restraints=False,
-        pdb_interpretation_params=no_flip)
-      self._input_renames = reduce_hydrogen.symmetric_renames(sites_before,
-        self.model.get_hierarchy())
-      if self.params.model_id is not None:
-        selected = _SelectModelNumber(self.model.get_hierarchy(),
-          self.params.model_id).id.strip()
-        self._input_renames = [r for r in self._input_renames
-          if r.model == selected]
 
     # If we've been asked to only to a single model from the file, strip the model down to
     # only that one (checked in validate()); it keeps its MODEL number.
@@ -3592,11 +3575,11 @@ NOTES:
       # sites. A model read from a file has none of these.
       self.model._mon_lib_srv = None
       self.model.unset_riding_h_manager()
-      # Rebuilt unless it is already the hierarchy's own: process() (restraint
-      # file) replaces it with its interpretation's, the shift back changes it.
-      # Boxing and qmready's hierarchy changes rebuild it from the hierarchy.
+      # Rebuilt unless it is already the hierarchy's own: the shift back
+      # changes it. Boxing and qmready's hierarchy changes rebuild it from the
+      # hierarchy.
       self.model.get_xray_structure(force=not (xrs_from_hierarchy and
-        self._input_shift is None and not self.data_manager.has_restraints()))
+        self._input_shift is None))
       self.model.set_refinement_flags(None)
       self._unrestrained = self._PrepareRestraints()
 
