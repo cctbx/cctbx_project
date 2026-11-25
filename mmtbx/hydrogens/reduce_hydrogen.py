@@ -1240,7 +1240,8 @@ def get_output_crystal_symmetry(model):
   return crystal.symmetry((1, 1, 1, 90, 90, 90), 'P 1')
 
 # ==============================================================================
-# H on atoms bound to metals: thiols (A4), backbone amide N and T/U N3 (A5)
+# H on atoms bound to metals: thiols and selenols (A4), backbone amide N and
+# T/U N3 (A5)
 
 # The metals, and As and Sb, which bind Cys thiolate as As(III) and Sb(III).
 # Membership makes an atom a coordination candidate only.
@@ -1256,11 +1257,14 @@ METAL_SITE_IMAGE_DISTANCE = 2.0
 
 # X-metal window around the sum of the cctbx covalent radii (provisional: it
 # covers every S- and N-metal contact of the A4 B0 and A5 models; Ni, Co,
-# Cd, Hg untested for S)
+# Cd, Hg untested for S). Se: Se-Mo 2.19-2.99, Se-W 2.27-3.07 A; Sec in
+# formate dehydrogenases 2.41-2.59 A
 THIOL_METAL_WINDOW = (-0.55, 0.25)
 
 THIOL_H_SUPPLIED_NOTE = ('kept as supplied; thiols bound to metals are usually '
   'deprotonated')
+SELENOL_H_SUPPLIED_NOTE = ('kept as supplied; selenols bound to metals are '
+  'usually deprotonated')
 
 METAL_NH_SUPPLIED_NOTE = ('kept as supplied; backbone amide N and '
   'thymine/uracil N3 bound to metals are usually deprotonated')
@@ -1583,17 +1587,35 @@ class thiol_metal_sites(metal_h_sites):
   '''
   covered = 'thiolate'
   state = 'thiol'
+  element = 'S'
 
   def _candidates(self, atoms, elements, heavy, h_on):
     candidates = []
     for i_s, hs in h_on.items():
-      if elements[i_s] != 'S': continue
+      if elements[i_s] != self.element: continue
       for i_h in hs:
         nb = set((atoms[j].parent().parent().memory_id(), atoms[j].name)
                  for j in heavy.get(i_s, [])
                  if _compatible(atoms[j], atoms[i_h]))
         if len(nb) == 1: candidates.append((i_s, i_h, True))
     return candidates
+
+class selenol_metal_sites(thiol_metal_sites):
+  '''
+  Selenols bound to metals: as thiol_metal_sites, for an Se that carries an
+  H in the bond restraints (Sec SE, not MSE's). Covered: selenolate.
+  '''
+  covered = 'selenolate'
+  state = 'selenol'
+  element = 'SE'
+
+def has_selenium(hierarchy):
+  '''
+  Whether the model has an Se: without one, selenol_metal_sites() finds
+  nothing. Not narrower: placement checks before riding H gives new H their
+  coordinates.
+  '''
+  return any(_atom_element(a) == 'SE' for a in hierarchy.atoms())
 
 def residue_is_amino_acid(resname, mon_lib_srv):
   '''
@@ -2142,6 +2164,17 @@ def metal_thiol_text(not_placed=(), unresolved=(), supplied=(), hint=None):
     supplied = 'Supplied thiol H at metal sites: %s' % THIOL_H_SUPPLIED_NOTE),
     not_placed, unresolved, supplied, hint)
 
+def metal_selenol_text(not_placed=(), unresolved=(), supplied=(), hint=None):
+  '''
+  metal_thiol_text() for selenols bound to metals (selenol_metal_sites).
+  '''
+  return _metal_h_text(group_args(
+    not_placed = METAL_SELENOL_NOT_PLACED,
+    unresolved = 'Selenol H placed at metal sites with unresolved protonation',
+    supplied = 'Supplied selenol H at metal sites: %s' %
+      SELENOL_H_SUPPLIED_NOTE),
+    not_placed, unresolved, supplied, hint)
+
 def metal_nh_text(not_placed=(), unresolved=(), supplied=(), reported=(),
                   hint=None):
   '''
@@ -2213,6 +2246,8 @@ def metal_amine_text(converted=(), unresolved=(), supplied=(),
 # The section titles of the texts that list some causes with their contacts
 METAL_THIOL_NOT_PLACED = ('Thiol H not placed: the S is bound to a metal, '
   'taken as thiolate')
+METAL_SELENOL_NOT_PLACED = ('Selenol H not placed: the Se is bound to a '
+  'metal, taken as selenolate')
 METAL_NH_NOT_PLACED = ('N-H not placed: backbone amide N or thymine/uracil '
   'N3 bound to a metal, taken as deprotonated')
 # a neutral NH2 (orient_metal_bound_neutral_nh2()) with a metal of
@@ -2286,6 +2321,9 @@ NOT_PLACED_CAUSES = [group_args(key=k, short=s, title=t, hint=h, listed_in=l,
   ('metal_thiolate', 'metal thiolate',
    'Thiol S bound to a metal, taken as thiolate', None,
    METAL_THIOL_NOT_PLACED),
+  ('metal_selenolate', 'metal selenolate',
+   'Selenol Se bound to a metal, taken as selenolate', None,
+   METAL_SELENOL_NOT_PLACED),
   ('metal_nh', 'metal-bound N',
    'Backbone amide N or thymine/uracil N3 bound to a metal, taken as '
    'deprotonated', None, METAL_NH_NOT_PLACED),
@@ -3459,6 +3497,10 @@ class place_hydrogens():
     self.site_labels_thiolate   = list()
     self.thiol_h_unresolved     = list()
     self.thiol_h_supplied_kept  = list()
+    # the same for selenols (selenol_metal_sites)
+    self.site_labels_selenolate  = list()
+    self.selenol_h_unresolved    = list()
+    self.selenol_h_supplied_kept = list()
     # the same for backbone amide N and T/U N3 bound to metals
     # (metal_nh_sites), and the other N-H next to a metal, kept
     self.site_labels_metal_nh   = list()
@@ -3469,7 +3511,7 @@ class place_hydrogens():
     # filled in _finish_metal_lists() from the H that are left
     self._metal_nh_reported_src = list()
     # (target list, H key, entry) of the unresolved sites and supplied H of
-    # the four lists above, filled in there as well: the link rule may remove
+    # the lists above, filled in there as well: the link rule may remove
     # an H that the metal rules keep
     self._metal_h_listed_src = list()
     # metal_bound_amines_as_nh2: sites placed as NH2 (group_args, see
@@ -4697,8 +4739,8 @@ class place_hydrogens():
 
   def exclude_H_on_metal_thiolates(self):
     '''
-    A thiol bound to a metal is taken as a thiolate (A4): an H that reduce2
-    built on it is removed when thiol_metal_sites() finds the site covered
+    A thiol bound to a metal is taken as a thiolate (A4), and a selenol as a
+    selenolate, listed apart: an H that reduce2 built on it is removed when thiol_metal_sites() finds the site covered
     (thiolate), and kept and reported when it is not (unresolved). Supplied
     H (keep_existing_H) are kept, with a note. Geometric contacts and
     metal-coordination proxies decide alike; exclude_H_on_links() leaves
@@ -4707,6 +4749,10 @@ class place_hydrogens():
     self._exclude_H_at_metal_sites(thiol_metal_sites, METAL_ELEMENTS,
       self.site_labels_thiolate, self.thiol_h_unresolved,
       self.thiol_h_supplied_kept, cause='metal_thiolate')
+    if has_selenium(self.model.get_hierarchy()):
+      self._exclude_H_at_metal_sites(selenol_metal_sites, METAL_ELEMENTS,
+        self.site_labels_selenolate, self.selenol_h_unresolved,
+        self.selenol_h_supplied_kept, cause='metal_selenolate')
 
   def exclude_H_on_metal_bound_N(self):
     '''
@@ -6614,7 +6660,7 @@ class place_hydrogens():
     exclusion_iseqs = list()
     exclusion_dict = dict()
     link_partners = dict()
-    # Metal coordination is decided elsewhere (A4): thiols by
+    # Metal coordination is decided elsewhere (A4): thiols and selenols by
     # exclude_H_on_metal_thiolates(), other H on metal-bound atoms stay. It
     # neither marks a link nor counts as a bond here.
     metal = origin_ids['metal coordination']
@@ -7032,12 +7078,17 @@ class place_hydrogens():
 
   def metal_thiol_text(self):
     '''
-    The report of thiols bound to metals (show(), reduce2's description);
-    '' if there is none. supplied_h_hint, if set, says how to drop the
-    supplied H.
+    The report of thiols, then selenols, bound to metals (show(), reduce2's
+    description); '' if there is none. supplied_h_hint, if set, says how to
+    drop the supplied H.
     '''
-    return metal_thiol_text(self.site_labels_thiolate, self.thiol_h_unresolved,
-      self.thiol_h_supplied_kept, self.supplied_h_hint)
+    texts = (metal_thiol_text(self.site_labels_thiolate,
+        self.thiol_h_unresolved, self.thiol_h_supplied_kept,
+        self.supplied_h_hint),
+      metal_selenol_text(self.site_labels_selenolate,
+        self.selenol_h_unresolved, self.selenol_h_supplied_kept,
+        self.supplied_h_hint))
+    return '\n\n'.join(t for t in texts if t)
 
 # ------------------------------------------------------------------------------
 

@@ -37,7 +37,7 @@ import copy
 from iotbx.data_manager import DataManager
 import csv
 
-version = "3.25.2"
+version = "3.25.3"
 
 master_phil_str = '''
 approach = *add remove optimize place
@@ -2343,17 +2343,23 @@ NOTES:
 # ------------------------------------------------------------------------------
 
   def _SuppliedMetalHText(self):
-    # approach=optimize keeps every input H: the H on thiols and N bound to
-    # metals, and the other N-H next to a metal, as placement lists them
-    # (nothing is deleted here).
+    # approach=optimize keeps every input H: the H on thiols, selenols and N
+    # bound to metals, and the other N-H next to a metal, as placement lists
+    # them (nothing is deleted here).
     # :return: The description-file text ('' if none); also in the log.
     cs = reduce_hydrogen.contact_symmetry(self._output_cs)
     thiols = reduce_hydrogen.thiol_metal_sites(self.model, cs)
+    selenols = []
+    if reduce_hydrogen.has_selenium(self.model.get_hierarchy()):
+      selenols = reduce_hydrogen.supplied_metal_h(
+        reduce_hydrogen.selenol_metal_sites(self.model, cs), lambda a: True)
     nh = reduce_hydrogen.metal_nh_sites(self.model, cs)
     result = ''
     for text in (
         reduce_hydrogen.metal_thiol_text(
           supplied = reduce_hydrogen.supplied_metal_h(thiols, lambda a: True),
+          hint = self._RebuildHint()),
+        reduce_hydrogen.metal_selenol_text(supplied = selenols,
           hint = self._RebuildHint()),
         reduce_hydrogen.metal_nh_text(
           supplied = reduce_hydrogen.supplied_metal_h(nh, lambda a: True),

@@ -10,6 +10,8 @@ Models: 1BRF (Fe(Cys)4, no proxy), excerpts of 1IU5 (neutron Fe(Cys)4),
 1R27 (MGD dithiolene on Mo), 7PRG (fucose OH on Ca), 3CP5 (heme His), 5DKA
 (Zn(Cys)4, mcl proxies), the Zn-Cys model of tst_add_hydrogen_1 and cases
 built from it, and qrefine's Cu capping model (Cu 0.40 on SG 1.00).
+A selenol bound to a metal is a selenolate by the same rule: 1AA6 Sec A 140
+on Mo (Se-Mo 2.54 A).
 """
 from __future__ import absolute_import, division, print_function
 import os, itertools
@@ -28,6 +30,11 @@ SUPPLIED = ('Supplied thiol H at metal sites: kept as supplied; thiols bound '
   'to metals are usually deprotonated')
 PROXY = '; metal-coordination proxy'
 NO_PROXY = '; no metal-coordination proxy'
+SE_NOT_PLACED = ('Selenol H not placed: the Se is bound to a metal, taken as '
+  'selenolate')
+SE_UNRESOLVED = 'Selenol H placed at metal sites with unresolved protonation'
+SE_SUPPLIED = ('Supplied selenol H at metal sites: kept as supplied; selenols '
+  'bound to metals are usually deprotonated')
 
 m_zn_fixture = """\
 CRYST1  108.910  108.910  108.910  90.00  90.00  90.00 I 4 3 2
@@ -823,6 +830,24 @@ TER
 HETATM   25 ZN    ZN A 301      16.905  -9.935 -11.633  1.00 19.20          ZN
 """
 
+# 1AA6: Sec A 140 and the Mo of its active site (Se-Mo 2.54 A, no proxy)
+m_1aa6_sec = """\
+CRYST1  146.400  146.400   82.700  90.00  90.00  90.00 P 41 21 2
+ATOM   1086  N   SEC A 140      85.657  38.047  28.232  1.00 47.65           N
+ATOM   1087  CA  SEC A 140      84.611  37.715  29.202  1.00 47.80           C
+ATOM   1088  CB  SEC A 140      84.753  36.266  29.631  1.00 47.70           C
+ATOM   1089 SE   SEC A 140      83.466  35.104  29.018  1.00 20.00          SE
+ATOM   1090  C   SEC A 140      85.021  38.548  30.381  1.00 48.78           C
+ATOM   1091  O   SEC A 140      84.297  38.661  31.368  1.00 49.47           O
+TER
+HETATM 5564 MO   4MO A 803      81.460  36.208  27.915  1.00 28.69          MO
+"""
+
+# the same with the Mo moved along Se-Mo to 3.20 A, outside the Se-Mo window
+# (2.19-2.99 A)
+m_1aa6_sec_far = m_1aa6_sec.replace(
+  '81.460  36.208  27.915', '80.941  36.494  27.629')
+
 def run(model_text, prefix, extra_args=()):
   fn_in = prefix + ".pdb"
   fn_out = prefix + "_out.pdb"
@@ -1213,6 +1238,52 @@ def test_5dka_place():
   for r in ('37', '40', '57', '60'): assert not has(out, 'HG', r), r
   assert len(section(desc, NOT_PLACED)) == 4, desc
 
+def test_1aa6_selenolate():
+  '''1AA6 Sec A 140 on Mo (2.54 A, no proxy): no HE, with add and place;
+  the selenol section names the site, the thiol section is not used'''
+  for approach in ('add', 'place'):
+    out, desc = run(m_1aa6_sec, 'tst_reduce2_metal_thiol_1aa6_' + approach,
+      ['approach=' + approach])
+    assert not has(out, 'HE', '140'), (approach, out)
+    assert section(desc, SE_NOT_PLACED) == ['  HE  SEC A 140  (SE   SEC A 140 '
+      '- MO   4MO A 803 2.54 A (geometric))'], (approach, desc)
+    assert NOT_PLACED not in desc and SE_UNRESOLVED not in desc, desc
+    lines = desc.split('\n')
+    assert ('Selenol Se bound to a metal, taken as selenolate: 1 H, 1 '
+      'residue') in lines, desc
+    assert "  Listed in full under '%s'." % SE_NOT_PLACED in lines, desc
+
+def test_1aa6_selenol_far():
+  '''the Mo at 3.20 A, outside the window: HE placed, no report (passes on
+  HEAD too)'''
+  out, desc = run(m_1aa6_sec_far, 'tst_reduce2_metal_thiol_1aa6_far',
+    ['approach=add'])
+  assert has(out, 'HE', '140'), out
+  assert 'Selenol' not in desc and NOT_PLACED not in desc, desc
+
+def test_1aa6_supplied_he():
+  '''a supplied HE on the Mo-bound Se is kept and listed, with add
+  keep_existing_H=True and with optimize, as a supplied HG is'''
+  mo = [l for l in m_1aa6_sec.split('\n') if l[17:20] == '4MO']
+  out, desc = run('\n'.join(l for l in m_1aa6_sec.split('\n') if l not in mo),
+    'tst_reduce2_metal_thiol_1aa6_nomo', ['approach=place'])
+  assert has(out, 'HE', '140'), out
+  supplied = '\n'.join([l for l in out.split('\n') if not l.startswith('END')]
+    + mo)
+  for args, hint in ((['approach=add', 'keep_existing_H=True'],
+                      'keep_existing_H=False'),
+                     (['approach=optimize'],
+                      'approach=add keep_existing_H=False')):
+    out, desc = run(supplied, 'tst_reduce2_metal_thiol_1aa6_supplied_' +
+      args[0][len('approach='):], args)
+    assert has(out, 'HE', '140'), (args, out)
+    listed = section(desc, SE_SUPPLIED)
+    assert len(listed) == 1 and listed[0].startswith('  HE  SEC A 140  (SE   '
+      'SEC A 140 - MO   4MO A 803 2.54 A (geometric))') and \
+      listed[0].endswith(NO_PROXY), (args, listed)
+    assert drop_hint(desc) == hint, (args, desc)
+    assert SE_NOT_PLACED not in desc and SUPPLIED not in desc, (args, desc)
+
 if __name__ == "__main__":
   test_1brf()
   test_1iu5()
@@ -1234,4 +1305,7 @@ if __name__ == "__main__":
   test_ser_og_coordination_proxy()
   test_3cp5_heme_his()
   test_5dka_place()
+  test_1aa6_selenolate()
+  test_1aa6_selenol_far()
+  test_1aa6_supplied_he()
   print("OK")
