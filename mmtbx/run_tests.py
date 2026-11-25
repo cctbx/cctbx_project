@@ -520,6 +520,7 @@ molprobity_tests = [
   "$D/regression/tst_reduce2_no_symmetry.py",
   "$D/regression/tst_reduce2_qmready_charge.py",
   "$D/regression/tst_reduce2_qmready_clash.py",
+  "$D/regression/tst_reduce2_qmready_keep_h.py",
   "$D/regression/tst_reduce2_qmready_regularize.py",
   "$D/regression/tst_reduce2_symmetry_optimizer.py",
   "$D/regression/tst_reduce2_capping.py",

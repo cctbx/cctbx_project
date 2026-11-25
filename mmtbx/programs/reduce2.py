@@ -44,10 +44,10 @@ approach = *add remove optimize place
   .type = choice
   .short_caption = Add (and optimize), remove, optimize, or place Hydrogens
   .help = Determines whether Reduce will add (and optimize), remove, or optimize Hydrogens from the model, or place them without optimizing (place). Note: with optimize, a His gets a His Mover only if it has both HD1 and HE2. A His with one ring H keeps its H as in the input: no protonation choice, no flip score in the Suggested flips and, with add_flip_movers=True, no flip. remove removes all H and D atoms and renames DOD waters to HOH.
-keep_existing_H = False
+keep_existing_H = Auto
   .type = bool
-  .short_caption = Do not remove Hydrogens in the original model
-  .help = Keep existing H and D atoms in the model. Kept D need a neutron_option other than none.
+  .short_caption = Do not remove Hydrogens in the original model (Auto: with qmready=True)
+  .help = Keep existing H and D atoms in the model. Auto: True with qmready=True, False otherwise. With qmready=True, keep_existing_H=False discards the input H and D: the result is the same as for the input without them. Kept D need a neutron_option other than none.
 n_terminal_charge = *residue_one first_in_chain all_chain_starts no_charge
   .type = choice(multi=False)
   .short_caption = N terminal charge approach
@@ -85,7 +85,7 @@ water_hydrogens
             adds the missing H of a water with one H, keep leaves them as \
             they are. complete and keep need the input H kept \
             (approach=optimize, keep_existing_H=True, or qmready=True with \
-            approach=add).
+            approach=add, which keeps them unless keep_existing_H=False).
   symmetry = True
     .type = bool
     .short_caption = Symmetry mates in the water environment
@@ -1262,7 +1262,9 @@ NOTES:
   acid keep both H. At a chain start, n_terminal_charge decides the H on N, and the H on
   OXT is never added.
 
-  qmready=True prepares a model for QM: H on water (as add_h_to_water=True), longer XH
+  qmready=True prepares a model for QM: the input H kept (keep_existing_H=Auto, the
+  default, is True with qmready=True; keep_existing_H=False discards them, which gives
+  the same model as the input without H), H on water (as add_h_to_water=True), longer XH
   distances, OXT and NH3+ at chain ends and breaks, HO3' and HO5' at nucleic-acid chain
   ends and breaks, OP3 on a 5' phosphate that lacks it (a P with three O cannot be
   capped with H), altloc labels for unlabelled partial-occupancy alternates around waters
@@ -1424,7 +1426,7 @@ NOTES:
         n_terminal_charge     = "all_chain_starts",
         exclude_water         = True,
         stop_for_unknowns     = self.params.stop_on_any_missing_hydrogen,
-        keep_existing_H       = True,
+        keep_existing_H       = self.params.keep_existing_H,
         mon_lib_srv           = self.model.get_mon_lib_srv(),
         na_terminal_h         = True,
         metal_bound_amines_as_nh2 = self.params.metal_bound_amines_as_nh2,
@@ -1677,7 +1679,7 @@ NOTES:
     model = self.data_manager.get_model()
     hierarchy = model.get_hierarchy()
     n_models = len(hierarchy.models())
-    keep_input_h = p.keep_existing_H or p.qmready
+    keep_input_h = p.keep_existing_H
     owner = {}
     for k, e in enumerate(entries):
       try:
@@ -1723,7 +1725,8 @@ NOTES:
               '(the supplied H are kept: %s). Remove %s or change the state.'
               % (name(k, e), label, ', '.join(wrong),
               's' if len(wrong) == 1 else '', e.state,
-              'qmready=True' if p.qmready else 'keep_existing_H=True',
+              'keep_existing_H=True%s' % (
+                ', the default with qmready=True' if p.qmready else ''),
               'it' if len(wrong) == 1 else 'them'))
         altlocs = sorted(set(ag.altloc for ag in ags) - {''})
         result.states[key] = e.state
@@ -1767,7 +1770,7 @@ NOTES:
     # :return: The description-file text ('' without entries).
     pr = self._protonation
     if not pr.residues: return ''
-    keep_input_h = self.params.keep_existing_H or self.params.qmready
+    keep_input_h = self.params.keep_existing_H
     ags = {}
     for rg in self.model.get_hierarchy().residue_groups():
       key = reduce_hydrogen.protonation_key(rg)
@@ -2203,7 +2206,7 @@ NOTES:
     # :return: The description-file text ('' if none).
     if not self._unrestrained.labels: return ''
     if self.params.approach != 'optimize' and \
-       not (self.params.keep_existing_H or self.params.qmready):
+       not self.params.keep_existing_H:
       return ''
     text = ('\nResidues without restraints, left unchanged:\n' +
       '\n'.join(self._unrestrained.labels) + '\n')
@@ -2364,11 +2367,9 @@ NOTES:
 # ------------------------------------------------------------------------------
 
   def _RebuildHint(self):
-    # The parameters that discard the input H/D for this run: qmready and
-    # optimize always keep them (add also optimizes), add/place keep them
-    # only on request.
-    if self.params.qmready:
-      return 'remove the H/D first (approach=remove), then run qmready=True'
+    # The parameters that discard the input H/D for this run: optimize
+    # always keeps them (add also optimizes), add/place keep them only on
+    # request (keep_existing_H, by default with qmready).
     if self.params.approach == 'optimize':
       return 'approach=add keep_existing_H=False'
     return 'keep_existing_H=False'
@@ -3228,6 +3229,11 @@ NOTES:
 
   def validate(self):
     p = self.params
+    # keep_existing_H: Auto follows qmready (a model prepared for QM keeps the
+    # protonation it came with); an explicit False discards the input H/D
+    # also with qmready. Resolved here, so the run gets a bool
+    if p.keep_existing_H in (None, Auto):
+      p.keep_existing_H = bool(p.qmready)
     # phil turns an explicit neutron_option=none into None
     if p.neutron_option is None:
       p.neutron_option = 'none'
@@ -3259,9 +3265,9 @@ NOTES:
       raise Sorry('water_hydrogens requires add_h_to_water=True, or '
         'qmready=True with approach=add: %s' % ', '.join(changed))
     if (w.existing_h != 'reorient' and p.approach in ('add', 'place') and
-        not (p.keep_existing_H or p.qmready)):
+        not p.keep_existing_H):
       keep = 'keep_existing_H=True'
-      if p.approach == 'add':
+      if p.approach == 'add' and not p.qmready:
         keep += ' or qmready=True'
       raise Sorry('water_hydrogens.existing_h=%s needs the input H kept: %s.'
         % (w.existing_h, keep))
@@ -3594,12 +3600,12 @@ NOTES:
       self.model.set_refinement_flags(None)
       self._unrestrained = self._PrepareRestraints()
 
-    # Input with D that the run keeps (never for remove; qmready forces
-    # keep_existing_H=True in _AddHydrogens()): checked and normalized to H;
+    # Input with D that the run keeps (never for remove; keep_existing_H is
+    # True by default with qmready): checked and normalized to H;
     # the H-only model is the snapshot for the flipkins
     snapshot = None
     if self.params.approach != 'remove' and \
-       (self.params.keep_existing_H or self.params.qmready or
+       (self.params.keep_existing_H or
         self.params.approach == 'optimize') and \
        any(e.strip().upper() == 'D'
            for e in self.model.get_hierarchy().atoms().extract_element()):

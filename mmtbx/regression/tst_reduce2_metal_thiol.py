@@ -947,8 +947,7 @@ def test_zn_supplied():
   out, desc = run(m_zn_fixture_H_charge, 'tst_reduce2_metal_thiol_zn_qm',
     ['qmready=True'])
   assert len(section(desc, SUPPLIED)) == 1, desc
-  assert drop_hint(desc) == ('remove the H/D first (approach=remove), then '
-    'run qmready=True'), desc
+  assert drop_hint(desc) == 'keep_existing_H=False', desc
   # built H at the same site: not placed (as on HEAD)
   out, desc = run(m_zn_fixture, 'tst_reduce2_metal_thiol_zn', ['approach=add'])
   assert not has(out, 'HG', '48')
