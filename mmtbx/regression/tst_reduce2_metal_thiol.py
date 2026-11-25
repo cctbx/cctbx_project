@@ -971,6 +971,25 @@ def test_as():
   assert not has(out, 'HG', '48'), out
   assert len(section(desc, NOT_PLACED)) == 1, desc
 
+def test_linked_as():
+  '''As (ARS) 2.15 A from SG, linked to it by automatic linking (Misc. bond):
+  the link rule removes the HG that the thiol rule keeps, so it is listed
+  neither as placed (As at occupancy 0.40) nor as a supplied HG kept'''
+  zn = ("HETATM   12 ZN    ZN A 102     -44.322 -17.446   8.351  1.00 98.67"
+    "          Zn")
+  for base, occ, args, title in (
+      (m_zn_fixture, "0.40", [], UNRESOLVED),
+      (m_zn_fixture_H, "1.00", ["keep_existing_H=True"], SUPPLIED)):
+    assert zn in base
+    model = base.replace(zn,
+      "HETATM   12 AS   ARS A 102     -44.260 -17.219   8.304  " + occ +
+      " 98.67          As")
+    out, desc = run(model, 'tst_reduce2_metal_thiol_linked_as',
+      ['approach=add'] + args)
+    assert not has(out, 'HG', '48'), out
+    assert 'CYS A 48: HG on SG (Misc. bond)' in desc, desc
+    assert len(section(desc, title)) == 0, desc
+
 def test_occupancy_and_altlocs():
   '''constructed from the Zn-Cys model; per case the expected HG sites and
   report. On HEAD the HG sites of c2, c2b, c3 and c4b are the same (mcl
@@ -1201,6 +1220,7 @@ if __name__ == "__main__":
   test_zn_supplied()
   test_free_cys()
   test_as()
+  test_linked_as()
   test_occupancy_and_altlocs()
   test_cu_capping()
   test_cell_boundary()
