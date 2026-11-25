@@ -25,6 +25,7 @@ import math
 import itertools
 from cctbx import crystal
 from cctbx import sgtbx
+from cctbx.eltbx import chemical_elements
 from cctbx.eltbx import covalent_radii
 
 ext = bp.import_ext("cctbx_geometry_restraints_ext")
@@ -1241,23 +1242,14 @@ def get_output_crystal_symmetry(model):
 # ==============================================================================
 # H on atoms bound to metals: thiols (A4), backbone amide N and T/U N3 (A5)
 
-# alkali, alkaline earth, transition metals (Zn, Cd, Hg named), lanthanides,
-# actinides, Al Ga In Sn Tl Pb Bi; not B Si Ge As Sb Te. Membership makes an
-# atom a coordination candidate only. Left out: Rf-Cn and Fm-Lr, which never
-# occur in models, and Sg/No would match atom names when the element is
-# guessed from the name.
-METAL_ELEMENTS = frozenset((
-  'LI NA K RB CS FR BE MG CA SR BA RA '
-  'SC TI V CR MN FE CO NI CU ZN Y ZR NB MO TC RU RH PD AG CD '
-  'HF TA W RE OS IR PT AU HG '
-  'LA CE PR ND PM SM EU GD TB DY HO ER TM YB LU '
-  'AC TH PA U NP PU AM CM BK CF ES '
-  'AL GA IN SN TL PB BI').split())
+# The metals, and As and Sb, which bind Cys thiolate as As(III) and Sb(III).
+# Membership makes an atom a coordination candidate only.
+METAL_ELEMENTS = chemical_elements.metals_upper_set() | frozenset(('AS', 'SB'))
 
 # N-H next to these: alkali and alkaline-earth contacts are mostly ionic, with
-# no evidence for deprotonation (A5)
+# no evidence for deprotonation (A5); As and Sb do not count for N-H
 NH_METAL_ELEMENTS = METAL_ELEMENTS - frozenset(
-  'LI NA K RB CS FR BE MG CA SR BA RA'.split())
+  'LI NA K RB CS FR BE MG CA SR BA RA AS SB'.split())
 
 # images of one metal atom closer than this are one metal site
 METAL_SITE_IMAGE_DISTANCE = 2.0
