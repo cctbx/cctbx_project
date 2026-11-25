@@ -2060,16 +2060,16 @@ def supplied_metal_h(sites, is_supplied):
   on judged sites with a counted metal; connectivity: whether the parent
   has a metal-coordination proxy.
   '''
-  result = []
-  for site in sites.h_sites:
-    if site.verdict == 'not counted': continue
-    h = sites.atoms[site.i_h]
-    if not is_supplied(h): continue
-    result.append((_atom_label(h),
-      '; '.join(sites.contact_text(c) for c in site.contacts),
-      'metal-coordination proxy' if site.proxy else
-      'no metal-coordination proxy'))
-  return result
+  return [supplied_metal_h_entry(sites, site) for site in sites.h_sites
+          if site.verdict != 'not counted' and
+            is_supplied(sites.atoms[site.i_h])]
+
+def supplied_metal_h_entry(sites, site):
+  '''(H label, contacts, connectivity) of the H of a judged site.'''
+  return (_atom_label(sites.atoms[site.i_h]),
+    '; '.join(sites.contact_text(c) for c in site.contacts),
+    'metal-coordination proxy' if site.proxy else
+    'no metal-coordination proxy')
 
 def reported_metal_h(sites):
   '''
@@ -3468,6 +3468,10 @@ class place_hydrogens():
     # (target list, reported_metal_h_rows()) for metal_nh_reported,
     # filled in _finish_metal_lists() from the H that are left
     self._metal_nh_reported_src = list()
+    # (target list, H key, entry) of the unresolved sites and supplied H of
+    # the four lists above, filled in there as well: the link rule may remove
+    # an H that the metal rules keep
+    self._metal_h_listed_src = list()
     # metal_bound_amines_as_nh2: sites placed as NH2 (group_args, see
     # convert_metal_bound_amines()), messages of sites left as NH3+,
     # supplied NH3+ kept and chain starts not built as NH3, (label, contacts)
@@ -5307,6 +5311,9 @@ class place_hydrogens():
         if names and x_key not in self._metal_amine_listed_n:
           target.append(('%s (%s)' % (label, ', '.join(names)), contacts))
     self._metal_nh_reported_src = []
+    for target, key, entry in self._metal_h_listed_src:
+      if key in index: target.append(entry)
+    self._metal_h_listed_src = []
     self.metal_amine_converted_text = [(s.text, s.contact)
       for s in self.metal_amine_converted]
 
@@ -5331,21 +5338,23 @@ class place_hydrogens():
     def supplied(a):
       return (self.keep_existing_H and parts[a.parent().memory_id()] +
         (a.parent().altloc, a.name) in self._existing_h)
-    supplied_kept.extend(supplied_metal_h(sites, supplied))
+    listed = self._metal_h_listed_src
     remove = []
     for site in sites.h_sites:
       if site.verdict == 'not counted': continue
       h = atoms[site.i_h]
       label = _atom_label(h)
       contact = '; '.join(sites.contact_text(c) for c in site.contacts)
+      key = self._atom_key(parts, h)
       if supplied(h):
-        continue
+        listed.append((supplied_kept, key,
+          supplied_metal_h_entry(sites, site)))
       elif site.verdict == sites.covered:
         remove.append(site.i_h)
         not_placed.append((label, contact))
         self._not_placed(h, cause, atoms[site.i_x], contact)
       else:
-        unresolved.append(sites.unresolved_message(site))
+        listed.append((unresolved, key, sites.unresolved_message(site)))
     if remove:
       sel = flex.bool(atoms.size(), True).set_selected(
         flex.size_t(sorted(remove)), False)
