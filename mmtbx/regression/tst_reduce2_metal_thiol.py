@@ -958,6 +958,19 @@ def test_free_cys():
   assert has(out, 'HG', '48')
   assert NOT_PLACED not in desc and UNRESOLVED not in desc
 
+def test_as():
+  '''As(III) (ARS) in place of the Zn of m_zn_fixture, 2.39 A from SG: no HG,
+  listed'''
+  model = m_zn_fixture.replace(
+    "HETATM   12 ZN    ZN A 102     -44.322 -17.446   8.351  1.00 98.67"
+    "          Zn",
+    "HETATM   12 AS   ARS A 102     -44.322 -17.446   8.351  1.00 98.67"
+    "          As")
+  assert "AS   ARS" in model
+  out, desc = run(model, 'tst_reduce2_metal_thiol_as', ['approach=add'])
+  assert not has(out, 'HG', '48'), out
+  assert len(section(desc, NOT_PLACED)) == 1, desc
+
 def test_occupancy_and_altlocs():
   '''constructed from the Zn-Cys model; per case the expected HG sites and
   report. On HEAD the HG sites of c2, c2b, c3 and c4b are the same (mcl
@@ -1187,6 +1200,7 @@ if __name__ == "__main__":
   test_1r27_mgd()
   test_zn_supplied()
   test_free_cys()
+  test_as()
   test_occupancy_and_altlocs()
   test_cu_capping()
   test_cell_boundary()
