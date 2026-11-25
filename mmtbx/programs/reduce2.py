@@ -37,7 +37,7 @@ import copy
 from iotbx.data_manager import DataManager
 import csv
 
-version = "3.25.0"
+version = "3.25.1"
 
 master_phil_str = '''
 approach = *add remove optimize place
@@ -3848,6 +3848,30 @@ NOTES:
       make_sub_header('Removing Hydrogens', out=self.logger)
       if self._input_renames:
         outString += self._RenamesText(self._input_renames)
+      # H and D are selected by element. Blank element fields: taken from
+      # an interpretation of this run's model, as a restraint file gave them
+      n_blank = [a.element.strip() for a in self.model.get_atoms()].count('')
+      if n_blank:
+        # a new monomer library server, as for the other approaches: a model
+        # passed in memory has the restraint files of its earlier runs in its
+        # server
+        self.model._mon_lib_srv = None
+        no_flip = mmtbx.model.manager.get_default_pdb_interpretation_params()
+        no_flip.pdb_interpretation.flip_symmetric_amino_acids = False
+        self.model.set_stop_for_unknowns(
+          self.params.stop_on_any_missing_hydrogen)
+        try:
+          self.model.process(make_restraints=False,
+            pdb_interpretation_params=no_flip)
+        except Sorry as e:
+          raise Sorry('%d atom(s) of the input have a blank element column. '
+            'approach=remove selects H and D by element and takes missing '
+            'elements from an interpretation of the model, which stopped:\n%s'
+            % (n_blank, str(e)))
+        still = [a.element.strip() for a in self.model.get_atoms()].count('')
+        print('Blank element columns in %d atom(s): the model was '
+          'interpreted for their elements; %d still blank.' % (n_blank,
+          still), file=self.logger)
       sel = self.model.selection("element H or element D")
       for a in self.model.get_atoms():
         if sel[a.i_seq]:
