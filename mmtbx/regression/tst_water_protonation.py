@@ -61,6 +61,18 @@ HETATM    3  O   ACA D   1       2.338   1.350   0.000  1.00 10.00           O
 END
 """
 
+# A water 2.98 A from the As of an arsenate (As-O 1.68 A) and 2.89 A from
+# three of its O, on the three-fold axis of the face they form.
+_ARSENATE_WATER_PDB = """\
+HETATM    1 AS   ART A   1       0.000   0.000   0.000  1.00 10.00          AS
+HETATM    2  O1  ART A   1       0.000   0.000   1.680  1.00 10.00           O
+HETATM    3  O2  ART A   1       1.584   0.000  -0.560  1.00 10.00           O
+HETATM    4  O3  ART A   1      -0.792   1.372  -0.560  1.00 10.00           O
+HETATM    5  O4  ART A   1      -0.792  -1.372  -0.560  1.00 10.00           O
+HETATM    6  O   HOH W   1       0.000   0.000  -2.980  1.00 10.00           O
+END
+"""
+
 # A water flanked by two N: a *nearer* protonated N (a donor: it carries an
 # H) and a farther bare N (an acceptor). H1 must skip the donor and point
 # at the bare N.
@@ -787,20 +799,48 @@ def exercise_hetatm_flag():
 
 
 def exercise_heavy_cation_repulsion():
-  """The cation set is not limited to the first row: a Pt keeps both
-  protons out of its hemisphere just as an Mg does.
+  """The cation set is not limited to the first row: a Pt, an As, an Sb, a Po,
+  Fr, Ra, Ac, Pa and the metals from Np on keep both protons out of their
+  hemisphere just as an Mg does.
 
-  Places on ``_MG_WATER_PDB`` with the Mg replaced by Pt.
+  Places on ``_MG_WATER_PDB`` with the Mg replaced by each in turn.
   """
-  hier = _hierarchy(_MG_WATER_PDB.replace("MG", "PT"))
+  for el in ("PT", "AS", "SB", "PO", "FR", "RA", "AC", "PA", "NP", "PU", "AM",
+             "CM", "BK", "CF", "ES", "FM", "MD", "NO", "LR", "RF", "DB", "SG",
+             "BH", "HS", "MT", "DS", "RG"):
+    hier = _hierarchy(_MG_WATER_PDB.replace("MG", el))
+    wp.place_water_hydrogens(hier, n_refine=0)
+    o, hs = _water_atoms(hier)
+    O = matrix.col(o.xyz)
+    cd = (matrix.col((2.500, 0.000, 0.000)) - O).normalize()
+    for name, h in sorted(hs.items()):
+      proj = (matrix.col(h.xyz) - O).dot(cd)
+      assert proj <= 1e-9, (
+        f"{name} must stay out of the {el} hemisphere (proj={proj:.3f})")
+
+
+def exercise_arsenate_acceptor():
+  """A water beside an arsenate donates to one of its O: the As, 2.98 A from
+  the water O, is not bound to it and does not turn the H away.
+
+  Places on ``_ARSENATE_WATER_PDB``.
+  """
+  hier = _hierarchy(_ARSENATE_WATER_PDB)
   wp.place_water_hydrogens(hier, n_refine=0)
   o, hs = _water_atoms(hier)
-  O = matrix.col(o.xyz)
-  cd = (matrix.col((2.500, 0.000, 0.000)) - O).normalize()
-  for name, h in sorted(hs.items()):
-    proj = (matrix.col(h.xyz) - O).dot(cd)
-    assert proj <= 1e-9, (
-      f"{name} must stay out of the Pt hemisphere (proj={proj:.3f})")
+  acceptors = [a for a in hier.atoms()
+               if a.parent().resname.strip() == "ART" and
+                 a.element.strip().upper() == "O"]
+  best = None
+  for h in hs.values():
+    for a in acceptors:
+      d = h.distance(a)
+      if best is None or d < best[0]:
+        best = (d, h, a)
+  d, h, a = best
+  assert approx_equal(d, 2.04, eps=0.01), d
+  align = _unit(h, o).dot(_unit(a, o))
+  assert align > 0.999, f"the H should point at the acceptor ({align:.4f})"
 
 
 def exercise_h2_reachable_acceptor():
@@ -1861,6 +1901,7 @@ def run():
   exercise_single_h_metal_annotation()
   exercise_hetatm_flag()
   exercise_heavy_cation_repulsion()
+  exercise_arsenate_acceptor()
   exercise_h2_reachable_acceptor()
   exercise_h2_after_acceptor_fallback()
   exercise_refinement_reduces_clashes()
