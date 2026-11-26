@@ -130,6 +130,7 @@ def test_dne_alone():
   assert [a.name.strip() for a in hs] == ['H', 'H2'], [a.name for a in hs]
   assert o.not_placed_rules['free_form'] == 0, o.not_placed_rules
 
+@t23.old_ht7_library
 def test_peptide_bond_and_chain_start():
   # HT7 G 3 after DNE G 2: a bond restraint N-C to DNE, HA2 left out and
   # counted; DNE alone as residue 1 is a chain start without a next residue:

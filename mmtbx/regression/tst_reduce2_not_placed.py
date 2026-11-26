@@ -898,6 +898,7 @@ def n_h(o, resname):
       if a.element.strip().upper() in ('H', 'D') and a.distance(n) < 1.3)
   return sorted(result)
 
+@t23.old_ht7_library
 def test_free_form():
   # the free-form H on N is removed only with a peptide bond (a bond
   # restraint to a C of another residue). DNE alone (residue 2, not a chain
@@ -909,7 +910,9 @@ def test_free_form():
   assert o.not_placed_rules['free_form'] == 0, o.not_placed_rules
   assert records(o) == [], records(o)
   assert n_h(o, 'DNE') == ['H', 'H2'], n_h(o, 'DNE')
-  o, _ = placed(t23.pdb_str)
+  # (the HT7 runs with the old library entry, t23.old_ht7_library: not from
+  # placed(), whose results other tests share)
+  o, _ = place_counted(t23.pdb_str)
   assert o.not_placed_rules['free_form'] == 1, o.not_placed_rules
   assert n_h(o, 'DNE') == ['H', 'H2'] and n_h(o, 'HT7') == ['HN1'], (
     n_h(o, 'DNE'), n_h(o, 'HT7'))
@@ -919,7 +922,7 @@ def test_free_form():
     assert o.not_placed_rules['free_form'] == 0, o.not_placed_rules
     assert records(o) == [], records(o)
     assert n_h(o, 'DNE') == ['H', 'H2'], n_h(o, 'DNE')
-  o, _ = placed(t23.pdb_str.replace('DNE G   2', 'DNE G   1'))
+  o, _ = place_counted(t23.pdb_str.replace('DNE G   2', 'DNE G   1'))
   assert n_h(o, 'DNE') == ['H1', 'H2', 'H3'], n_h(o, 'DNE')
 
 def test_free_form_per_conformer():

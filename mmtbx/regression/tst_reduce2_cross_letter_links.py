@@ -17,6 +17,7 @@ import mmtbx.model
 from mmtbx.programs import reduce2
 from mmtbx.reduce import Optimizers
 from mmtbx.hydrogens import reduce_hydrogen
+from mmtbx.hydrogens import tst_add_hydrogen_23 as t23
 
 def run(model_text, prefix, *extra):
   """reduce2 (approach=add unless given); returns (description, output hierarchy)"""
@@ -603,6 +604,7 @@ MASTER_HT7_C = {
   'HN1': (-22.083, -14.833, 63.908),
   'HT2': (-19.760, -11.460, 67.578)}
 
+@t23.old_ht7_library
 def test_not_ordinary_amide():
   """HT7: the bond is decided, but conformer C is written as on master"""
   desc, out = run(HT7, 'cl_ht7')
