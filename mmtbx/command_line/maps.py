@@ -308,7 +308,24 @@ def run(args, log = sys.stdout, use_output_directory=True,
     outliers_rejection      = params.maps.input.reflection_data.outliers_rejection,
     skip_twin_detection     = params.maps.skip_twin_detection,
     bulk_solvent_correction = params.maps.bulk_solvent_correction,
+    mosaic                  = params.maps.bulk_solvent_correction,
+    squeeze                 = params.maps.squeeze,
+    water_selection         = atom_selection_manager.selection(
+      string = "water"),
     anisotropic_scaling     = params.maps.anisotropic_scaling)
+  if(params.maps.squeeze):
+    from mmtbx.bulk_solvent import squeeze
+    result = None
+    # the fmodel class for twinned data has no squeeze
+    if(hasattr(fmodel, "squeeze_result")): result = fmodel.squeeze_result()
+    if(result is not None):
+      result.show(log = log)
+    elif(not hasattr(fmodel, "squeeze_result")):
+      print("squeeze: not used (twinned data)", file=log)
+    else:
+      reason = squeeze.not_applicable(fmodel = fmodel)
+      if(reason is None): reason = "no density above the threshold"
+      print("squeeze: not used (%s)"%reason, file=log)
   fmodel_info = fmodel.info()
   fmodel_info.show_rfactors_targets_scales_overall(out = log)
   print("-"*79, file=log)

@@ -447,22 +447,6 @@ namespace {
       ;
     }
 
-    {
-      typedef loft w_t;
-
-      class_<w_t>("loft", no_init)
-        .def(init<af::const_ref<cctbx::miller::index<> > const&,
-                  af::const_ref<int, af::c_grid<3> > const&,
-                  af::shared<double> const&,
-                  double const& >(
-                    (arg("miller_indices"),
-                     arg("map_data"),
-                     arg("abc"),
-                     arg("d_min"))))
-        .def("structure_factors", &w_t::structure_factors)
-        .def("indices", &w_t::indices)
-      ;
-    }
 
     {
       typedef one_gaussian_peak_approximation w_t;
@@ -731,6 +715,30 @@ namespace {
             arg("n_real"),
             arg("miller_indices"),
             arg("data")));
+
+    def("loft",
+      (af::shared<std::complex<double> >(*)
+        (af::const_ref<std::size_t> const&,
+         af::tiny<int, 3> const&,
+         af::const_ref<cctbx::miller::index<> > const&,
+         double const&)) loft, (
+      arg("points"),
+      arg("n_real"),
+      arg("miller_indices"),
+      arg("volume_per_point")));
+
+    def("loft",
+      (af::shared<std::complex<double> >(*)
+        (af::const_ref<std::size_t> const&,
+         af::tiny<int, 3> const&,
+         af::const_ref<cctbx::miller::index<> > const&,
+         double const&,
+         sgtbx::space_group const&)) loft, (
+      arg("points"),
+      arg("n_real"),
+      arg("miller_indices"),
+      arg("volume_per_point"),
+      arg("space_group")));
 
     def("direct_summation_at_point",
       (std::complex<double>(*)(

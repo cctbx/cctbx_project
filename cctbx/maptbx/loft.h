@@ -1,9 +1,28 @@
 #ifndef CCTBX_MAPTBX_LOFT_H
 #define CCTBX_MAPTBX_LOFT_H
 
-#include <scitbx/array_family/accessors/c_grid.h>
+#include <cctbx/miller.h>
+#include <cctbx/sgtbx/space_group.h>
+#include <cctbx/error.h>
+#include <scitbx/array_family/shared.h>
+#include <scitbx/array_family/tiny.h>
+#include <scitbx/constants.h>
+#include <complex>
+#include <vector>
+#include <algorithm>
+#include <cmath>
 
 namespace cctbx { namespace maptbx {
+
+namespace loft_detail {
+  struct less_by_key {
+    std::vector<long> const& key;
+    less_by_key(std::vector<long> const& key_) : key(key_) {}
+    bool operator()(std::size_t a, std::size_t b) const {
+      return key[a] < key[b];
+    }
+  };
+}
 
 /*
 
@@ -11,246 +30,255 @@ LoFT - Local Fourier Transform.
 
 Authors: Pavel Afonine, Alexandre Urzhumtsev
 
-Release date: mid-July 2023
+First release: mid-July 2023. Refactored November 2026 into a general
+library function (any unit cell, any set of Miller indices, region given as
+a list of grid points).
 
-Highly-optimized local FT. Assumes most map voxels are zeros and only small
-subset of voxels are non-zero and so they contribute to summation.
+Structure factors of a map that is one inside a region and zero elsewhere,
 
+  F(h,k,l) = v * sum_p exp(2 pi i (h jx/nx + k jy/ny + l jz/nz)),
+
+where the sum is over the grid points p=(jx,jy,jz) of the region and v is the
+volume per grid point. The cost is proportional to the number of region
+points times the number of reflections, so for a region that is a small
+fraction of the unit cell this is much faster than FFT of the whole cell.
+The sum is carried out one dimension at a time (rows along z, planes of
+rows, planes), which makes the cost per reflection proportional to the
+number of grid planes the region spans, not to its number of points.
+
+The list of points must contain all symmetry copies of the region (the P1
+content of the unit cell), and values are computed for exactly the Miller
+indices given. The values are exact (trigonometric factors come from tables
+exp(2 pi i m/n), m=0..n-1, one per axis).
+
+Symmetry. Rotations do not make the sum cheaper: one copy of a region has
+fewer points, but its transform is then needed at all symmetry-equivalent
+indices. Lattice centring does: all copies related by centring translations
+contribute the same to an allowed reflection and cancel for an absent one.
+If space_group is given and has centring translations, the sum is over one
+point of each set of points related by them, times their number (zero for
+reflections absent because of the centring). The result is the same as
+without space_group.
+
+points: 1d indices into a grid of size n_real=(nx,ny,nz), last index fastest
+  (jx*ny*nz + jy*nz + jz), as flex.grid does. Any order.
 */
 
-class loft {
-public:
-  af::shared<std::complex<double> > result;
-  af::shared<cctbx::miller::index<> > all_indices;
-  int nx, ny, nz;
-  int maxh, maxk, maxl;
-  af::shared<int> maxkl;
-  af::shared<af::shared<int> > maxhkl;
-  double two_pi, stepx,stepy,stepz, dcx,dsx, sressq, dtable;
-  int maxtab;
-  af::shared<double> tabcos;
-  af::shared<double> tabsin;
-  af::const_ref<int, af::c_grid<3> > const& map_data;
-
-  loft(
-    af::const_ref<cctbx::miller::index<> > const& miller_indices,
-    af::const_ref<int, af::c_grid<3> > const& map_data_,
-    af::shared<double> const& abc,
-    double const& d_min)
-  :
-    nx(map_data_.accessor()[0]),
-    ny(map_data_.accessor()[1]),
-    nz(map_data_.accessor()[2]),
-    two_pi(scitbx::constants::two_pi),
-    maxtab(10000),
-    sressq(1.0 / (d_min*d_min)),
-    map_data(map_data_)
-  {
-      //
-      // Various initializations
-      //
-      dtable = two_pi / maxtab;
-      for(int i = 0; i < maxtab+1; i++) {
-        tabcos.push_back(std::cos(i*dtable));
-        tabsin.push_back(std::sin(i*dtable));
+inline
+af::shared<std::complex<double> >
+loft(
+  af::const_ref<std::size_t>             const& points,
+  af::tiny<int, 3>                       const& n_real,
+  af::const_ref<cctbx::miller::index<> > const& miller_indices,
+  double                                 const& volume_per_point)
+{
+  typedef std::complex<double> cmplx;
+  int nx = n_real[0], ny = n_real[1], nz = n_real[2];
+  CCTBX_ASSERT(nx > 0 && ny > 0 && nz > 0);
+  std::size_t n_grid = static_cast<std::size_t>(nx) * ny * nz;
+  std::size_t nyz = static_cast<std::size_t>(ny) * nz;
+  std::size_t n_refl = miller_indices.size();
+  af::shared<cmplx> result(n_refl, cmplx(0, 0));
+  if(points.size() == 0 || n_refl == 0) return result;
+  // Points sorted: planes of equal jx, made of rows of equal (jx,jy)
+  std::vector<std::size_t> pts(points.begin(), points.end());
+  std::sort(pts.begin(), pts.end());
+  CCTBX_ASSERT(pts.back() < n_grid);
+  std::vector<int> jz(pts.size());
+  std::vector<int> row_y;                // jy of each row
+  std::vector<std::size_t> row_start;    // first point of each row
+  std::vector<int> plane_x;              // jx of each plane
+  std::vector<std::size_t> plane_start;  // first row of each plane
+  long prev_x = -1, prev_xy = -1;
+  for(std::size_t i = 0; i < pts.size(); i++) {
+    std::size_t p = pts[i];
+    long x = static_cast<long>(p / nyz);
+    long xy = static_cast<long>(p / nz);
+    if(xy != prev_xy) {
+      if(x != prev_x) {
+        plane_x.push_back(static_cast<int>(x));
+        plane_start.push_back(row_y.size());
+        prev_x = x;
       }
-
-      maxh = int(abc[0] / d_min) + 1;
-      maxk = int(abc[1] / d_min) + 1;
-      maxl = int(abc[2] / d_min) + 1;
-
-      maxkl.resize(maxl);
-      for (int i = 0; i < maxk; i++) {
-        af::shared<int> tmp(maxl);
-        maxhkl.push_back(tmp);
-      }
-
-      int mhkltot = 0;
-      for (int il = 0; il < maxl; il++) {
-        double ssl = std::pow(il/abc[2], 2);
-        maxkl[il] = int(abc[1] * std::sqrt(sressq - ssl));
-        for (int ik = 0; ik < maxkl[il]; ik++) {
-           double sskl = std::pow(ik/abc[1], 2) + ssl;
-           int tmp = int(abc[0] * std::sqrt(sressq - sskl));
-           maxhkl[ik][il] = tmp;
-           mhkltot = mhkltot + maxhkl[ik][il];
-        }
-      }
-      result.resize(mhkltot, std::complex<double>(0,0));
-
-      stepx = two_pi / nx;
-      stepy = two_pi / ny;
-      stepz = two_pi / nz;
-
-      dcx = std::cos(stepx);
-      dsx = std::sin(stepx);
-
-      for (int il = 0; il < maxl; il++) {
-        for (int ik = 0; ik < maxkl[il]; ik++) {
-          for (int ih = 0; ih < maxhkl[ik][il]; ih++) {
-            all_indices.push_back(cctbx::miller::index<>(ih,ik,il));
-      }}}
-      //
-      // Main calculations
-      //
-      double delht  = 0;
-      double arg    = 0;
-      int karg      = 0;
-      double aarg   = 0;
-      int iarg      = 0;
-      double delarg = 0;
-      double delhc  = 0;
-      double delkc  = 0;
-      double dellc  = 0;
-      double delhs  = 0;
-      double delks  = 0;
-      double dells  = 0;
-      double sfrtmp = 0;
-
-      for (int iz = 0; iz < nz; iz++) {
-        for (int iy = 0; iy < ny; iy++) {
-          int jx = nx;
-          for (int ix = 0; ix < nx; ix++) {
-            if(map_data(ix,iy,iz)>0) {
-
-              if(ix == jx+1) {
-                 delht = delhc * dcx - delhs * dsx;
-                 delhs = delhs * dcx + delhc * dsx;
-                 delhc = delht;
-              }
-              else {
-                 arg  = ix * stepx;
-                 karg = int(arg / two_pi);
-                 arg  = arg - karg * two_pi;
-                 aarg = arg / dtable;
-                 iarg = int(aarg);
-                 delarg = aarg - iarg;
-                 delhc = tabcos[iarg] * (1.0-delarg) + tabcos[iarg+1] * delarg;
-                 delhs = tabsin[iarg] * (1.0-delarg) + tabsin[iarg+1] * delarg;
-              }
-
-              jx = ix;
-
-              arg  = iy * stepy;
-              karg = int(arg / two_pi);
-              arg  = arg - karg * two_pi;
-              aarg = arg / dtable;
-              iarg = int(aarg);
-              delarg = aarg - iarg;
-              delkc = tabcos[iarg] * (1.0-delarg) + tabcos[iarg+1] * delarg;
-              delks = tabsin[iarg] * (1.0-delarg) + tabsin[iarg+1] * delarg;
-
-              arg   = iz * stepz;
-              karg = int(arg / two_pi);
-              arg  = arg - karg * two_pi;
-              aarg = arg / dtable;
-              iarg = int(aarg);
-              delarg = aarg - iarg;
-              dellc = tabcos[iarg] * (1.0-delarg) + tabcos[iarg+1] * delarg;
-              dells = tabsin[iarg] * (1.0-delarg) + tabsin[iarg+1] * delarg;
-
-              //define initial values for the reflection (000)
-              //int iref = 0;
-              double sfrref = 1.0;
-              double sfiref = 0.0;
-
-              double sfrl = sfrref;
-              double sfil = sfiref;
-
-              // This is a little bit faster than result[iref]
-              std::complex<double>* result_ = result.begin();
-
-              for (int il = 0; il < maxl; il++) {
-                 double sfrkl = sfrl;
-                 double sfikl = sfil;
-                 for (int ik = 0; ik < maxkl[il]; ik++) {
-                    double sfrhkl = sfrkl;
-                    double sfihkl = sfikl;
-                    for (int ih = 0; ih < maxhkl[ik][il]; ih++) {
-                       //result[iref] += std::complex<double>(sfrhkl,sfihkl);
-                       *result_ += std::complex<double>(sfrhkl,sfihkl);
-                       ++result_;
-
-                       //iref = iref + 1;
-                       sfrtmp = sfrhkl * delhc - sfihkl * delhs;
-                       sfihkl = sfihkl * delhc + sfrhkl * delhs;
-                       sfrhkl = sfrtmp;
-                    }
-                    sfrtmp = sfrkl * delkc - sfikl * delks;
-                    sfikl  = sfikl * delkc + sfrkl * delks;
-                    sfrkl  = sfrtmp;
-                 }
-                 sfrtmp = sfrl * dellc - sfil * dells;
-                 sfil   = sfil * dellc + sfrl * dells;
-                 sfrl   = sfrtmp;
-              }
-            }
-      }}}
+      row_y.push_back(static_cast<int>((p / nz) % ny));
+      row_start.push_back(i);
+      prev_xy = xy;
     }
+    jz[i] = static_cast<int>(p % nz);
+  }
+  row_start.push_back(pts.size());
+  plane_start.push_back(row_y.size());
+  std::size_t n_rows = row_y.size();
+  std::size_t n_planes = plane_x.size();
+  // Tables exp(2 pi i m/n)
+  std::vector<cmplx> tx(nx), ty(ny), tz(nz);
+  double two_pi = scitbx::constants::two_pi;
+  for(int m = 0; m < nx; m++) tx[m] = std::polar(1., two_pi * m / nx);
+  for(int m = 0; m < ny; m++) ty[m] = std::polar(1., two_pi * m / ny);
+  for(int m = 0; m < nz; m++) tz[m] = std::polar(1., two_pi * m / nz);
+  // Reflections ordered by (l,k), indices taken modulo the grid
+  std::vector<int> hm(n_refl), km(n_refl), lm(n_refl);
+  std::vector<std::size_t> order(n_refl);
+  for(std::size_t i = 0; i < n_refl; i++) {
+    cctbx::miller::index<> const& hkl = miller_indices[i];
+    hm[i] = ((hkl[0] % nx) + nx) % nx;
+    km[i] = ((hkl[1] % ny) + ny) % ny;
+    lm[i] = ((hkl[2] % nz) + nz) % nz;
+    order[i] = i;
+  }
+  std::vector<long> key(n_refl);
+  for(std::size_t i = 0; i < n_refl; i++) {
+    key[i] = static_cast<long>(lm[i]) * ny + km[i];
+  }
+  std::sort(order.begin(), order.end(),
+    loft_detail::less_by_key(key));
+  // The sum over points is done one dimension at a time:
+  //   z_row(l)     = sum over the points of a row of exp(2 pi i l jz/nz)
+  //   y_plane(k,l) = sum over the rows of a plane of
+  //                  exp(2 pi i k jy/ny) * z_row(l)
+  //   F(h,k,l)     = sum over planes of exp(2 pi i h jx/nx) * y_plane(k,l)
+  std::vector<cmplx> ez(nz), ey(ny), z_row(n_rows), y_plane(n_planes);
+  // exp(2 pi i h jx/nx) for each h present and each plane
+  std::vector<long> h_row(nx, -1);
+  std::size_t n_h = 0;
+  for(std::size_t i = 0; i < n_refl; i++) {
+    if(h_row[hm[i]] < 0) h_row[hm[i]] = static_cast<long>(n_h++);
+  }
+  std::vector<cmplx> ex(n_h * n_planes);
+  for(int h = 0; h < nx; h++) {
+    if(h_row[h] < 0) continue;
+    cmplx* e = &ex[h_row[h] * n_planes];
+    for(std::size_t p = 0; p < n_planes; p++) {
+      e[p] = tx[(static_cast<long>(h) * plane_x[p]) % nx];
+    }
+  }
+  int l_cur = -1, k_cur = -1;
+  for(std::size_t io = 0; io < n_refl; io++) {
+    std::size_t ir = order[io];
+    if(lm[ir] != l_cur) {
+      l_cur = lm[ir];
+      k_cur = -1;
+      int m = 0;
+      for(int j = 0; j < nz; j++) {
+        ez[j] = tz[m];
+        m += l_cur;
+        if(m >= nz) m -= nz;
+      }
+      for(std::size_t r = 0; r < n_rows; r++) {
+        double zr = 0, zi = 0;
+        for(std::size_t i = row_start[r]; i < row_start[r+1]; i++) {
+          cmplx const& e = ez[jz[i]];
+          zr += e.real();
+          zi += e.imag();
+        }
+        z_row[r] = cmplx(zr, zi);
+      }
+    }
+    if(km[ir] != k_cur) {
+      k_cur = km[ir];
+      int m = 0;
+      for(int j = 0; j < ny; j++) {
+        ey[j] = ty[m];
+        m += k_cur;
+        if(m >= ny) m -= ny;
+      }
+      for(std::size_t p = 0; p < n_planes; p++) {
+        cmplx s(0, 0);
+        for(std::size_t r = plane_start[p]; r < plane_start[p+1]; r++) {
+          s += ey[row_y[r]] * z_row[r];
+        }
+        y_plane[p] = s;
+      }
+    }
+    cmplx f(0, 0);
+    const cmplx* e = &ex[h_row[hm[ir]] * n_planes];
+    for(std::size_t p = 0; p < n_planes; p++) {
+      f += e[p] * y_plane[p];
+    }
+    result[ir] = f * volume_per_point;
+  }
+  return result;
+}
 
-  af::shared<std::complex<double> >  structure_factors() { return result; }
-  af::shared<cctbx::miller::index<> > indices() { return all_indices; }
-
-};
-
-
-// Straightforward reference implementation using the formula directly
-
-//af::shared<std::complex<double> > sf_from_map_simple(
-//  af::const_ref<cctbx::miller::index<> > const& miller_indices,
-//  af::const_ref<int, af::c_grid<3> > const& map_data,
-//  af::const_ref<double> const& sin_table_,
-//  af::const_ref<double> const& cos_table_,
-//  double const& step,
-//  int const& n)
-//{
-//
-//    math::cos_sin_table<double> cos_sin(1000);
-//
-//    int hkl_size = miller_indices.size();
-//    af::shared<std::complex<double> > result(hkl_size);
-//    af::shared<scitbx::vec3<int> > jxyz;
-//    int nx = map_data.accessor()[0];
-//    int ny = map_data.accessor()[1];
-//    int nz = map_data.accessor()[2];
-//    for (int jx = 0; jx < nx; jx++) {
-//      for (int jy = 0; jy < ny; jy++) {
-//        for (int jz = 0; jz < nz; jz++) {
-//          if(map_data(jx,jy,jz)==1) jxyz.push_back(scitbx::vec3<int>(jx,jy,jz));
-//    }}}
-//    af::shared<double> hi(hkl_size);
-//    af::shared<double> ki(hkl_size);
-//    af::shared<double> li(hkl_size);
-//    double pi = scitbx::constants::pi;
-//    double tponx = 2*pi/nx, tpony = 2*pi/ny, tponz = 2*pi/nz;
-//    for (int i = 0; i < hkl_size; i++) {
-//      cctbx::miller::index<> mi = miller_indices[i];
-//      hi[i] = tponx*mi[0]/scitbx::constants::two_pi;
-//      ki[i] = tpony*mi[1]/scitbx::constants::two_pi;
-//      li[i] = tponz*mi[2]/scitbx::constants::two_pi;
-//    }
-//    int reg_size = jxyz.size();
-//    for (int i=0; i<hkl_size; i++) {
-//      double h = hi[i];
-//      double k = ki[i];
-//      double l = li[i];
-//      std::complex<double> arg(0,0);
-//      for (int j=0; j<reg_size; j++) {
-//        scitbx::vec3<int> p = jxyz[j];
-//        double arg_ = h*p[0] + k*p[1] + l*p[2];
-//        // Use standard sin and cos
-//        //arg += std::complex<double>(std::cos(arg_), std::sin(arg_));
-//        // Use sin/cos tables
-//        //double co = scitbx::math::cos_table(cos_table_,arg_,step,n,false);
-//        //double si = scitbx::math::sin_table(sin_table_,arg_,step,n,false);
-//        //arg += std::complex<double>(co, si);
-//        arg += cos_sin.get(arg_);
-//
-//      }
-//      result[i]=arg;
-//    }
-//    return result;
-//}
+//! Same using the lattice centring of space_group (see above).
+inline
+af::shared<std::complex<double> >
+loft(
+  af::const_ref<std::size_t>             const& points,
+  af::tiny<int, 3>                       const& n_real,
+  af::const_ref<cctbx::miller::index<> > const& miller_indices,
+  double                                 const& volume_per_point,
+  sgtbx::space_group                     const& space_group)
+{
+  typedef std::complex<double> cmplx;
+  std::size_t n_ltr = space_group.n_ltr();
+  if(n_ltr == 1 || points.size() == 0 || miller_indices.size() == 0) {
+    return loft(points, n_real, miller_indices, volume_per_point);
+  }
+  long n[3] = {n_real[0], n_real[1], n_real[2]};
+  CCTBX_ASSERT(n[0] > 0 && n[1] > 0 && n[2] > 0);
+  std::size_t nyz = static_cast<std::size_t>(n[1]) * n[2];
+  std::size_t n_grid = nyz * n[0];
+  // Centring translations as shifts of grid points
+  std::vector<long> shift;
+  for(std::size_t i = 1; i < n_ltr; i++) {
+    sgtbx::tr_vec const& t = space_group.ltr(i);
+    for(std::size_t k = 0; k < 3; k++) {
+      long num = static_cast<long>(t[k]) * n[k];
+      if(num % t.den() != 0) {
+        throw error(
+          "loft: grid is not compatible with the lattice centring.");
+      }
+      shift.push_back(((num / t.den()) % n[k] + n[k]) % n[k]);
+    }
+  }
+  // One point of each set of points related by centring: the one with the
+  // smallest index. Its images must be in the list.
+  std::vector<std::size_t> sorted(points.begin(), points.end());
+  std::sort(sorted.begin(), sorted.end());
+  CCTBX_ASSERT(sorted.back() < n_grid);
+  af::shared<std::size_t> kept;
+  bool complete = (points.size() % n_ltr == 0);
+  for(std::size_t i = 0; complete && i < sorted.size(); i++) {
+    std::size_t p = sorted[i];
+    long jx = static_cast<long>(p / nyz);
+    long jy = static_cast<long>((p / n[2]) % n[1]);
+    long jz = static_cast<long>(p % n[2]);
+    bool smallest = true;
+    for(std::size_t j = 0; j < shift.size(); j += 3) {
+      std::size_t q = static_cast<std::size_t>((jx + shift[j]) % n[0]) * nyz
+        + static_cast<std::size_t>((jy + shift[j+1]) % n[1]) * n[2]
+        + static_cast<std::size_t>((jz + shift[j+2]) % n[2]);
+      if(!std::binary_search(sorted.begin(), sorted.end(), q)) {
+        complete = false;
+        break;
+      }
+      if(q < p) smallest = false;
+    }
+    if(smallest) kept.push_back(p);
+  }
+  if(!complete || kept.size() * n_ltr != points.size()) {
+    throw error(
+      "loft: points do not obey the lattice centring of the space group.");
+  }
+  af::shared<cmplx> result = loft(
+    kept.const_ref(), n_real, miller_indices, volume_per_point);
+  double factor = static_cast<double>(n_ltr);
+  for(std::size_t i = 0; i < miller_indices.size(); i++) {
+    cctbx::miller::index<> const& h = miller_indices[i];
+    bool allowed = true;
+    for(std::size_t j = 1; j < n_ltr; j++) {
+      sgtbx::tr_vec const& t = space_group.ltr(j);
+      if((h[0]*t[0] + h[1]*t[1] + h[2]*t[2]) % t.den() != 0) {
+        allowed = false;
+        break;
+      }
+    }
+    if(allowed) result[i] *= factor;
+    else        result[i] = cmplx(0, 0);
+  }
+  return result;
+}
 
 }} // namespace cctbx::maptbx
 

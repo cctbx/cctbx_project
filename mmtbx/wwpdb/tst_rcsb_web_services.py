@@ -156,14 +156,17 @@ def exercise_sequence_search():
   r = rcsb_web_services.sequence_search(sequence=lysozyme)
   print(len(r))
   assert len(r) > 1200, len(r)
+  # The PDB grows every week, so a filtered search is compared with the
+  # unfiltered one instead of a fixed upper limit.
+  n_all = len(r)
   r = rcsb_web_services.sequence_search(sequence=lysozyme, clashscore_range=(0,20))
   print(len(r))
   assert len(r) > 1100, len(r)
-  assert len(r) < 1300, len(r)
+  assert len(r) < n_all, (len(r), n_all)
   r = rcsb_web_services.sequence_search(sequence=lysozyme, rama_outliers_range=(0,1))
   print(len(r))
   assert len(r) > 100, len(r)
-  assert len(r) < 150, len(r)
+  assert len(r) < n_all - 1000, (len(r), n_all)
 
 def exercise_reference_chain_search():
   lysozyme = """KVFGRCELAAAMKRHGLDNYRGYSLGNWVCAAKFESNFNTQATNRNTDGSTDYGILQINSR"""

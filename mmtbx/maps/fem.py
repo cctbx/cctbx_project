@@ -228,7 +228,7 @@ class run(object):
       f_obs          = self.f_obs,
       r_free_flags   = self.r_free_flags,
       xray_structure = self.xray_structure)
-    fmodel.update_all_scales(update_f_part1 = update_f_part1)
+    fmodel.update_all_scales(update_f_part1 = update_f_part1, mosaic = True)
     if(show):
       fmodel.show(show_header=False, show_approx=False)
       print("r_work=%6.4f r_free=%6.4f" % (fmodel.r_work(),

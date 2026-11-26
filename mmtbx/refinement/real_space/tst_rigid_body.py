@@ -100,10 +100,13 @@ def exercise(d_min = 2.0, resolution_factor = 0.1):
     pdb_hierarchy.adopt_xray_structure(xrs_poor)
     pdb_hierarchy.write_pdb_file(file_name = "refined.pdb")
   #
+  # The result depends on tiny changes of the target map (structure factors
+  # computed with FFT): max and mean distances were 0.125 and 0.079, and are
+  # 0.143 and 0.085 with the table of exponents interpolated.
   dist = xrs_answer.max_distance(other = xrs_poor)
-  assert dist < 0.15, dist
+  assert dist < 0.2, dist
   dist = xrs_answer.mean_distance(other = xrs_poor)
-  assert dist < 0.08, dist
+  assert dist < 0.1, dist
   states_collector.write(file_name = "all.pdb")
 
 if(__name__ == "__main__"):

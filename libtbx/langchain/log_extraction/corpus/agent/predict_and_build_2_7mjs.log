@@ -289,7 +289,7 @@ Processing PHIL parameters:
     rest_server.requires_gpu=True
     rest_server.stop_if_server_not_available=True
     rest_server.timeout=5
-    rest_server.token=HncRtp29.Cvm
+    rest_server.token=not_shown
     rest_server.url=https://prediction.phenix-online.org
     rest_server.url_type=prediction
     cycle=1
@@ -330,7 +330,7 @@ Final processed PHIL parameters:
   }
   rest_server {
     url = https://prediction.phenix-online.org
-    token = HncRtp29.Cvm
+    token = not_shown
     stop_if_server_not_available = False
   }
 
@@ -1355,7 +1355,7 @@ Processing PHIL parameters:
     rest_server.requires_gpu=True
     rest_server.stop_if_server_not_available=True
     rest_server.timeout=5
-    rest_server.token=HncRtp29.Cvm
+    rest_server.token=not_shown
     rest_server.url=https://prediction.phenix-online.org
     rest_server.url_type=prediction
     cycle=2
@@ -1396,7 +1396,7 @@ Final processed PHIL parameters:
   }
   rest_server {
     url = https://prediction.phenix-online.org
-    token = HncRtp29.Cvm
+    token = not_shown
     stop_if_server_not_available = False
   }
 

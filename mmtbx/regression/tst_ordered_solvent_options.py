@@ -189,11 +189,43 @@ def exercise_adp_type():
       assert len([l for l in pdb.splitlines()
         if l.startswith("ANISOU") and l[17:20] == "HOH"]) >= 2
 
+def exercise_b_at_limit():
+  """
+  Water with B at the limit b_iso_min is kept: B refined with that lower
+  bound comes back as the limit give or take rounding errors (U to B
+  conversion), for example -4.e-15 for b_iso_min=0. This is what a strong
+  peak (an ion picked as water) gets.
+  """
+  lines = t.ser_lines() + [t.hoh(1, W_O, b=20), t.hoh(2, W_N, b=20)]
+  for b_min, b_max, b_value, n_expected in [
+      (0, 80, -4.4e-15, 2), (0, 80, 0., 2), (0, 80, 1.e-9, 2),
+      (0, 80, -0.01, 1),
+      (1, 80, 1-1.e-12, 2), (1, 80, 0.99, 1),
+      (0, 80, 80+1.e-12, 2), (0, 80, 80.01, 1)]:
+    params = ordered_solvent.master_params().extract()
+    params.add_hydrogens.d_min = None
+    params.mode = "filter_only" # nothing added or refined
+    params.b_iso_min = b_min
+    params.b_iso_max = b_max
+    o = t.run_manager(lines, lines, d_min=1.0, params=params,
+      map_filter=False)
+    assert len(t.waters(o.model)) == 2
+    a = t.find_water(o.model, W_N, tolerance=1.e-2)
+    xrs = o.model.get_xray_structure()
+    u = xrs.extract_u_iso_or_u_equiv()
+    u[a.i_seq] = adptbx.b_as_u(b_value)
+    xrs.set_u_iso(values = u)
+    o.model.set_xray_structure(xrs)
+    o._filter_q_b()
+    assert len(t.waters(o.model)) == n_expected, (b_value,
+      len(t.waters(o.model)))
+
 def run():
   exercise_params()
   exercise_resolve()
   exercise_keep_input_water()
   exercise_adp_type()
+  exercise_b_at_limit()
 
 if (__name__ == "__main__"):
   t0 = time.time()

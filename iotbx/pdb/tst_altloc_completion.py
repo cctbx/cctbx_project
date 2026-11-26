@@ -249,18 +249,135 @@ def exercise_water_and_ligand():
   assert r.shared == [(rg_id, "C2", "A")]
   assert atom_named(h, "C2").parent().altloc == ""
 
+def microheterogeneity_lines(n_altloc="", n_occ=1.0, ser_n=False, d_ser=0.3):
+  # 1EJG 22 pattern: Pro A / Ser B, C at one position, N without altloc.
+  # Reading gives two residue groups: (blank, A) PRO and (B, C) SER
+  lines = [
+    atom_line("N",  n_altloc, "PRO", 1, (0,   0,   0), "N", occ=n_occ),
+    atom_line("CA", "A", "PRO", 1, (1.4, 0,   0), "C", occ=0.57),
+    atom_line("C",  "A", "PRO", 1, (2.0, 1.3, 0), "C", occ=0.57),
+    atom_line("CB", "A", "PRO", 1, (2.0, -1.3, 0), "C", occ=0.57)]
+  if (ser_n):
+    lines += [
+      atom_line("N",  "B", "SER", 1, (0, 0.1, 0), "N", occ=0.21),
+      atom_line("N",  "C", "SER", 1, (0, 0.2, 0), "N", occ=0.22)]
+  lines += [
+    atom_line("CA", "B", "SER", 1, (1.4, d_ser,     0), "C", occ=0.21),
+    atom_line("C",  "B", "SER", 1, (2.0, d_ser+1.3, 0), "C", occ=0.21),
+    atom_line("CA", "C", "SER", 1, (1.4, -d_ser,     0), "C", occ=0.22),
+    atom_line("C",  "C", "SER", 1, (2.0, -d_ser+1.3, 0), "C", occ=0.22)]
+  return lines
+
+def groups_of(h):
+  return [(ag.altloc, ag.resname, sorted(a.name.strip() for a in ag.atoms()))
+    for ag in h.atom_groups()]
+
 def exercise_microheterogeneity():
-  h = hierarchy([
-    atom_line("N",  "",  "PRO", 1, (0,   0,   0), "N", occ=1.0),
-    atom_line("CA", "A", "PRO", 1, (1.4, 0,   0), "C"),
-    atom_line("C",  "A", "PRO", 1, (2.0, 1.3, 0), "C"),
-    atom_line("CB", "A", "PRO", 1, (2.0, -1.3, 0), "C"),
-    atom_line("CA", "B", "SER", 1, (1.4, 0.3, 0), "C"),
-    atom_line("C",  "B", "SER", 1, (2.0, 1.6, 0), "C")])
+  # The blank N belongs to every conformer at the position, but it is stored
+  # in the PRO residue group: the SER conformers have no N of their own (no
+  # N-H bond in the restraints, no H on N, charge -1 in each). It is copied
+  # into every conformer, under the conformer's residue name
+  h = hierarchy(microheterogeneity_lines())
+  assert len(h.only_chain().residue_groups()) == 2
+  pro, ser = " PRO A   1 ", " SER A   1 "
+  r = h.complete_altlocs()
+  assert r.changed
+  assert r.shared == [] and r.copied == [] and r.truncated == []
+  assert r.inconsistent == []
+  assert [d[:4] for d in r.distributed] == [
+    (pro, "N", pro, "A"), (pro, "N", ser, "B"), (pro, "N", ser, "C")]
+  assert approx_equal([d[4] for d in r.distributed], [0.57, 0.21, 0.22])
+  # a conformer never borrows from the other residue: no CB in SER
+  assert groups_of(h) == [
+    ("A", "PRO", ["C", "CA", "CB", "N"]),
+    ("B", "SER", ["C", "CA", "N"]),
+    ("C", "SER", ["C", "CA", "N"])], groups_of(h)
+  occ = occupancies_of(h, "N")
+  assert approx_equal([occ[k] for k in "ABC"], [0.57, 0.21, 0.22])
+  for a in h.atoms():
+    if (a.name.strip() == "N"): assert approx_equal(a.xyz, (0, 0, 0))
+  assert altloc_completion.report_lines(r) == [
+    "%s N: blank -> A, B (SER), C (SER)" % pro]
+  assert list(h.atoms().extract_i_seq()) == list(range(h.atoms_size()))
+  # second call: nothing left to do
+  s1 = h.as_pdb_string()
+  r = h.complete_altlocs()
+  assert not r.changed and r.distributed == []
+  assert h.as_pdb_string() == s1
+
+def exercise_microheterogeneity_one_residue_group():
+  # the same site read from mmCIF: one residue group with both residue names
+  h = hierarchy(microheterogeneity_lines())
+  chain = h.only_chain()
+  rgs = chain.residue_groups()
+  chain.merge_residue_groups(primary=rgs[0], secondary=rgs[1])
+  assert len(chain.residue_groups()) == 1
+  pro, ser = " PRO A   1 ", " SER A   1 "
+  r = h.complete_altlocs()
+  assert r.shared == [] and r.copied == [] and r.truncated == []
+  assert [d[:4] for d in r.distributed] == [
+    (pro, "N", pro, "A"), (pro, "N", ser, "B"), (pro, "N", ser, "C")]
+  assert approx_equal([d[4] for d in r.distributed], [0.57, 0.21, 0.22])
+  assert groups_of(h) == [
+    ("A", "PRO", ["C", "CA", "CB", "N"]),
+    ("B", "SER", ["C", "CA", "N"]),
+    ("C", "SER", ["C", "CA", "N"])], groups_of(h)
+  assert altloc_completion.report_lines(r) == [
+    "%s N: blank -> A, B (SER), C (SER)" % pro]
+  r = h.complete_altlocs()
+  assert not r.changed
+  # switched off: the site is left as it is
+  h = hierarchy(microheterogeneity_lines())
+  s0 = h.as_pdb_string()
+  r = altloc_completion.run(h, microheterogeneity=False)
+  assert not r.changed and r.distributed == [] and r.truncated == []
+  assert h.as_pdb_string() == s0
+
+def exercise_microheterogeneity_check_only():
+  h = hierarchy(microheterogeneity_lines())
+  s0 = h.as_pdb_string()
+  r = h.complete_altlocs(check_only=True)
+  assert r.changed and len(r.distributed) == 3
+  assert h.as_pdb_string() == s0
+
+def exercise_microheterogeneity_left_alone():
+  # every conformer of the other residue has its own N: nothing to copy
+  h = hierarchy(microheterogeneity_lines(n_altloc="A", n_occ=0.57, ser_n=True))
   s0 = h.as_pdb_string()
   r = h.complete_altlocs()
-  assert not r.changed and r.truncated == []
+  assert not r.changed and r.distributed == [] and r.truncated == []
   assert h.as_pdb_string() == s0
+  # the blank N is not bonded to the SER conformers (3.2 A from their CA):
+  # not copied, the SER conformers are reported as truncated
+  h = hierarchy(microheterogeneity_lines(d_ser=3.0))
+  s0 = h.as_pdb_string()
+  r = h.complete_altlocs()
+  assert not r.changed and r.distributed == []
+  assert [t[:3] for t in r.truncated] == [
+    (" SER A   1 ", "B", ["N"]), (" SER A   1 ", "C", ["N"])], r.truncated
+  assert h.as_pdb_string() == s0
+  # one residue name in two residue groups is not a microheterogeneity site
+  lines = microheterogeneity_lines()
+  lines = [l[:17] + "PRO" + l[20:] for l in lines]
+  h = hierarchy(lines)
+  r = h.complete_altlocs()
+  assert r.distributed == []
+
+def exercise_microheterogeneity_scattering_neutral():
+  lines = ["CRYST1   10.000   10.000   10.000  90.00  90.00  90.00 P 1"]
+  lines += microheterogeneity_lines()
+  def f_calc(xrs):
+    return xrs.structure_factors(d_min=1.5, algorithm="direct").f_calc()
+  pdb_inp = iotbx.pdb.input(source_info=None, lines=lines)
+  f0 = f_calc(pdb_inp.xray_structure_simple())
+  h = pdb_inp.construct_hierarchy()
+  r = h.complete_altlocs()
+  assert len(r.distributed) == 3
+  f1 = f_calc(h.extract_xray_structure(
+    crystal_symmetry=pdb_inp.crystal_symmetry()))
+  from cctbx.array_family import flex
+  d = flex.abs(f1.data() - f0.data())
+  assert flex.max(d) < 1.e-6 * flex.max(flex.abs(f0.data()))
 
 def exercise_check_only_and_idempotent():
   h = hierarchy(single_source_lines())
@@ -325,6 +442,10 @@ def run():
   exercise_single_label()
   exercise_water_and_ligand()
   exercise_microheterogeneity()
+  exercise_microheterogeneity_one_residue_group()
+  exercise_microheterogeneity_check_only()
+  exercise_microheterogeneity_left_alone()
+  exercise_microheterogeneity_scattering_neutral()
   exercise_check_only_and_idempotent()
   exercise_scattering_neutral()
   exercise_label_occupancy_and_bonded()

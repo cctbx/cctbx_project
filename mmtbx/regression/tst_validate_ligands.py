@@ -38,11 +38,15 @@ def _load_1avd_manager():
   if mtz_fname is None or pdb_fname is None:
     return None
   # the values pinned below are those of the input's heavy atoms: no flips
+  from mmtbx.bulk_solvent import mosaic
+  n_mosaic = mosaic.number_of_runs
   result = run_program(
     program_class=val_lig.Program,
     args=[pdb_fname, mtz_fname, 'add_flip_movers=False',
       'include_symmetric_copies=False', 'metal_bound_amines_as_nh2=False'],
     logger=null_out())
+  # maps are those of the mosaic bulk-solvent model
+  assert mosaic.number_of_runs > n_mosaic
   _1avd_manager_cache = result.ligand_manager
   return _1avd_manager_cache
 
@@ -528,8 +532,10 @@ def run_test08():
   map_values = find_lr(vl_manager, 'chain A and resseq 400 and resname BTN').get_map_values()
   assert map_values.fofc_map_values.size() == 16
   assert map_values.percent_bad_at_atom_centers == 0.0
-  assert map_values.n_bad_blobs == 1
-  assert approx_equal(map_values.percent_bad_blobs, 0.07, eps=0.1)
+  # no blob with the mosaic bulk-solvent model (one marginal blob, 0.07 %,
+  # with the flat one)
+  assert map_values.n_bad_blobs == 0
+  assert approx_equal(map_values.percent_bad_blobs, 0.0, eps=0.1)
 
   # --- BTN B 401: well-fitted; one small difference-density blob nearby ---
   map_values = find_lr(vl_manager, 'chain B and resseq 401 and resname BTN').get_map_values()

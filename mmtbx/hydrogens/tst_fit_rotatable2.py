@@ -7,6 +7,7 @@ import mmtbx.model
 import mmtbx.f_model
 import mmtbx.hydrogens
 from mmtbx.hydrogens import map_manager
+from cctbx.array_family import flex
 from libtbx.utils import null_out
 from libtbx.test_utils import approx_equal
 from scitbx.matrix import rotate_point_around_axis, col
@@ -216,10 +217,30 @@ def exercise_no_rotatable():
   assert approx_equal(list(model.get_sites_cart().as_double()),
     list(sites.as_double()), 1.e-9)
 
+def exercise_mask_params_restored():
+  """
+  The fit needs H in the mask; on return fmodel has the caller's
+  mask_params.ignore_hydrogens again and the mask computed with it.
+  """
+  model = get_model(pdb_str)
+  fmodel = get_fmodel(model, rotated_tyr_hh(model, 120))
+  assert fmodel.mask_params.ignore_hydrogens
+  mmtbx.hydrogens.fit_rotatable2(model=model, fmodel=fmodel, reset_h=False)
+  assert fmodel.mask_params.ignore_hydrogens
+  fresh = mmtbx.f_model.manager(
+    f_obs          = fmodel.f_obs(),
+    r_free_flags   = fmodel.r_free_flags(),
+    xray_structure = fmodel.xray_structure.deep_copy_scatterers())
+  assert fresh.mask_params.ignore_hydrogens
+  d = flex.max(flex.abs(
+    fresh.f_masks()[0].data() - fmodel.f_masks()[0].data()))
+  assert d < 1.e-6, d
+
 def run():
   exercise_one_map()
   exercise_recovers_rotation()
   exercise_no_rotatable()
+  exercise_mask_params_restored()
 
 if(__name__ == "__main__"):
   run()

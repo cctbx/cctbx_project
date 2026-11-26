@@ -181,15 +181,14 @@ def test_d_input_none():
   assert not [k for k in hd_values(fn) if k[3] == "D"]
 
 def test_d_input_qmready():
-  # qmready forces keep_existing_H=True and allows only none: D input stops,
-  # with the hint to remove the H/D first
+  # qmready keeps the input H/D by default (keep_existing_H=Auto) and allows
+  # only none: D input stops, with the hint to discard the H/D
   try:
     run_reduce2("tst_r2n_d_input_dqm", pdb_ser_dg,
       ["approach=add", "qmready=True"])
   except Sorry as e:
     assert str(e) == ("input contains deuterium; set neutron_option, or "
-      "rebuild H: remove the H/D first (approach=remove), then run "
-      "qmready=True"), str(e)
+      "rebuild H: keep_existing_H=False"), str(e)
   else:
     raise AssertionError("D input with qmready ran")
 

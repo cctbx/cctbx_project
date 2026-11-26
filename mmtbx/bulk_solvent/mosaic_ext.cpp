@@ -33,15 +33,27 @@ namespace {
       .def("update",   &alg2_tg<>::update)
    ;
 
-   def("alg4",
-      (af::shared<double>(*)
-        (boost::python::list                  const& F,
-         af::const_ref<double>                const& f_obs,
-         af::const_ref<std::complex<double> > const& phase_source,
-         int                                  const& max_cycles,
-         double                               const& auto_converge_eps
-         )) alg4);
-   ;
+   def("normal_matrix", normal_matrix, (arg("G")));
+
+   def("alg4_solve_bounded", alg4_solve_bounded, (
+     arg("a"),
+     arg("b"),
+     arg("lower"),
+     arg("upper"),
+     arg("x_start"),
+     arg("max_sweeps")=10000,
+     arg("eps")=1.e-10));
+
+   def("alg4", alg4, (
+     arg("G"),
+     arg("f_obs"),
+     arg("base"),
+     arg("lower"),
+     arg("upper"),
+     arg("x_start"),
+     arg("n_cycles")=5,
+     arg("normal_matrix")=af::versa<double, af::c_grid<2> >(
+       af::c_grid<2>(0,0))));
 
   }
 

@@ -22,7 +22,7 @@ def tst_01():
     (14.162085804614943, 11.403509966523153, 6.450881839681677))
   map_coeffs=generate_map_coefficients(model=model)
   assert approx_equal(map_coeffs.data()[0],
-     (3.70494534745-0.185333495539j))
+     (3.7079215187484467-0.1805594424360395j))
   map_manager=generate_map(map_coeffs=map_coeffs)
 
   mm_2= generate_map(map_coeffs=map_coeffs,
@@ -35,7 +35,7 @@ def tst_01():
       low_resolution_real_space_noise_fraction=1,
       high_resolution_real_space_noise_fraction=1,
       )
-  assert approx_equal (mm_2.map_data()[323], -0.0784650534896)
+  assert approx_equal (mm_2.map_data()[323], -0.0785373525592)
   mm_2.shift_origin()
   model.set_shift_cart(mm_2.shift_cart())
   mam=map_model_manager(map_manager=mm_2,model=model)

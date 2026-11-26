@@ -175,6 +175,29 @@ steps:
   displayName: Install pyDiSCaMB
   retryCountOnTaskFailure: 3
 
+# test timings from the latest run on master, so that the longest tests
+# start first; pipelines that set timings_pipeline use them
+- script: |
+    set -xe
+    mkdir -p $(Pipeline.Workspace)/timings
+  displayName: Create test timings directory
+  condition: ne(variables['timings_pipeline'], '')
+
+- task: DownloadPipelineArtifact@2
+  inputs:
+    source: 'specific'
+    project: '$(System.TeamProjectId)'
+    pipeline: '$(timings_pipeline)'
+    runVersion: 'latestFromBranch'
+    runBranch: 'refs/heads/master'
+    allowPartiallySucceededBuilds: true
+    allowFailedBuilds: true
+    artifact: timings_$(job_name)
+    path: $(Pipeline.Workspace)/timings
+  displayName: Download test timings
+  condition: ne(variables['timings_pipeline'], '')
+  continueOnError: true
+
 # test
 - script: |
     set -xe
@@ -182,6 +205,10 @@ steps:
     conda activate $(PYTHON_VERSION)
     cd $(Pipeline.Workspace)
     source ./build/setpaths.sh
+    timings=""
+    if [ -d $(Pipeline.Workspace)/timings ]; then
+      timings="timings=$(Pipeline.Workspace)/timings/timings.csv"
+    fi
     rm -fr tests
     mkdir tests
     cd tests
@@ -207,7 +234,8 @@ steps:
       module=smtbx \
       module=spotfinder \
       max_retries=2 \
-      nproc=4 || rc=$?
+      nproc=4 \
+      ${timings} || rc=$?
     if [ "$rc" -ne 0 ]; then
       echo "##vso[task.setvariable variable=tests_failed]true"
     fi
@@ -215,6 +243,17 @@ steps:
   failOnStderr: false
   displayName: Test
   retryCountOnTaskFailure: 3
+
+# only runs on master update the test timings
+- publish: $(Pipeline.Workspace)/timings
+  artifact: timings_$(job_name)
+  displayName: Save test timings
+  condition: >
+    and(always(),
+        ne(variables['timings_pipeline'], ''),
+        eq(variables['Build.SourceBranch'], 'refs/heads/master'),
+        ne(variables['Build.Reason'], 'PullRequest'))
+  continueOnError: true
 
 # delete currently failing test
 - script: |

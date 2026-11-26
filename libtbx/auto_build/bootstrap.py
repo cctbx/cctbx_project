@@ -1743,9 +1743,6 @@ files for {module} will be downloaded.""".format(module=module))
         m_conda_python = os.path.join('bin', 'python')
         if self.isPlatformWindows():
           m_conda_python = self.op.join('python.exe')
-        elif self.isPlatformMacOSX():
-          m_conda_python = os.path.join('python.app', 'Contents',
-                                        'MacOS', 'python')
         return m_conda_python
       # -----------------------------------------------------------------------
 

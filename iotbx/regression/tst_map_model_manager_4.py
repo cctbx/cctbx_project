@@ -215,7 +215,7 @@ def exercise( out = sys.stdout):
   dc = mmm1.deep_copy()
   dc.mask_info(quiet=True)
   print (dc.mask_info(quiet=True).marked_points )
-  assert dc.mask_info(quiet=True).marked_points in  [9184, 9318, 8862]
+  assert dc.mask_info(quiet=True).marked_points in  [9184, 9318, 8862, 8861]
   dc.create_spherical_mask()
   dc.mask_info(quiet=True)
   print (dc.mask_info(quiet=True).marked_points)

@@ -2344,7 +2344,7 @@ class ncs_group:
         # Then as y = R x + T  (in original coordinate system), we can say:
         #   a_inv (y' - t) = R (a_inv (x' - t) ) + T
         # Or...
-        #   y' = [a R a_inv] x' - [a R a_inv ] t + t + a t
+        #   y' = [a R a_inv] x' - [a R a_inv ] t + t + a T
         # So that:
         #   R' = a R a_inv
         #   T' = a T + t - a R a_inv t = transformed T minus R' * t
@@ -2360,8 +2360,9 @@ class ncs_group:
         # translation vectors depend on the change of basis and the rotation
         # as well as the change-of-basis operator
         t_as_col=change_of_basis_operator.c().t().as_rational().as_float()
-        # the basis translation in orig coordinate system
-        cob_trans=unit_cell.orthogonalize(t_as_col)
+        # the basis translation t is added to fractional coordinates in the
+        # new cell (new_frac = r frac + t), so orthogonalize in the new cell
+        cob_trans=new_unit_cell.orthogonalize(t_as_col)
         # correction for the basis translation in new coordinate system
         delta = ncs_r_prime * cob_trans
         t_prime=matrix.col(new_ncs_t) - matrix.col(delta)
@@ -2439,6 +2440,7 @@ class ncs_group:
     #  Scale_factor applied to translations
     new._rota_matrices,new._translations_orth=self.copy_rot_trans(
        self._rota_matrices,self._translations_orth,
+         change_of_basis_operator=change_of_basis_operator,
          scale_factor=scale_factor,
          coordinate_offset=coordinate_offset,
          unit_cell=unit_cell,new_unit_cell=new_unit_cell)

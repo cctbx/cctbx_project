@@ -19,7 +19,8 @@ def run_group(symbol, preprocess_against_shallow):
   """
   Regions of a symmetric whole-cell mask, of the same mask with symmetry
   related regions merged, and of the mask restored from its asymmetric unit
-  must be the same. The space group is given to connectivity so that removing
+  must be the same. After merging, the map of region numbers must obey the
+  space group symmetry. The space group is given to connectivity so that removing
   shallow voxels (preprocess_against_shallow) keeps the mask symmetric: the
   three grid axes alone are not a symmetric set of directions in trigonal and
   hexagonal space groups.
@@ -74,7 +75,16 @@ def run_group(symbol, preprocess_against_shallow):
   conn_map_asu = amap.data()
   conn_map_p1_restored = amap.symmetry_expanded_map()
   print(flex.min(conn_map_asu), flex.max(conn_map_asu))
-
+  # All symmetry copies of a region have the same number after merging: the
+  # map of region numbers obeys the space group symmetry.
+  restored_unpadded = conn_map_p1_restored.deep_copy()
+  maptbx.unpad_in_place(map=restored_unpadded)
+  assert restored_unpadded.all_eq(conn_map_p1_merged)
+  # Merging changes numbers only: the solvent points are the same, and the
+  # number of regions cannot increase.
+  assert ((conn_map_p1 > 0) == (conn_map_p1_merged > 0)).all_eq(True)
+  assert len(regions_p1_merged) <= len(regions_p1)
+  assert regions_p1_merged[0] == regions_p1[0]
   #
   mask_p1_1 = conn_map_p1_restored.set_selected(conn_map_p1_restored>0.01, 1)
   maptbx.unpad_in_place(map=mask_p1_1)

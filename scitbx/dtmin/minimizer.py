@@ -15,6 +15,11 @@ DEF_TAB = 3
 class Minimizer(object):
   def __init__(self, output_level):
     self.output_level = output_level
+    #output is formatted only when it will be written
+    self.write_logfile = (LOGFILE <= output_level)
+    self.write_verbose = (VERBOSE <= output_level)
+    self.write_further = (FURTHER <= output_level)
+    self.write_testing = (TESTING <= output_level)
     self.func_count_ = 0 #for counting the number of function evaluations in the line search
     self.parameter_names_ = None
 
@@ -40,21 +45,25 @@ class Minimizer(object):
     refine_object.initial_statistics()
 
     for macro_cycle in range(len(protocol)):
-      self.log_underline(TESTING,"MACROCYCLE #" + str(macro_cycle+1) + " OF " + str(len(protocol)))
+      if self.write_testing:
+        self.log_underline(TESTING,"MACROCYCLE #" + str(macro_cycle+1) + " OF " + str(len(protocol)))
 
       refine_object.set_macrocycle_protocol(protocol[macro_cycle])
-      self.log_protocol(LOGFILE, protocol[macro_cycle])
+      if self.write_logfile:
+        self.log_protocol(LOGFILE, protocol[macro_cycle])
       if refine_object.nmp == 0:
         continue # skip this macrocycle
 
       refine_object.setup()
 
       self.parameter_names_ = refine_object.macrocycle_parameter_names()
-      self.log_parameters(VERBOSE, self.parameter_names_)
+      if self.write_verbose:
+        self.log_parameters(VERBOSE, self.parameter_names_)
 
       refine_object.reject_outliers()
 
-      self.log_ellipsis_start(LOGFILE,"Performing Optimisation")
+      if self.write_logfile:
+        self.log_ellipsis_start(LOGFILE,"Performing Optimisation")
       # not implementing create_report() code in the python version
 
       calc_new_hessian = True                                       # for bfgs
@@ -74,17 +83,20 @@ class Minimizer(object):
 
       f = initial_f = previous_f = refine_object.target()
 
-      self.log_blank(VERBOSE)
-      self.log_underline(VERBOSE,"Stats before starting refinement")
+      if self.write_verbose:
+        self.log_blank(VERBOSE)
+        self.log_underline(VERBOSE,"Stats before starting refinement")
       refine_object.current_statistics()
-      self.log_tab(1,VERBOSE,"Optimisation statistics, macrocycle #" + str(macro_cycle+1))
-      self.log_tab_printf(1,VERBOSE,"Cycle     %-15s %-18s %-18s\n",("end-this-cycle","change-from-start","change-from-last"))
-      self.log_tab_printf(1,VERBOSE,"Cycle#%-2d %15.3f %18.3s %18.3s\n",(0,initial_f,"",""))
+      if self.write_verbose:
+        self.log_tab(1,VERBOSE,"Optimisation statistics, macrocycle #" + str(macro_cycle+1))
+        self.log_tab_printf(1,VERBOSE,"Cycle     %-15s %-18s %-18s\n",("end-this-cycle","change-from-start","change-from-last"))
+        self.log_tab_printf(1,VERBOSE,"Cycle#%-2d %15.3f %18.3s %18.3s\n",(0,initial_f,"",""))
 
       ########################### MINIMIZATION CYCLES ######################################
       cycle = 0
       while True:
-        self.log_underline(TESTING,"MACROCYCLE #" + str(macro_cycle+1) + ": CYCLE #" + str(cycle+1))
+        if self.write_testing:
+          self.log_underline(TESTING,"MACROCYCLE #" + str(macro_cycle+1) + ": CYCLE #" + str(cycle+1))
 
         assert(self.check_in_bounds(refine_object))
 
@@ -104,14 +116,16 @@ class Minimizer(object):
                     previous_g,                       # for bfgs to update h_inverse_approximation
                     previous_h_inverse_approximation) # for bfgs to update h_inverse_approximation
 
-          self.log_hessian(TESTING,previous_h_inverse_approximation, self.parameter_names_)
+          if self.write_testing:
+            self.log_hessian(TESTING,previous_h_inverse_approximation, self.parameter_names_)
         elif minimizer_type.lower() == "newton":
           (f, too_small_shift) = \
             self.newton(refine_object,
                         required_decrease)    # for the line search
 
         refine_object.current_statistics()
-        self.log_tab_printf(1,VERBOSE,"Cycle#%-2d %15.3f %18.3f %18.3f\n",(cycle+1,f,(f-initial_f),(f-previous_f)))
+        if self.write_verbose:
+          self.log_tab_printf(1,VERBOSE,"Cycle#%-2d %15.3f %18.3f %18.3f\n",(cycle+1,f,(f-initial_f),(f-previous_f)))
 
         too_small_decrease = (previous_f - f < required_decrease)
 
@@ -135,20 +149,22 @@ class Minimizer(object):
 
         #string is empty for continuation
         if len(termination_reason) != 0:
-          self.log_tab(2,FURTHER, "termination reason: " + str(termination_reason))
+          if self.write_further:
+            self.log_tab(2,FURTHER, "termination reason: " + str(termination_reason))
           break
 
         cycle += 1
       ################################## END OF MINIMIZATION CYCLES ####################
 
-      self.log_ellipsis_end(LOGFILE)
-      if cycle == ncyc-1:
-        self.log_tab(1,LOGFILE,"--- Iteration limit reached at cycle " + str(ncyc) + " ---")
-      else:
-        self.log_tab(1,LOGFILE,"--- Convergence before iteration limit (" + str(ncyc) +") at cycle " + str(cycle+1) + " ---")
-      self.log_tab(1,LOGFILE,"Start-this-macrocycle End-this-macrocycle Change-this-macrocycle")
-      self.log_tab_printf(1,LOGFILE,"%13.3f %21.3f %21.3f\n",(initial_f,f,(f-initial_f)))
-      self.log_blank(LOGFILE)
+      if self.write_logfile:
+        self.log_ellipsis_end(LOGFILE)
+        if cycle == ncyc-1:
+          self.log_tab(1,LOGFILE,"--- Iteration limit reached at cycle " + str(ncyc) + " ---")
+        else:
+          self.log_tab(1,LOGFILE,"--- Convergence before iteration limit (" + str(ncyc) +") at cycle " + str(cycle+1) + " ---")
+        self.log_tab(1,LOGFILE,"Start-this-macrocycle End-this-macrocycle Change-this-macrocycle")
+        self.log_tab_printf(1,LOGFILE,"%13.3f %21.3f %21.3f\n",(initial_f,f,(f-initial_f)))
+        self.log_blank(LOGFILE)
       refine_object.current_statistics()
 
       # study behaviour of function, gradient and curvature as parameters varied around minimum
@@ -175,8 +191,9 @@ class Minimizer(object):
         break
 
     if some_refinement == False:
-      self.log_tab(1,LOGFILE,"No refinement of parameters")
-      self.log_blank(LOGFILE)
+      if self.write_logfile:
+        self.log_tab(1,LOGFILE,"No refinement of parameters")
+        self.log_blank(LOGFILE)
       return
 
     allowed_minimizers = set(["bfgs", "newton"])
@@ -199,16 +216,19 @@ class Minimizer(object):
     min_dx_over_esd = 0.1
     f = 0.
 
-    self.log_tab(1, TESTING, "== BFGS ==")
+    if self.write_testing:
+      self.log_tab(1, TESTING, "== BFGS ==")
 
     if calc_new_hessian:
-      self.log_tab(1,TESTING,"== Newton Step ==")
+      if self.write_testing:
+        self.log_tab(1,TESTING,"== Newton Step ==")
 
       calc_new_hessian = False # reset
       ncyc_since_hessian_calc = 0
 
-      self.log_tab(1,TESTING,"BFGS: Gradient and New Hessian")
-      self.log_ellipsis_start(TESTING,"BFGS: Calculating Gradient and New Hessian")
+      if self.write_testing:
+        self.log_tab(1,TESTING,"BFGS: Gradient and New Hessian")
+        self.log_ellipsis_start(TESTING,"BFGS: Calculating Gradient and New Hessian")
 
       f_g_h = refine_object.reparameterized_adjusted_target_gradient_hessian()
       starting_f               = f_g_h[0]
@@ -217,13 +237,14 @@ class Minimizer(object):
       is_hessian_diagonal      = f_g_h[3]
       queue_new_hessian = f_g_h[0]
 
-      self.log_ellipsis_end(TESTING)
-      self.log_blank(TESTING)
-      self.log_vector(TESTING, "BFGS::Newton: Gradient", g, self.parameter_names_)
-      self.log_blank(TESTING)
+      if self.write_testing:
+        self.log_ellipsis_end(TESTING)
+        self.log_blank(TESTING)
+        self.log_vector(TESTING, "BFGS::Newton: Gradient", g, self.parameter_names_)
+        self.log_blank(TESTING)
 
-      self.log_hessian(TESTING, h, self.parameter_names_)
-      self.log_blank(TESTING)
+        self.log_hessian(TESTING, h, self.parameter_names_)
+        self.log_blank(TESTING)
 
       if flex.double(g).all_eq(0):  #convert g to a flex.double to get the all_eq method
         queue_new_hessian = False
@@ -249,17 +270,19 @@ class Minimizer(object):
           filtered = 0
           (h_inverse_approximation, filtered) = RealSymmetricPseudoInverse(h, filtered, min_to_filter)
 
-          if filtered:
-            self.log_tab_printf(1,TESTING,"Filtered %i small eigenvectors\n",filtered)
-          self.log_tab(1,TESTING,"Pseudoinverse Hessian")
-          self.log_hessian(TESTING,h_inverse_approximation,self.parameter_names_)
+          if self.write_testing:
+            if filtered:
+              self.log_tab_printf(1,TESTING,"Filtered %i small eigenvectors\n",filtered)
+            self.log_tab(1,TESTING,"Pseudoinverse Hessian")
+            self.log_hessian(TESTING,h_inverse_approximation,self.parameter_names_)
 
           filtered_last = filtered
 
         g = flex.double(g)
         p = - h_inverse_approximation.matrix_multiply(g)
-        self.log_vector(TESTING,"BFGS::Newton: Search Vector, p",p,self.parameter_names_)
-        self.log_blank(TESTING)
+        if self.write_testing:
+          self.log_vector(TESTING,"BFGS::Newton: Search Vector, p",p,self.parameter_names_)
+          self.log_blank(TESTING)
 
         # Figure out how far linesearch has to go to shift at least one parameter
         # by (minimum shift/esd) * esd, using inverse Hessian to estimate covariance matrix
@@ -271,8 +294,9 @@ class Minimizer(object):
     else:
       ncyc_since_hessian_calc += 1
 
-      self.log_tab(1,TESTING,"BFGS: Gradient")
-      self.log_ellipsis_start(TESTING,"BFGS: Calculating Gradient")
+      if self.write_testing:
+        self.log_tab(1,TESTING,"BFGS: Gradient")
+        self.log_ellipsis_start(TESTING,"BFGS: Calculating Gradient")
 
       (f, g) = refine_object.reparameterized_target_gradient()
 
@@ -289,7 +313,8 @@ class Minimizer(object):
       dg_dot_Hdg = dg.dot(Hdg)
 
       if dx_dot_dg <= 0:
-        self.log_tab(1,TESTING,"BFGS: dx_dot_dg <= 0: restarting with new Hessian")
+        if self.write_testing:
+          self.log_tab(1,TESTING,"BFGS: dx_dot_dg <= 0: restarting with new Hessian")
         queue_new_hessian = True
         return (f, ncyc_since_hessian_calc, queue_new_hessian, too_small_shift, zero_gradient, x, g, previous_h_inverse_approximation)
       assert(dg_dot_Hdg)
@@ -302,15 +327,17 @@ class Minimizer(object):
         for j in range(refine_object.nmp):
           h_inverse_approximation[i,j] = previous_h_inverse_approximation[i,j] + dx[i]*dx[j]/dx_dot_dg - Hdg[i]*Hdg[j]/dg_dot_Hdg + dg_dot_Hdg*u[i]*u[j]
 
-      self.log_blank(TESTING)
-      self.log_hessian(TESTING,h_inverse_approximation, self.parameter_names_)
-      self.log_blank(TESTING)
+      if self.write_testing:
+        self.log_blank(TESTING)
+        self.log_hessian(TESTING,h_inverse_approximation, self.parameter_names_)
+        self.log_blank(TESTING)
 
       g = flex.double(g)
       p = - h_inverse_approximation.matrix_multiply(g)
 
-      self.log_vector(TESTING,"BFGS: Search Vector, p",p,self.parameter_names_)
-      self.log_blank(TESTING)
+      if self.write_testing:
+        self.log_vector(TESTING,"BFGS: Search Vector, p",p,self.parameter_names_)
+        self.log_blank(TESTING)
 
       # Figure out how far linesearch has to go to shift at least one parameter
       # by minimum shift/esd, using inverse Hessian to estimate covariance matrix
@@ -320,7 +347,8 @@ class Minimizer(object):
 
       # Check for positive grad
       if p.dot(g) >= 0.:
-        self.log_tab(1,TESTING, "BFGS: p.g >= 0: restart with new Hessian")
+        if self.write_testing:
+          self.log_tab(1,TESTING, "BFGS: p.g >= 0: restart with new Hessian")
         queue_new_hessian = True
 
       previous_h_inverse_approximation = h_inverse_approximation
@@ -341,9 +369,10 @@ class Minimizer(object):
     # multivariate normal distribution, then the log likelihood may be approximated by a multidimensional
     # quadratic with its matrix being the inverse of the covariance matrix of the distribution.
 
-    self.log_tab(1,TESTING,"==NEWTON==")
-    self.log_tab(1,TESTING,"Newton: Gradient and Hessian")
-    self.log_ellipsis_start(TESTING,"Newton: Calculating the gradient and hessian")
+    if self.write_testing:
+      self.log_tab(1,TESTING,"==NEWTON==")
+      self.log_tab(1,TESTING,"Newton: Gradient and Hessian")
+      self.log_ellipsis_start(TESTING,"Newton: Calculating the gradient and hessian")
 
     f_g_h = refine_object.reparameterized_adjusted_target_gradient_hessian()
     f                     = f_g_h[0]
@@ -355,15 +384,17 @@ class Minimizer(object):
     h_inv = h # (shallow copy)
 
     if flex.double(g).all_eq(0): # convert to flex double to get all_eq method
-      self.log_tab(1,TESTING,"Newton: Zero gradient: exiting")
+      if self.write_testing:
+        self.log_tab(1,TESTING,"Newton: Zero gradient: exiting")
       return (f, too_small_shift)
 
-    self.log_ellipsis_end(TESTING)
-    self.log_blank(TESTING)
-    self.log_vector(TESTING,"Newton: Gradient",g,self.parameter_names_)
-    self.log_blank(TESTING)
-    self.log_tab(1,TESTING,"Newton: After adjusting negative diagonals, but before Inverse")
-    self.log_hessian(TESTING,h,self.parameter_names_)
+    if self.write_testing:
+      self.log_ellipsis_end(TESTING)
+      self.log_blank(TESTING)
+      self.log_vector(TESTING,"Newton: Gradient",g,self.parameter_names_)
+      self.log_blank(TESTING)
+      self.log_tab(1,TESTING,"Newton: After adjusting negative diagonals, but before Inverse")
+      self.log_hessian(TESTING,h,self.parameter_names_)
 
     # invert hessian
     if is_hessian_diagonal:
@@ -372,25 +403,28 @@ class Minimizer(object):
     else:
       filtered = 0
       (h_inv, filtered) = RealSymmetricPseudoInverse(h, filtered)
-      if filtered:
-        self.log_tab_printf(1,TESTING,"Newton: Filtered %i negative or small eigenvectors\n",filtered)
-      self.log_tab(1,TESTING,"Newton: After Computing Pseudo-Inverse")
-      self.log_hessian(TESTING,h_inv,self.parameter_names_)
+      if self.write_testing:
+        if filtered:
+          self.log_tab_printf(1,TESTING,"Newton: Filtered %i negative or small eigenvectors\n",filtered)
+        self.log_tab(1,TESTING,"Newton: After Computing Pseudo-Inverse")
+        self.log_hessian(TESTING,h_inv,self.parameter_names_)
 
     # search vector p found from the Newton equation: p = - h_inv * g
     g = flex.double(g)
     p = -h_inv.matrix_multiply(g)
 
-    self.log_vector(TESTING,"Newton: Parameters",x,self.parameter_names_)
-    self.log_vector(TESTING,"Newton: Search Vector",p,self.parameter_names_)
-    self.log_blank(TESTING)
+    if self.write_testing:
+      self.log_vector(TESTING,"Newton: Parameters",x,self.parameter_names_)
+      self.log_vector(TESTING,"Newton: Search Vector",p,self.parameter_names_)
+      self.log_blank(TESTING)
 
     # Figure out how far linesearch has to go to shift at least one parameter
     # by minimum shift/esd, using inverse Hessian to estimate covariance matrix
     required_shift = self.required_shift(min_dx_over_esd, p, h_inv)
 
     (f, too_small_shift) = self.line_search(refine_object,x,f,g,p,1.,required_decrease,required_shift,too_small_shift)
-    self.log_tab_printf(1,TESTING,"Newton Function %10.6f\n", f)
+    if self.write_testing:
+      self.log_tab_printf(1,TESTING,"Newton Function %10.6f\n", f)
     return (f, too_small_shift)
 
   def line_search(self, refine_object, oldx, f, g, p, starting_distance, required_decrease, required_shift, too_small_shift):
@@ -410,25 +444,29 @@ class Minimizer(object):
     # Check grad of function in direction of line search
     grad = p.dot(g)
     if grad >= ZERO:
-      self.log_tab(1,TESTING,"Grad of target in search direction >= 0: grad = " +str(grad))
+      if self.write_testing:
+        self.log_tab(1,TESTING,"Grad of target in search direction >= 0: grad = " +str(grad))
       too_small_shift = True
       #report
       return (f, too_small_shift)
 
-    self.log_tab(1,TESTING,"Determining Stepsize")
-    self.log_tab_printf(1,TESTING,"f(  Start  ) = %12.6f\n", f)
-    self.log_tab_printf(1,TESTING,"|",())
+    if self.write_testing:
+      self.log_tab(1,TESTING,"Determining Stepsize")
+      self.log_tab_printf(1,TESTING,"f(  Start  ) = %12.6f\n", f)
+      self.log_tab_printf(1,TESTING,"|",())
 
     # Put distance each parameter can move before it hits a bound in dist array. If all parameters are
     # bounded in search direction, need to know maxDist we can move before hitting ultimate bound.
     (max_dist, dist) = refine_object.maximum_distance(tuple(oldx),tuple(p))
     if starting_distance > max_dist:
       if max_dist > ZERO:
-        self.log_tab(1,TESTING,"To avoid exceeding bounds for all parameters, starting distance reduced from "
-              + str(starting_distance) + " to " + str(max_dist))
+        if self.write_testing:
+          self.log_tab(1,TESTING,"To avoid exceeding bounds for all parameters, starting distance reduced from "
+                + str(starting_distance) + " to " + str(max_dist))
         starting_distance = max_dist
       else:
-        self.log_tab(1,TESTING,"All parameters have hit a bound -- end search")
+        if self.write_testing:
+          self.log_tab(1,TESTING,"All parameters have hit a bound -- end search")
         too_small_shift = True
         #report
         return (f, too_small_shift)
@@ -439,16 +477,18 @@ class Minimizer(object):
     fk, flo, fhi, dk, dlo, dhi = 0., 0., 0., 0., 0., 0.
 
     #Sample first test point
-    self.log_tab(1,TESTING,"Unit distance = " + str(starting_distance))
+    if self.write_testing:
+      self.log_tab(1,TESTING,"Unit distance = " + str(starting_distance))
 
     dk = starting_distance
     fk = self.shift_score(refine_object, dk, x, oldx, p, dist, macrocycle_large_shifts)
 
     WOLFEFRAC = HALF # 0.5 slightly better in tests of 0,0.25,0.5,1
     if (dk >= WOLFEFRAC) and (fk < f+WOLFEC1*dk*grad): # Significant fraction of (quasi-)Newton shift # Wolfe condition for first step
-      self.log_tab(1,TESTING,"Satisfied Wolfe condition for first step")
-      self.log_tab_printf(1,TESTING,"Final Target Value: %12.6f distance: %12.6f \n",(fk, dk))
-      self.log_tab(1,TESTING,"Bracketing (A) took " + str(self.func_count_) + " function evaluations")
+      if self.write_testing:
+        self.log_tab(1,TESTING,"Satisfied Wolfe condition for first step")
+        self.log_tab_printf(1,TESTING,"Final Target Value: %12.6f distance: %12.6f \n",(fk, dk))
+        self.log_tab(1,TESTING,"Bracketing (A) took " + str(self.func_count_) + " function evaluations")
       if dk < required_shift:
         too_small_shift = True
       #report
@@ -464,7 +504,8 @@ class Minimizer(object):
         if dk < starting_distance/1.E10: # Give up if shift too small
           refine_object.set_reparameterized_parameters(oldx) # Reset x before returning
           too_small_shift = True
-          self.log_tab(1,TESTING,"line_search: Shift too small")
+          if self.write_testing:
+            self.log_tab(1,TESTING,"line_search: Shift too small")
           f = fk
           #report
           return (f, too_small_shift)
@@ -479,9 +520,10 @@ class Minimizer(object):
         fk = self.shift_score(refine_object, dk, x, oldx, p, dist, macrocycle_large_shifts)
 
       if fk < f+WOLFEC1*dk*grad:
-        self.log_tab(1,TESTING,"Satisfied Wolfe condition after backtracking")
-        self.log_tab_printf(1,TESTING,"Final Target Value: %12.6f distance: %12.6f \n", (fk, dk))
-        self.log_tab(1,TESTING,"Bracketing (B) took " + str(self.func_count_) + " function evaluations")
+        if self.write_testing:
+          self.log_tab(1,TESTING,"Satisfied Wolfe condition after backtracking")
+          self.log_tab_printf(1,TESTING,"Final Target Value: %12.6f distance: %12.6f \n", (fk, dk))
+          self.log_tab(1,TESTING,"Bracketing (B) took " + str(self.func_count_) + " function evaluations")
         if dk < required_shift:
           too_small_shift = True
         #report
@@ -497,9 +539,10 @@ class Minimizer(object):
         if (fhi <= fk and
             dhi >= WOLFEFRAC and       # Significant fraction of (quasi-)Newton shift
             fhi < f+WOLFEC1*dhi*grad): # Wolfe condition for first step
-          self.log_tab(1,TESTING,"Satisfied Wolfe condition for extended step")
-          self.log_tab_printf(1,TESTING,"Final Target Value: %12.6f distance: %12.6f \n", (fhi, dhi))
-          self.log_tab(1,TESTING,"Bracketing (C) took " + str(self.func_count_) + " function evaluations")
+          if self.write_testing:
+            self.log_tab(1,TESTING,"Satisfied Wolfe condition for extended step")
+            self.log_tab_printf(1,TESTING,"Final Target Value: %12.6f distance: %12.6f \n", (fhi, dhi))
+            self.log_tab(1,TESTING,"Bracketing (C) took " + str(self.func_count_) + " function evaluations")
           if dhi < required_shift:
             too_small_shift = True
           #report
@@ -518,9 +561,10 @@ class Minimizer(object):
           if (fhi <= fk and
               dhi >= WOLFEFRAC and # Significant fraction of (quasi-)Newton shift
               fhi < f+WOLFEC1*dhi*grad): # Wolfe condition for first step
-            self.log_tab(1,TESTING,"Satisfied Wolfe condition for further extended step")
-            self.log_tab_printf(1,TESTING,"Final Target Value: %12.6f distance: %12.6f \n", (fhi, dhi))
-            self.log_tab(1,TESTING,"Bracketing (D) took " + str(self.func_count_) + " function evaluations")
+            if self.write_testing:
+              self.log_tab(1,TESTING,"Satisfied Wolfe condition for further extended step")
+              self.log_tab_printf(1,TESTING,"Final Target Value: %12.6f distance: %12.6f \n", (fhi, dhi))
+              self.log_tab(1,TESTING,"Bracketing (D) took " + str(self.func_count_) + " function evaluations")
             if dhi < required_shift:
               too_small_shift = True
             #report
@@ -534,15 +578,17 @@ class Minimizer(object):
           fk = self.shift_score(refine_object, dk, x, oldx, p, dist, macrocycle_large_shifts)
           if fk >= fhi:
             self.shift_parameters(refine_object,dhi,x,oldx,p,dist,macrocycle_large_shifts)
-            self.log_tab(1,TESTING,"Reached boundary without defining bracket")
+            if self.write_testing:
+              self.log_tab(1,TESTING,"Reached boundary without defining bracket")
             if dhi < required_shift:
               too_small_shift = True
             #report
             return (fhi, too_small_shift)
       if dk >= WOLFEFRAC and fk < f+WOLFEC1*dk*grad:
-        self.log_tab(1,TESTING,"Satisfied Wolfe condition for bigger than initial step")
-        self.log_tab_printf(1,TESTING,"Final Target Value: %12.6f distance: %12.6f \n", (fk, dk))
-        self.log_tab(1,TESTING,"Bracketing (E) took " + str(self.func_count_) + " function evaluations")
+        if self.write_testing:
+          self.log_tab(1,TESTING,"Satisfied Wolfe condition for bigger than initial step")
+          self.log_tab_printf(1,TESTING,"Final Target Value: %12.6f distance: %12.6f \n", (fk, dk))
+          self.log_tab(1,TESTING,"Bracketing (E) took " + str(self.func_count_) + " function evaluations")
 
         self.shift_parameters(refine_object,dk,x,oldx,p,dist,macrocycle_large_shifts)  # Set to current best before returning
         if dk < required_shift:
@@ -553,8 +599,9 @@ class Minimizer(object):
     ################### End of Bracketing ###########################
 
 
-    self.log_tab(1,TESTING,"Bracketing (target) took " + str(self.func_count_) + " function evaluations")
-    self.log_tab(1,TESTING,"xlow= " + str(dlo) + ", xhigh= " + str(dhi))
+    if self.write_testing:
+      self.log_tab(1,TESTING,"Bracketing (target) took " + str(self.func_count_) + " function evaluations")
+      self.log_tab(1,TESTING,"xlow= " + str(dlo) + ", xhigh= " + str(dhi))
     dmid = dk
     fmid = fk
 
@@ -570,17 +617,20 @@ class Minimizer(object):
     laststepsize = stepsize*TWO # permit first step to actually happen
     d1, f1, d2, f2 = 0., 0., 0., 0.
 
-    self.log_tab_printf(1,TESTING,"Line Search |",())
+    if self.write_testing:
+      self.log_tab_printf(1,TESTING,"Line Search |",())
     for i in range(20): # fall-back upper limit on evaluations in interpolation stage
       (quadratic_coefficients, a, b, c) = self.quadratic_coefficients(flo, fmid, fhi, dlo, dmid, dhi, a, b, c)
       if quadratic_coefficients: # Make sure there will be quadratic with a minimum
-        self.log_tab(1, TESTING, "Quadratic interpolation used" )
+        if self.write_testing:
+          self.log_tab(1, TESTING, "Quadratic interpolation used" )
         dk = -b/(TWO*c)
         dk = max(dk,dlo)
         dk = min(dk,dhi)
 
       else:
-        self.log_tab(1, TESTING, "No quadratic interpolation possible, taking interval midpoint..." )
+        if self.write_testing:
+          self.log_tab(1, TESTING, "No quadratic interpolation possible, taking interval midpoint..." )
         c = ZERO
         dk = dmid
 
@@ -588,18 +638,21 @@ class Minimizer(object):
       laststepsize = stepsize
       stepsize = abs(dk-dmid)
 
-      self.log_tab_printf(0,TESTING," stepsize= %12.6f, laststepsize= %12.6f,  ",(stepsize, laststepsize))
+      if self.write_testing:
+        self.log_tab_printf(0,TESTING," stepsize= %12.6f, laststepsize= %12.6f,  ",(stepsize, laststepsize))
       if (c > ZERO and                        # i.e. the interval has a local minimum, not a local maximum so proceed.
           dk-dlo > XTOL*(dhi-dlo) and         # New minimum is sufficiently far from previous points
           dhi-dk > XTOL*(dhi-dlo) and         # to make quadratic convergence probable.
           abs(dk-dmid) > XTOL*(dhi-dlo) and
           stepsize <= HALF*lastlaststepsize): # Steps are decreasing sufficiently in size
-        self.log_tab(1,TESTING,"Use quadratic step")
+        if self.write_testing:
+          self.log_tab(1,TESTING,"Use quadratic step")
         fk = self.shift_score(refine_object, dk, x, oldx, p, dist, macrocycle_large_shifts)
 
       else: # Golden section instead
         dk = dmid + GOLDFRAC*(dhi-dmid) if (dhi-dmid >= dmid-dlo) else dmid - GOLDFRAC*(dmid-dlo)
-        self.log_tab(1,TESTING,"Use golden search step")
+        if self.write_testing:
+          self.log_tab(1,TESTING,"Use golden search step")
         fk = self.shift_score(refine_object, dk, x, oldx, p, dist, macrocycle_large_shifts)
 
       if (dk < dmid): # Get data sorted by size of shift
@@ -618,21 +671,24 @@ class Minimizer(object):
         dmid = dk
         fmid = fk
 
-      self.log_tab_printf(0,TESTING,"=",())
-      self.log_tab_printf(0,TESTING,"[%12.6f,%12.6f,%12.6f,%12.6f]\n",(dlo,d1,d2,dhi))
-      self.log_tab_printf(0,TESTING,"[    ----    ,%12.6f,%12.6f,    ----    ]\n",(f1,f2))
-      if f1 < f2:
-        self.log_tab_printf(0,TESTING,"          <        ^^^^        >                     \n",())
-      else:
-        self.log_tab_printf(0,TESTING,"                       <       ^^^^       >          \n",())
+      if self.write_testing:
+        self.log_tab_printf(0,TESTING,"=",())
+        self.log_tab_printf(0,TESTING,"[%12.6f,%12.6f,%12.6f,%12.6f]\n",(dlo,d1,d2,dhi))
+        self.log_tab_printf(0,TESTING,"[    ----    ,%12.6f,%12.6f,    ----    ]\n",(f1,f2))
+        if f1 < f2:
+          self.log_tab_printf(0,TESTING,"          <        ^^^^        >                     \n",())
+        else:
+          self.log_tab_printf(0,TESTING,"                       <       ^^^^       >          \n",())
 
       #convergence tests
       if fmid < f - max(required_decrease, - WOLFEC1*dmid*grad):
-        self.log_tab(1,TESTING,"Stop linesearch: good enough for next cycle")
+        if self.write_testing:
+          self.log_tab(1,TESTING,"Stop linesearch: good enough for next cycle")
         break
 
       elif (d2-d1)/d2 < 0.01:
-        self.log_tab(1,TESTING,"Stop linesearch: fractional change in stepsize < 0.01")
+        if self.write_testing:
+          self.log_tab(1,TESTING,"Stop linesearch: fractional change in stepsize < 0.01")
         break
 
       # Not converged, so prepare for next loop
@@ -652,13 +708,14 @@ class Minimizer(object):
       self.shift_parameters(refine_object,dmid,x,oldx,p,dist,macrocycle_large_shifts) # Make sure best shift has been applied.
       f = fmid
 
-    self.log_blank(TESTING)
-    self.log_tab(1,TESTING,"This line search took " + str(self.func_count_) + " function evaluations")
-    self.log_blank(TESTING)
-    self.log_tab_printf(1,TESTING,"Final Target Value: %12.6f distance: %12.6f \n", (f, dmid))
-    self.log_tab(1,TESTING,"End distance = " +str(dmid))
-    self.log_tab(1,TESTING,"Prediction ratio = " +str(dmid/starting_distance))
-    self.log_blank(TESTING)
+    if self.write_testing:
+      self.log_blank(TESTING)
+      self.log_tab(1,TESTING,"This line search took " + str(self.func_count_) + " function evaluations")
+      self.log_blank(TESTING)
+      self.log_tab_printf(1,TESTING,"Final Target Value: %12.6f distance: %12.6f \n", (f, dmid))
+      self.log_tab(1,TESTING,"End distance = " +str(dmid))
+      self.log_tab(1,TESTING,"Prediction ratio = " +str(dmid/starting_distance))
+      self.log_blank(TESTING)
     if dmid < required_shift:
       too_small_shift = True
     #report
@@ -669,7 +726,8 @@ class Minimizer(object):
     f = refine_object.target()
     if bcount:
       self.func_count_ += 1
-    self.log_tab_printf(1,TESTING,"f(%9.6f) = %10.6f\n", (a, f))
+    if self.write_testing:
+      self.log_tab_printf(1,TESTING,"f(%9.6f) = %10.6f\n", (a, f))
     return f
 
   def shift_parameters(self, refine_object, a, x, oldx, p, dist, macrocycle_large_shifts):
@@ -702,17 +760,20 @@ class Minimizer(object):
       return ("cycle limit", calc_new_hessian)
 
     if zero_gradient:
-      self.log_tab(1,TESTING,"Zero gradient: exiting")
+      if self.write_testing:
+        self.log_tab(1,TESTING,"Zero gradient: exiting")
       return ("zero_gradient", calc_new_hessian)
     if too_small_shift or too_small_decrease:
       if (queue_new_hessian or not too_small_decrease) and (ncyc_since_hessian_calc != 0): # queue_new_hessian is only touched by bfgs
-        self.log_tab(1,TESTING,"Recalculate Hessian and carry on")
+        if self.write_testing:
+          self.log_tab(1,TESTING,"Recalculate Hessian and carry on")
         calc_new_hessian = True # tell bfgs to calculate a new hessian next time rather than doing the bfgs update to the inverse hessian approximation
         return ("", calc_new_hessian)
       else:
-        self.log_blank(VERBOSE)
-        self.log_tab(1,VERBOSE,"---CONVERGENCE OF MACROCYCLE---")
-        self.log_blank(VERBOSE)
+        if self.write_verbose:
+          self.log_blank(VERBOSE)
+          self.log_tab(1,VERBOSE,"---CONVERGENCE OF MACROCYCLE---")
+          self.log_blank(VERBOSE)
         return ("converged", calc_new_hessian)
     return ("",calc_new_hessian)
 

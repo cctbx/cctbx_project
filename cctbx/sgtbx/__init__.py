@@ -518,6 +518,15 @@ class _():
     t_info = translation_part_info(self)
     print("%s %s" % (r_info, t_info), file=out)
 
+@bp.inject_into(ext.stl_vector_rt_mx)
+class _():
+
+  def __iter__(self):
+    # Without it a loop over the vector ends with IndexError thrown by
+    # __getitem__ in C++, which takes far longer than the loop itself.
+    for i in range(self.size()):
+      yield self[i]
+
 @bp.inject_into(ext.search_symmetry_flags)
 class _():
 

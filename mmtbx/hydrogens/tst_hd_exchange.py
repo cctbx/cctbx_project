@@ -33,20 +33,21 @@ ATOM     11  DG BSER A   2      15.856   0.874   6.441  0.50 20.00           D
 END
 """
 
-# 30F: Se-H from the library (1.444 A)
+# 30F: Se-H from the library (1.444 A). GeoStd's names since 2026-11-25, as
+# the CCD (before: C10, C08, O2, N04, H3 for C, CA, O, N, H)
 pdb_30f = """\
 CRYST1   20.000   20.000   20.000  90.00  90.00  90.00 P 1
-HETATM    1  C10 30F A   1      12.392   9.810   9.963  1.00 20.00           C
-HETATM    2  C08 30F A   1      10.909  10.206  10.137  1.00 20.00           C
+HETATM    1  C   30F A   1      12.392   9.810   9.963  1.00 20.00           C
+HETATM    2  CA  30F A   1      10.909  10.206  10.137  1.00 20.00           C
 HETATM    3  C09 30F A   1       9.982   9.241  10.307  1.00 20.00           C
-HETATM    4  O2  30F A   1      12.678   8.610  10.088  1.00 20.00           O
+HETATM    4  O   30F A   1      12.678   8.610  10.088  1.00 20.00           O
 HETATM    5 SE2  30F A   1       8.140   9.609  10.598  1.00 20.00          SE
-HETATM    6  N04 30F A   1      10.682  11.544  10.125  1.00 20.00           N
+HETATM    6  N   30F A   1      10.682  11.544  10.125  1.00 20.00           N
 HETATM    7  H13 30F A   1      10.297   8.208  10.345  1.00 20.00           H
 HETATM    8  H2  30F A   1       7.642   9.275   9.267  1.00 20.00           H
 HETATM    9  H1  30F A   1      11.429  12.105   9.752  1.00 20.00           H
 HETATM   10  OXT 30F A   1      13.164  10.751   9.700  1.00 20.00           O
-HETATM   11  H3  30F A   1       9.748  11.882   9.956  1.00 20.00           H
+HETATM   11  H   30F A   1       9.748  11.882   9.956  1.00 20.00           H
 END
 """
 # the library does not know HX, so its only partner comes from an edits bond
@@ -107,7 +108,7 @@ def test_parent_table_30f():
   assert len(table) == 4
   for name, parent, element, exchangeable in (
       ("H13", "C09", "C", False), ("H2", "SE2", "SE", True),
-      ("H1", "N04", "N", True), ("H3", "N04", "N", True)):
+      ("H1", "N", "N", True), ("H", "N", "N", True)):
     e = entry(table, name)
     assert e.status == "ok", (name, e.status)
     assert parent in e.parent_id, (name, e.parent_id)
@@ -127,13 +128,13 @@ def test_edits_covalent_limit():
   assert e.status == "ok" and "SE2" in e.parent_id and e.exchangeable
   assert e.source[0][1] == "edits"
   # an edits H...O at 1.9 A is above O's limit (0.66 + 0.31 + 0.4 = 1.37 A)
-  h_o = edits_bond("name O2", "name HX", 1.9)
+  h_o = edits_bond("name O", "name HX", 1.9)
   e = entry(hd_exchange.h_parent_table(
     make_model(pdb_30f_hx, [se_h, h_o])), "HX")
   assert e.status == "ok" and "SE2" in e.parent_id
   assert len(e.source) == 1
   # below the limit it is a second partner
-  h_o = edits_bond("name O2", "name HX", 1.3)
+  h_o = edits_bond("name O", "name HX", 1.3)
   e = entry(hd_exchange.h_parent_table(
     make_model(pdb_30f_hx, [se_h, h_o])), "HX")
   assert e.status == "ambiguous" and e.parent_id is None
@@ -611,7 +612,7 @@ def test_ambiguous_is_unresolved():
     "           D\nEND")
   edits = [edits_bond("name SE2", "name HX", 1.444),
            edits_bond("name SE2", "name DX", 1.444),
-           edits_bond("name O2", "name HX", 1.3)]
+           edits_bond("name O", "name HX", 1.3)]
   c, r = candidates_of(make_model(pdb, edits))
   assert c.pairs == [] and r.problems == []
   assert [(names(u.atom_id), u.status, u.action) for u in r.unresolved] == [
@@ -648,13 +649,13 @@ def test_different_parents_5A():
     "HETATM   12  DX B30F A   1      11.200  12.400  10.500  0.50 20.00"
     "           D\nEND")
   edits = [edits_bond("name SE2", "name HX", 1.444),
-           edits_bond("name N04", "name DX", 1.0)]
+           edits_bond("name N", "name DX", 1.0)]
   c, r = candidates_of(make_model(pdb, edits))
   assert len(c.different_parents) == 1
   dp = c.different_parents[0]
   assert (names(dp.h_id), names(dp.d_id)) == ("HX", "DX")
   assert abs(dp.distance - 5.0) < 0.3
-  # HX and DX are no pair; DX is left over on N04 0.83 A from H1 there:
+  # HX and DX are no pair; DX is left over on N 0.83 A from H1 there:
   # different sites, so both are singles
   assert c.pairs == [] and r.pairs == []
   assert [p.kind for p in r.problems] == ["different parents"]
@@ -1096,7 +1097,7 @@ def test_30f_split():
   # 8a: Se-H (1.444 A) is split and the output check accepts it
   model = make_model(pdb_30f)
   h, r = run_option(model, "hd_and_h")
-  assert r.n_split == 3   # H2 on Se, H1 and H3 on N
+  assert r.n_split == 3   # H2 on Se, H1 and H on N
   assert find(h, "30F", "H2").parent().altloc == "A"
   assert find(h, "30F", "D2").parent().altloc == "B"
 

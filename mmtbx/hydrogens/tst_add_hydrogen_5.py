@@ -18,6 +18,11 @@ def test_000():
     Methyl HM11-13: sites and names at their CCD torsions (period 1, one per
     H; residual < 0.6 deg); reduce2 names the propeller by those torsions
     (A62b). Before, the names were 120-130 deg off.
+    PSU 748: GeoStd's v3 names since 2026-11-25 (H1' ... H5''; HO2* is still
+    its name there). H5' and H5'' are named as in U and 1_G now (before,
+    H5*1 and H5*2 the other way round); H2' and H3' at the new entry's angles
+    (0.16 and 0.10 A from the old sites). H1' and H4' still sit on C2' and
+    C3' (the entry has no angles for them).
   '''
   compare_models(pdb_str = pdb_str_000)
 
@@ -124,13 +129,13 @@ HETATM   86  C4  PSU a 748     195.551 179.219 234.874  1.00 24.43           C
 HETATM   87  O4  PSU a 748     196.644 179.656 235.189  1.00 39.49           O
 HETATM   88  C5  PSU a 748     194.773 178.535 235.795  1.00 22.87           C
 HETATM   89  C6  PSU a 748     193.535 178.073 235.382  1.00 24.03           C
-HETATM   90  H4* PSU a 748     194.894 177.655 239.402  1.00 21.55           H
-HETATM   91  H3* PSU a 748     193.961 177.791 240.223  1.00 26.03           H
-HETATM   92  H2* PSU a 748     193.195 178.346 237.997  1.00 32.03           H
+HETATM   90  H4' PSU a 748     194.894 177.655 239.402  1.00 21.55           H
+HETATM   91  H3' PSU a 748     193.925 177.731 240.151  1.00 26.03           H
+HETATM   92  H2' PSU a 748     193.270 178.204 237.964  1.00 32.03           H
 HETATM   93 HO2* PSU a 748     194.584 180.563 237.706  1.00 35.69           H
-HETATM   94  H1* PSU a 748     194.430 178.602 237.875  1.00 27.56           H
-HETATM   95 H5*1 PSU a 748     194.924 175.377 240.323  1.00 17.99           H
-HETATM   96 H5*2 PSU a 748     195.678 174.792 238.841  1.00 17.99           H
+HETATM   94  H1' PSU a 748     194.430 178.602 237.875  1.00 27.56           H
+HETATM   95 H5'' PSU a 748     194.924 175.377 240.323  1.00 17.99           H
+HETATM   96  H5' PSU a 748     195.678 174.792 238.841  1.00 17.99           H
 HETATM   97  H6  PSU a 748     192.892 177.552 236.092  1.00 24.03           H
 HETATM   98  HN1 PSU a 748     192.182 177.894 233.818  1.00 22.52           H
 HETATM   99  HN3 PSU a 748     195.721 179.903 232.903  1.00 24.70           H

@@ -235,6 +235,28 @@ jobs:
     displayName: Install pyDiSCaMB
     retryCountOnTaskFailure: 3
 
+  # test timings from the latest run on master, so that the longest tests
+  # start first; pipelines that set timings_pipeline use them
+  - script: |
+      if not exist "$(Pipeline.Workspace)\timings" mkdir "$(Pipeline.Workspace)\timings"
+    displayName: Create test timings directory
+    condition: ne(variables['timings_pipeline'], '')
+
+  - task: DownloadPipelineArtifact@2
+    inputs:
+      source: 'specific'
+      project: '$(System.TeamProjectId)'
+      pipeline: '$(timings_pipeline)'
+      runVersion: 'latestFromBranch'
+      runBranch: 'refs/heads/master'
+      allowPartiallySucceededBuilds: true
+      allowFailedBuilds: true
+      artifact: timings_$(job_name)
+      path: $(Pipeline.Workspace)\timings
+    displayName: Download test timings
+    condition: ne(variables['timings_pipeline'], '')
+    continueOnError: true
+
   # test
   - script: |
       SET PYTHONLEGACYWINDOWSSTDIO=1
@@ -246,6 +268,8 @@ jobs:
         call "C:\Program Files\Microsoft Visual Studio\${{ parameters.vs }}\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
       )
       call .\build\setpaths.bat
+      set TIMINGS=
+      if exist "$(Pipeline.Workspace)\timings\" set TIMINGS=timings=$(Pipeline.Workspace)\timings\timings.csv
       rmdir /S /Q tests
       mkdir tests
       cd tests
@@ -269,13 +293,25 @@ jobs:
         module=crys3d ^
         module=qttbx ^
         max_retries=2 ^
-        nproc=4
+        nproc=4 ^
+        %TIMINGS%
       set rc=%errorlevel%
       if not "%rc%"=="0" echo ##vso[task.setvariable variable=tests_failed]true
       exit /b %rc%
     failOnStderr: false
     displayName: Test
     retryCountOnTaskFailure: 3
+
+  # only runs on master update the test timings
+  - publish: $(Pipeline.Workspace)\timings
+    artifact: timings_$(job_name)
+    displayName: Save test timings
+    condition: >
+      and(always(),
+          ne(variables['timings_pipeline'], ''),
+          eq(variables['Build.SourceBranch'], 'refs/heads/master'),
+          ne(variables['Build.Reason'], 'PullRequest'))
+    continueOnError: true
 
   # run pyDiSCaMB tests
   - script: |

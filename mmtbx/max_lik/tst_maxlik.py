@@ -52,11 +52,11 @@ def test_1():
   d_star_sq = 1./flex.pow2(f_obs.d_spacings().data())
 
   assert approx_equal(flex.max(f_calc.data()),6810.19834824)
-  assert approx_equal(flex.min(f_calc.data()),0.022356220344)
-  assert approx_equal(flex.mean(f_calc.data()),76.651056901)
-  assert approx_equal(flex.max(f_obs.data()),6962.58343229)
-  assert approx_equal(flex.min(f_obs.data()),0.00212375315445)
-  assert approx_equal(flex.mean(f_obs.data()),74.5145310498)
+  assert approx_equal(flex.min(f_calc.data()),0.018874744476)
+  assert approx_equal(flex.mean(f_calc.data()),76.65087291)
+  assert approx_equal(flex.max(f_obs.data()),6962.53948244)
+  assert approx_equal(flex.min(f_obs.data()),0.00847246396994)
+  assert approx_equal(flex.mean(f_obs.data()),74.5161254867)
   assert f_obs.size() == f_calc.size()
 
 # define test set reflections
@@ -84,10 +84,10 @@ def test_1():
 
   assert alpha.data().size() == beta.data().size()
   assert alpha.data().size() == f_obs.size()
-  assert approx_equal(flex.min(alpha.data()),0.914152454693)
-  assert approx_equal(flex.max(alpha.data()),0.914152454693)
-  assert approx_equal(flex.min(beta.data()),818.506563785)
-  assert approx_equal(flex.max(beta.data()),818.506563785)
+  assert approx_equal(flex.min(alpha.data()),0.914157569731)
+  assert approx_equal(flex.max(alpha.data()),0.914157569731)
+  assert approx_equal(flex.min(beta.data()),818.694602259)
+  assert approx_equal(flex.max(beta.data()),818.694602259)
 # *********************************************************TEST = 2
   alpha, beta = maxlik.alpha_beta_est_manager(
     f_obs  = f_obs,
@@ -99,10 +99,10 @@ def test_1():
 
   assert alpha.data().size() == beta.data().size()
   assert alpha.data().size() == f_obs.size()
-  assert approx_equal(flex.min(alpha.data()), 0.910350007113)
-  assert approx_equal(flex.max(alpha.data()), 1.07105514773)
-  assert approx_equal(flex.min(beta.data()), 21.7338160082)
-  assert approx_equal(flex.max(beta.data()), 4222.90391704)
+  assert approx_equal(flex.min(alpha.data()), 0.910358013403)
+  assert approx_equal(flex.max(alpha.data()), 1.07106412775)
+  assert approx_equal(flex.min(beta.data()), 21.7645131556)
+  assert approx_equal(flex.max(beta.data()), 4223.40719298)
 # *********************************************************TEST = 3
   alpha, beta = maxlik.alpha_beta_calc(
                     f   = f_obs,
