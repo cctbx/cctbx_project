@@ -30,6 +30,7 @@ hydrogen, which would release the cap H atoms that must stay frozen.
 from libtbx import group_args
 from libtbx.utils import null_out
 from scitbx import matrix
+from cctbx.eltbx import tiny_pse
 from iotbx.pdb import common_residue_names_get_class
 
 from mmtbx.geometry_restraints import xtb_manager
@@ -63,6 +64,10 @@ DEFAULT_XTB_METHOD = "GFN2-xTB"
 DEFAULT_ORCA_METHOD = "r2SCAN-3c"
 DEFAULT_ORCA_SOLVENT = "CPCM(diethylether)"
 DEFAULT_ORCA_OPT = "LooseOpt"
+# Largest atomic number with parameters: GFN2-xTB up to Rn (Bannwarth et al.
+# 2019), r2SCAN-3c in ORCA up to Lr (ORCA manual, 3c methods).
+XTB_MAX_Z = 86
+R2SCAN_3C_MAX_Z = 103
 
 
 def engine_options(engine="xtb", method=None, basis_set="",
@@ -94,6 +99,40 @@ def engine_options(engine="xtb", method=None, basis_set="",
     solvent_model=solvent_model, optimisation=optimisation,
     convergence=convergence, hessian=hessian,
     optimise_hydrogens=optimise_hydrogens, exe=exe)
+
+
+def unsupported_elements(submodel, engine_opts):
+  """The elements of *submodel* the QM code of *engine_opts* has no parameters
+  for.
+
+  GFN2-xTB whenever xTB runs (the xTB engine, or ORCA with the xTB Hessian),
+  else ORCA r2SCAN-3c with its own basis; a method or basis set of the user's
+  is not checked (ORCA reports it). An element ``tiny_pse`` does not know
+  (beyond Lr) counts as unsupported.
+
+  Returns
+  -------
+  (str or None, list of str)
+      The QM code checked (None when none is) and the unsupported element
+      symbols, sorted.
+  """
+  if engine_opts.engine == "xtb" or engine_opts.hessian == "xtb":
+    code, max_z = "GFN2-xTB", XTB_MAX_Z
+  elif engine_opts.method == DEFAULT_ORCA_METHOD and not engine_opts.basis_set:
+    code, max_z = "r2SCAN-3c", R2SCAN_3C_MAX_Z
+  else:
+    return None, []
+  elements = set(a.element.strip().capitalize()
+                 for a in submodel.get_hierarchy().atoms())
+  result = []
+  for e in sorted(elements):
+    try:
+      z = tiny_pse.table(e, True).atomic_number()
+    except RuntimeError:
+      z = None
+    if z is None or z > max_z:
+      result.append(e)
+  return code, result
 
 
 _BACKBONE_NAMES = {"N", "CA", "C", "O", "OXT"}

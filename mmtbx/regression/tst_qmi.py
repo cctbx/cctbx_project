@@ -1961,6 +1961,37 @@ def exercise_engine_options():
   assert o2.exe == "/x"
 
 
+def exercise_unsupported_elements():
+  """A site whose region holds an element the QM code has no parameters for is
+  skipped before any QM: Z above 86 whenever xTB runs (also for the ORCA
+  default xTB Hessian), above 103 for ORCA r2SCAN-3c throughout, no check for
+  a method of the user's. A prediction runs no QM and is not checked."""
+  u_pdb = _ZN_SITE_PDB.replace("ZN    ZN", "U      U").replace(
+    "          ZN", "           U")
+  rg_pdb = _ZN_SITE_PDB.replace("ZN    ZN", "RG    RG").replace(
+    "          ZN", "          RG")
+  zn, u, rg = _model(_ZN_SITE_PDB), _model(u_pdb), _model(rg_pdb)
+  xtb = qm.engine_options()
+  orca = qm.engine_options(engine="orca")
+  dft = qm.engine_options(engine="orca", hessian="partial")
+  user = qm.engine_options(engine="orca", method="TPSS", hessian="partial")
+  assert qm.unsupported_elements(zn, xtb) == ("GFN2-xTB", [])
+  assert qm.unsupported_elements(u, xtb) == ("GFN2-xTB", ["U"])
+  assert qm.unsupported_elements(u, orca) == ("GFN2-xTB", ["U"])
+  assert qm.unsupported_elements(u, dft) == ("r2SCAN-3c", [])
+  assert qm.unsupported_elements(rg, dft) == ("r2SCAN-3c", ["Rg"])
+  assert qm.unsupported_elements(rg, user) == (None, [])
+  for predict_only, reason in (
+      (False, "GFN2-xTB has no parameters for U"),
+      (True, "U has no electronic prior; add a metal_state block with "
+             "oxidation_state and multiplicity")):
+    builder = QMRestraintsBuilder(work_dir=tempfile.mkdtemp(),
+      predict_only=predict_only, logger=null_out())
+    results = builder.run(_model(u_pdb))
+    assert [r.skipped for r in results] == [reason], (
+      [r.skipped for r in results])
+
+
 def exercise_read_orca_hessian():
   # ORCA writes the (3N x 3N) Hessian in 5-wide column blocks, each led by an
   # integer column-index header row.  Use a symmetric M[i][j]=i+j so no
@@ -2274,6 +2305,7 @@ def run():
   exercise_metals()
   exercise_hessian_parse()
   exercise_engine_options()
+  exercise_unsupported_elements()
   exercise_read_orca_hessian()
   exercise_free_atoms_hydrogens()
   exercise_run_hessian_dispatch()

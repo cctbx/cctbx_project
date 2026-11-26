@@ -553,6 +553,12 @@ class QMRestraintsBuilder(object):
     # (and forces states='predicted', so the scan branch is never taken there).
     frozen_iseqs = site_dir = None
     if not self.predict_only:
+      code, unsupported = qm.unsupported_elements(submodel, self._engine_opts)
+      if unsupported:
+        return [self._skip_result(
+          index, seed,
+          f"{code} has no parameters for {', '.join(unsupported)}",
+          metal_element=metal_element, site_tag=site_tag)]
       frozen_iseqs, free_iseqs = qm.determine_frozen_atoms(
         submodel, metal_iseq, cap_iseqs, cap_anchor_iseqs=cap_anchor_iseqs,
         coord_cutoff=self.coord_cutoff,
