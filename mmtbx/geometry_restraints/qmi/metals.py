@@ -2,30 +2,18 @@
 finding metal atoms in a model or atoms array.
 
 Single source of truth for "what counts as a metal" in qmi, also for the
-metal sites it seeds endo_exo regions at.
+metal sites it seeds endo_exo regions at: the metals of
+``cctbx.eltbx.chemical_elements.metals_upper_set()``.
 
 Element symbols are in Title case (``'Mg'``, ``'Fe'``, ``'ZN'`` ->
 ``'Zn'``) to match the ``atom.element.strip().capitalize()`` lookup
 convention used downstream.
 """
 
+from cctbx.eltbx.chemical_elements import metals_upper_set
 
-METALS = {
-  'Li', 'Na', 'K', 'Rb', 'Cs', 'Fr',
-  'Be', 'Mg', 'Ca', 'Sr', 'Ba', 'Ra',
-  'Sc', 'Y',  # lanthanides and actinides to be added later
-  'Ti', 'Zr', 'Hf', 'Rf',
-  'V', 'Nb', 'Ta', 'Db',
-  'Cr', 'Mo', 'W', 'Sg',
-  'Mn', 'Tc', 'Re', 'Bh',
-  'Fe', 'Ru', 'Os', 'Hs',
-  'Co', 'Rh', 'Ir', 'Mt',
-  'Ni', 'Pd', 'Pt', 'Ds',
-  'Cu', 'Ag', 'Au', 'Rg',
-  'Zn', 'Cd', 'Hg', 'Cn',
-  'Al', 'Ga', 'In', 'Tl', 'Nh',
-  'Sn', 'Pb', 'Fl',
-}
+
+METALS = frozenset(e.capitalize() for e in metals_upper_set())
 
 
 def _atoms_from(atoms_or_model):
