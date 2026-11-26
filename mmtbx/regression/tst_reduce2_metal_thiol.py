@@ -1284,6 +1284,54 @@ def test_1aa6_supplied_he():
     assert drop_hint(desc) == hint, (args, desc)
     assert SE_NOT_PLACED not in desc and SUPPLIED not in desc, (args, desc)
 
+def as_d(model_text, name, resseq):
+  '''the H name of residue resseq renamed to D (name and element)'''
+  out = []
+  for l in model_text.split('\n'):
+    if l.startswith(('ATOM', 'HETATM')) and l[12:16].strip() == name and \
+       l[22:26].strip() == resseq:
+      l = l[:12] + l[12:16].replace('H', 'D', 1) + l[16:76] + ' D' + l[78:]
+    out.append(l)
+  return '\n'.join(out)
+
+def test_supplied_d_names():
+  '''a supplied D at a metal site is listed under the name or names it has
+  in the written model (the lists were made from the H-only working model:
+  HE for DE, HG for DG): one D, and an H/D pair in two altloc groups'''
+  mo = [l for l in m_1aa6_sec.split('\n') if l[17:20] == '4MO']
+  out, desc = run('\n'.join(l for l in m_1aa6_sec.split('\n') if l not in mo),
+    'tst_reduce2_metal_thiol_1aa6_nomo_d', ['approach=place'])
+  supplied = as_d('\n'.join([l for l in out.split('\n')
+    if not l.startswith('END')] + mo), 'HE', '140')
+  assert ' DE  SEC A 140' in supplied, supplied
+  for args in (['approach=add', 'keep_existing_H=True'], ['approach=optimize']):
+    out, desc = run(supplied, 'tst_reduce2_metal_thiol_1aa6_supplied_d_' +
+      args[0][len('approach='):], args + ['neutron_option=all_d'])
+    assert has(out, 'DE', '140') and not has(out, 'HE', '140'), (args, out)
+    listed = section(desc, SE_SUPPLIED)
+    assert len(listed) == 1 and listed[0].startswith('  DE  SEC A 140  (SE   '
+      'SEC A 140 - MO   4MO A 803 2.54 A (geometric))'), (args, listed)
+  for args in (['approach=add', 'keep_existing_H=True'], ['approach=optimize']):
+    prefix = 'tst_reduce2_metal_thiol_zn_d_names_' + args[0][len('approach='):]
+    # all_d: one D
+    out, desc = run(m_zn_fixture_D, prefix, args + ['neutron_option=all_d'])
+    assert has(out, 'DG', '48') and not has(out, 'HG', '48'), (args, out)
+    listed = section(desc, SUPPLIED)
+    assert len(listed) == 1 and listed[0].startswith('  DG  CYS A  48  (SG  '
+      'CYS A  48 - ZN ') and listed[0].endswith(PROXY), (args, listed)
+    # hd_and_h: the exchangeable HG is written as an H/D pair, both listed
+    out, desc = run(m_zn_fixture_D, prefix, args + ['neutron_option=hd_and_h'])
+    assert has(out, 'HG', '48', 'A') and has(out, 'DG', '48', 'B'), (args, out)
+    listed = section(desc, SUPPLIED)
+    assert len(listed) == 1 and listed[0].startswith('  HG ACYS A  48 and '
+      'DG BCYS A  48  (SG  CYS A  48 - ZN ') and listed[0].endswith(PROXY), \
+      (args, listed)
+    # H input, no neutron option: as before
+    out, desc = run(m_zn_fixture_H, prefix, args)
+    listed = section(desc, SUPPLIED)
+    assert len(listed) == 1 and listed[0].startswith('  HG  CYS A  48  (SG  '
+      'CYS A  48 - ZN '), (args, listed)
+
 if __name__ == "__main__":
   test_1brf()
   test_1iu5()
@@ -1308,4 +1356,5 @@ if __name__ == "__main__":
   test_1aa6_selenolate()
   test_1aa6_selenol_far()
   test_1aa6_supplied_he()
+  test_supplied_d_names()
   print("OK")

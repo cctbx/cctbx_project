@@ -1467,6 +1467,9 @@ NOTES:
     # nucleic-acid ends and the full list of H not placed (last: it points
     # to the others), for the description
     self._metal_thiol_note = ''
+    self._supplied_metal_rows = (reduce_add_h_obj.thiol_h_supplied_kept +
+      reduce_add_h_obj.selenol_h_supplied_kept +
+      reduce_add_h_obj.metal_nh_supplied_kept)
     for text in (reduce_add_h_obj.metal_thiol_text(),
                  reduce_add_h_obj.metal_nh_text(),
                  reduce_add_h_obj.metal_amine_text(),
@@ -2348,27 +2351,65 @@ NOTES:
     # them (nothing is deleted here).
     # :return: The description-file text ('' if none); also in the log.
     cs = reduce_hydrogen.contact_symmetry(self._output_cs)
-    thiols = reduce_hydrogen.thiol_metal_sites(self.model, cs)
+    thiols = reduce_hydrogen.supplied_metal_h(
+      reduce_hydrogen.thiol_metal_sites(self.model, cs), lambda a: True)
     selenols = []
     if reduce_hydrogen.has_selenium(self.model.get_hierarchy()):
       selenols = reduce_hydrogen.supplied_metal_h(
         reduce_hydrogen.selenol_metal_sites(self.model, cs), lambda a: True)
     nh = reduce_hydrogen.metal_nh_sites(self.model, cs)
+    nh_supplied = reduce_hydrogen.supplied_metal_h(nh, lambda a: True)
+    self._supplied_metal_rows = thiols + selenols + nh_supplied
     result = ''
     for text in (
-        reduce_hydrogen.metal_thiol_text(
-          supplied = reduce_hydrogen.supplied_metal_h(thiols, lambda a: True),
+        reduce_hydrogen.metal_thiol_text(supplied = thiols,
           hint = self._RebuildHint()),
         reduce_hydrogen.metal_selenol_text(supplied = selenols,
           hint = self._RebuildHint()),
-        reduce_hydrogen.metal_nh_text(
-          supplied = reduce_hydrogen.supplied_metal_h(nh, lambda a: True),
+        reduce_hydrogen.metal_nh_text(supplied = nh_supplied,
           reported = reduce_hydrogen.reported_metal_h(nh),
           hint = self._RebuildHint())):
       if not text: continue
       print('\n' + text, file=self.logger)
       result += '\n' + text + '\n'
     return result
+
+# ------------------------------------------------------------------------------
+
+  def _WrittenSuppliedNames(self, text, written):
+    # The lists of supplied H at metal sites name the H of the H-only working
+    # model (a supplied DE is HE there). neutron_option decides afterwards
+    # how each is written: H, D, or an H/D pair in two altloc groups. Their
+    # lines get the label or labels of the written atoms.
+    # :param text: the description so far.
+    # :param written: the hierarchy apply_neutron_option() wrote, before it
+    #   is finalized (its keys are those of the provenance).
+    # :return: the description; the changed lines are also in the log.
+    rows = getattr(self, '_supplied_metal_rows', None)
+    if not rows: return text
+    label = lambda a: hd_exchange.output_label(a).strip()
+    by_source = {}
+    for atom, key in zip(written.atoms(), hd_exchange.atom_keys(written)):
+      source = self._neutron_result.provenance.get(key)
+      if source is not None:
+        by_source.setdefault(source, []).append(label(atom))
+    working = self.model.get_hierarchy()
+    names = dict((label(atom), ' and '.join(by_source[key]))
+      for atom, key in zip(working.atoms(), hd_exchange.atom_keys(working))
+      if key in by_source)
+    changed = []
+    for row in rows:
+      new = names.get(row[0], row[0])
+      if new == row[0]: continue
+      line = '  %s  (%s); %s\n' % tuple(row)
+      if line not in text: continue
+      text = text.replace(line, '  %s  (%s); %s\n' % ((new,) + tuple(row[1:])))
+      changed.append('  %s: %s' % (row[0], new))
+    if changed:
+      print('Supplied H at metal sites, as written (listed above under the '
+        'names of the H-only model):\n' + '\n'.join(changed),
+        file=self.logger)
+    return text
 
 # ------------------------------------------------------------------------------
 
@@ -3427,6 +3468,7 @@ NOTES:
     # Input H/D check (neutron_option): records of collapsed pairs, notes and
     # floating H/D dropped there
     self._hd_records = {}
+    self._supplied_metal_rows = []
     self._input_notes = []
     self._input_floating = []
     self._input_floating_resids = []
@@ -3936,6 +3978,7 @@ NOTES:
         self._neutron_result = hd_exchange.apply_neutron_option(h,
           self.params.neutron_option, parent_table=self._h_parents,
           records=self._hd_records, unchanged_keys=self._UnrestrainedKeys())
+        outString = self._WrittenSuppliedNames(outString, h)
         self._output_model = self._FinalizeModel(h)
         self._DropAutoRestraints(self._output_model)
         self._CheckNeutronOutput()

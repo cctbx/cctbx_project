@@ -275,6 +275,27 @@ def test_supplied_kept():
     assert entries[1].startswith('H   HIS A 290  (N   HIS A 290 - NI'), entries
     assert NOT_PLACED not in description
 
+def test_supplied_d_name():
+  '''a supplied D on a metal-bound N is listed under the name it has in the
+  written model (D, not the H of the H-only working model)'''
+  lines = []
+  for l in pdb_1xmk_h.splitlines():
+    if l.startswith('ATOM') and l[12:16] == ' H  ' and l[22:26] == ' 289':
+      l = l[:12] + ' D  ' + l[16:76] + ' D' + l[78:]
+    lines.append(l)
+  pdb_d = '\n'.join(lines)
+  assert pdb_d != pdb_1xmk_h
+  for args in (['keep_existing_H=True'], ['approach=optimize']):
+    h, description, log = run('tst_reduce2_metal_nh_supplied_d', pdb_d,
+      args + ['neutron_option=all_d'])
+    assert h_on(h, 289, 'N') == ['D'] and h_on(h, 290, 'N') == ['D'], args
+    title = [l for l in description.splitlines() if l.startswith(SUPPLIED)]
+    entries = section(description, title[0])
+    assert entries[0].startswith('D   SER A 289  (N   SER A 289 - NI'), entries
+    assert entries[1].startswith('D   HIS A 290  (N   HIS A 290 - NI'), entries
+    # the log lists them earlier, under the names of the H-only model
+    assert '  H   SER A 289: D   SER A 289' in log, log
+
 def test_partial_metal():
   pdb = pdb_1xmk.replace('NI A 398      13.849  21.950  30.990  1.00',
                          'NI A 398      13.849  21.950  30.990  0.50')
@@ -348,6 +369,7 @@ if __name__ == '__main__':
   test_alkaline_earth()
   test_trp_reported()
   test_supplied_kept()
+  test_supplied_d_name()
   test_partial_metal()
   test_ligand_n_kept()
   test_conformer_without_peptide_c()
