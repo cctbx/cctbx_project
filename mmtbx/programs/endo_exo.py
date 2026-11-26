@@ -1,13 +1,12 @@
 """mmtbx.endo_exo: QM region builder with hydrogen capping.
 
-Grows a QM region around each seed site (metal atoms by default, or a
-user-supplied selection) by breadth-first traversal of the covalent graph,
-optionally caps dangling bonds with hydrogen atoms, and writes a model file
-and a sidecar PHIL file per seed.
+Grows a QM region around each seed selection by breadth-first traversal of
+the covalent graph, optionally caps dangling bonds with hydrogen atoms, and
+writes a model file and a sidecar PHIL file per seed.
 
 Usage (via dispatcher):
 
-    mmtbx.development.endo_exo model.pdb
+    mmtbx.development.endo_exo model.pdb selection="chain A and resseq 100"
     mmtbx.development.endo_exo model.pdb selection="chain A and resseq 100" \\
       buffer.radius=5.0
     mmtbx.development.endo_exo model.pdb selection="chain A and resseq 100" \\
@@ -17,7 +16,8 @@ Programmatic use::
 
     from mmtbx.programs.endo_exo import Program
     from iotbx.cli_parser import run_program
-    results = run_program(program_class=Program, args=['model.pdb'])
+    results = run_program(program_class=Program,
+      args=['model.pdb', 'selection=chain A and resseq 100'])
 """
 
 import os
@@ -41,8 +41,8 @@ write_files = True
 class Program(ProgramTemplate):
   """Extract QM regions with hydrogen capping.
 
-  Seeds the QM region either from all metals in the structure (default) or
-  from a user-supplied CCTBX selection string (``selection`` parameter).
+  Seeds each QM region from a CCTBX selection string (``selection``
+  parameter, at least one).
   The work is delegated to
   :class:`mmtbx.geometry_restraints.endo_exo.builder.QMRegionBuilder`.
   """
@@ -50,8 +50,8 @@ class Program(ProgramTemplate):
   description = '''
   Grows a QM region around each seed site, optionally caps dangling bonds
   with hydrogen atoms, and writes a model file and a sidecar PHIL file per
-  seed.  Seeds are all metals in the structure unless a custom
-  selection string is provided via the selection parameter.
+  seed.  Each selection string given via the selection parameter seeds
+  one region.
   '''
 
   datatypes = ['model', 'phil']

@@ -356,15 +356,32 @@ def _program_master_phil():
   return master
 
 
+def _metal_selections(model):
+  """One selection per metal atom of *model* (cctbx.eltbx metals), the seeds
+  of a test that gives none."""
+  from cctbx.eltbx.chemical_elements import metals_upper_set
+  metals = metals_upper_set()
+  result = []
+  for atom in model.get_hierarchy().atoms():
+    if atom.element.strip().upper() not in metals: continue
+    labels = atom.fetch_labels()
+    selection = (f"chain {labels.chain_id.strip()} and resid "
+      f"{labels.resid().strip()} and name {labels.name.strip()}")
+    if labels.altloc.strip():
+      selection += f' and altloc "{labels.altloc.strip()}"'
+    result.append(selection)
+  return result
+
+
 def _run_endo_exo_on_string(pdb_str, radius=None, include=None, selection=None):
   """Drive ``mmtbx.programs.endo_exo.Program`` in-memory on a PDB string
-  with default settings (metal scan, radius=5.0).  Parses the
+  with default settings (radius=5.0), seeded at the metal atom.  Parses the
   string with ``iotbx.pdb`` directly -- no disk roundtrip.  Returns
   the single result dict produced for the seed.  *radius* overrides
   ``params.buffer.radius`` when given; *include*, when given, is a
   ``(selection, scope, proximity)`` tuple configuring
   ``residues_to_include``; *selection*, when given, seeds from that CCTBX
-  selection string instead of scanning for metals."""
+  selection string instead."""
   pdb_in = iotbx.pdb.input(source_info=None, lines=pdb_str.split("\n"))
   model = mmtbx.model.manager(model_input=pdb_in)
   model.set_mon_lib_srv(_monomer_server())
@@ -379,6 +396,8 @@ def _run_endo_exo_on_string(pdb_str, radius=None, include=None, selection=None):
     params.buffer.radius = radius
   if selection is not None:
     params.selection = [selection]
+  else:
+    params.selection = _metal_selections(model)
   if include is not None:
     (params.residues_to_include.selection,
      params.residues_to_include.scope,
@@ -988,7 +1007,7 @@ def exercise_selection_seed_terminates():
 # ===========================================================================
 # Engine unit tests
 #
-# These drive the pure engine pieces directly (no metal scan, no full
+# These drive the pure engine pieces directly (no seed selection, no full
 # Program pipeline) and cover the subtle logic -- symmetry-op
 # canonicalisation, cap placement, bond-cut heuristics, and adjacency
 # construction -- that the count-based integration tests above do not.
@@ -2097,7 +2116,8 @@ def _run_endo_exo_params(pdb_str, **overrides):
   """Drive the program with dotted PHIL overrides (``__`` for ``.``).
 
   Returns the full result list rather than a single region, so it can drive
-  the knobs that change how many regions are produced, or that raise."""
+  the knobs that change how many regions are produced, or that raise.
+  Without a ``selection`` override each metal atom seeds a region."""
   pdb_in = iotbx.pdb.input(source_info=None, lines=pdb_str.split("\n"))
   model = mmtbx.model.manager(model_input=pdb_in)
   model.set_mon_lib_srv(_monomer_server())
@@ -2107,6 +2127,7 @@ def _run_endo_exo_params(pdb_str, **overrides):
   master = _program_master_phil()
   params = master.extract()
   params.write_files = False
+  params.selection = _metal_selections(model)
   for dotted, value in overrides.items():
     scope = params
     parts = dotted.split("__")
@@ -2309,11 +2330,12 @@ def exercise_multi_model_refused():
     raise AssertionError("a file with two models was accepted")
 
 
-def exercise_element_filter():
-  """element_filter restricts which metals seed a region; a miss raises Sorry.
+def exercise_seed_selection():
+  """Each selection seeds one region; without one the run is refused.
 
-  Driven on a two-metal model so that filtering to one element is
-  distinguishable from ignoring the filter."""
+  Driven on a two-metal model: one selection per metal gives two regions,
+  named after their atoms, one selection of both a single region seeded by
+  both, named sel001. Two selections of the same atom are refused."""
   from libtbx.utils import Sorry
 
   # A Zn well away from the Fe site, so it seeds its own region.
@@ -2331,24 +2353,31 @@ def exercise_element_filter():
                         for i in res.seed_iseqs))
     return sorted(out)
 
-  both = _run_endo_exo_params(two_metals)
-  assert len(both) == 2, f"expected one region per metal, got {len(both)}"
-  assert _seed_elements(both) == [["FE"], ["ZN"]], _seed_elements(both)
+  each = _run_endo_exo_params(two_metals)
+  assert len(each) == 2, f"expected one region per metal, got {len(each)}"
+  assert _seed_elements(each) == [["FE"], ["ZN"]], _seed_elements(each)
+  assert [r.label for r in each] == ["FE_chainA_res55", "ZN_chainA_res56"], (
+    [r.label for r in each])
 
-  only_fe = _run_endo_exo_params(two_metals, element_filter=["FE"])
-  assert len(only_fe) == 1, f"element_filter=FE should give 1 region, got {len(only_fe)}"
-  assert _seed_elements(only_fe) == [["FE"]], _seed_elements(only_fe)
-
-  only_zn = _run_endo_exo_params(two_metals, element_filter=["ZN"])
-  assert len(only_zn) == 1, f"element_filter=ZN should give 1 region, got {len(only_zn)}"
-  assert _seed_elements(only_zn) == [["ZN"]], _seed_elements(only_zn)
+  both = _run_endo_exo_params(two_metals,
+                              selection=["element FE or element ZN"])
+  assert len(both) == 1, f"one selection should give 1 region, got {len(both)}"
+  assert _seed_elements(both) == [["FE", "ZN"]], _seed_elements(both)
+  assert both[0].label == "sel001", both[0].label
 
   try:
-    _run_endo_exo_params(_1BQ8_FE_SPHERE_PDB, element_filter=["ZN"])
-  except Sorry:
-    pass
+    _run_endo_exo_params(two_metals, selection=["element ZN", "resname ZN"])
+  except Sorry as e:
+    assert "both seed ZN_chainA_res56" in str(e), str(e)
   else:
-    raise AssertionError("element_filter=ZN on an Fe-only model should Sorry")
+    raise AssertionError("two selections of one atom should Sorry")
+
+  try:
+    _run_endo_exo_params(two_metals, selection=[])
+  except Sorry as e:
+    assert "No seed selection" in str(e), str(e)
+  else:
+    raise AssertionError("a run without a selection should Sorry")
 
 
 def exercise_skip_search():
@@ -2368,8 +2397,8 @@ def exercise_skip_search():
 
 
 # Two iron atoms in one residue, placed away from the 1BQ8 Fe site, so that
-# a metal scan yields two regions whose seeds share chain, residue and
-# element.
+# one selection per metal yields two regions whose seeds share chain, residue
+# and element.
 _FES_HETATM = """\
 HETATM 2001 FE1  FES B 301      40.000  40.000  40.000  1.00 10.00          FE
 HETATM 2002 FE2  FES B 301      42.700  40.000  40.000  1.00 10.00          FE
@@ -2395,9 +2424,13 @@ def exercise_write_files_roundtrip():
   from libtbx.utils import null_out
   from mmtbx.geometry_restraints.endo_exo.builder import master_sidecar_phil_str
 
+  seeds = ["selection=chain A and resid 55 and name FE",
+           "selection=chain B and resid 301 and name FE1",
+           "selection=chain B and resid 301 and name FE2"]
+
   def run(*args):
     return run_program(program_class=EndoexoProgram, args=["fes.pdb"] +
-                       list(args), logger=null_out())
+                       seeds + list(args), logger=null_out())
 
   tmp = tempfile.mkdtemp(prefix="tst_endo_exo_")
   cwd = os.getcwd()
@@ -2436,7 +2469,8 @@ def exercise_write_files_roundtrip():
       result.completed_iseqs)
     assert list(region.cap_original_elements) == list(
       result.cap_original_elements)
-    assert region.selection_string is None
+    assert region.selection_string == "chain A and resid 55 and name FE", (
+      region.selection_string)
 
     pdb_in = iotbx.pdb.input(file_name=stem + ".pdb")
     watoms = list(pdb_in.construct_hierarchy().atoms())
@@ -2514,8 +2548,10 @@ def exercise_builder_without_logger():
 
   before = flags()
   stdout = io.StringIO()
+  params = _program_master_phil().extract()
+  params.selection = _metal_selections(model)
   with contextlib.redirect_stdout(stdout):
-    QMRegionBuilder(_program_master_phil().extract()).run(model)
+    QMRegionBuilder(params).run(model)
   assert stdout.getvalue() == "", stdout.getvalue()[:300]
   assert flags() == before, (flags(), before)
 
@@ -2525,6 +2561,7 @@ def exercise_builder_without_logger():
       log=null_out())
     params = _program_master_phil().extract()
     params.verbose = verbose
+    params.selection = _metal_selections(model)
     log = io.StringIO()
     QMRegionBuilder(params, logger=log).run(model)
     return log.getvalue()
@@ -2538,7 +2575,9 @@ def exercise_builder_without_logger():
 
   model = mmtbx.model.manager(model_input=iotbx.pdb.input(
     source_info=None, lines=_1BQ8_FE_SPHERE_PDB.split("\n")), log=null_out())
-  result = QMRegionBuilder().run(model)[0]
+  params = _program_master_phil().extract()
+  params.selection = _metal_selections(model)
+  result = QMRegionBuilder(params).run(model)[0]
   assert result.label == "FE_chainA_res55", result.label
 
 
@@ -3859,6 +3898,8 @@ def exercise_open_valences_are_reported():
     params.buffer.radius = radius
     if selection is not None:
       params.selection = [selection]
+    else:
+      params.selection = _metal_selections(model)
     for dotted, value in overrides.items():
       scope = params
       parts = dotted.split("__")
@@ -4039,7 +4080,7 @@ def run():
   exercise_capping_disabled()
   exercise_special_position_partial_overlap()
   exercise_altloc_filter()
-  exercise_element_filter()
+  exercise_seed_selection()
   exercise_multi_model_refused()
   exercise_skip_search()
   exercise_write_files_roundtrip()
