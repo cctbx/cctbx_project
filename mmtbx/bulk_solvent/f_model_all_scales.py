@@ -29,21 +29,26 @@ class run(mmtbx.f_model.manager):
                fast,
                params,
                refine_hd_scattering,
-               log):
+               log,
+               mosaic = False,
+               squeeze = False,
+               water_selection = None):
     ### Must be first thing here
     self.__dict__.update(fmodel.__dict__)
     # From this point on: self = fmodel
     ###
     russ = self.compute(apply_back_trace = apply_back_trace, remove_outliers =
       remove_outliers, fast = fast, params = params,
-      refine_hd_scattering = refine_hd_scattering, log = log)
+      refine_hd_scattering = refine_hd_scattering, log = log,
+      mosaic = mosaic, squeeze = squeeze, water_selection = water_selection)
     ### Must be next to last...
     fmodel.__dict__.update(self.__dict__)
     ### ...and this one is last
     self.russ = russ
 
   def compute(self, apply_back_trace, remove_outliers, fast,
-              params, refine_hd_scattering, log):
+              params, refine_hd_scattering, log, mosaic = False,
+              squeeze = False, water_selection = None):
     assert [self.arrays.core_twin, self.twin_law].count(None) in [0,2]
     if(params is None): params = bss.master_params.extract()
     bss.validate_params(
@@ -61,6 +66,27 @@ class run(mmtbx.f_model.manager):
         self.remove_outliers(use_model = False, log = None) # XXX
       self.show(prefix = "remove outliers", log = log)
     result = None
+    if(mosaic):
+      from mmtbx.bulk_solvent import mosaic as mosaic_model
+      reason = mosaic_model.not_applicable(self)
+      if(reason is not None):
+        mosaic = False
+        self.remove_mosaic()
+        if(log is not None): print("mosaic: skipped (%s)"%reason, file=log)
+    if(squeeze):
+      # Determined below, from the model without it
+      from mmtbx.bulk_solvent import squeeze as squeeze_model
+      self.remove_squeeze()
+      reason = squeeze_model.not_applicable(fmodel = self,
+        params = self._squeeze_params(params))
+      if(reason is not None):
+        squeeze = False
+        if(log is not None): print("squeeze: skipped (%s)"%reason, file=log)
+    elif(self._squeeze_result is not None and not self.squeeze_is_current()):
+      self.remove_squeeze()
+      if(log is not None):
+        print("squeeze: stored contribution dropped (the model changed)",
+          file=log)
     if(self.twinned()):
       for cycle in range(2):
         if(log is not None): print("cycle %d:"%cycle, file=log)
@@ -70,12 +96,32 @@ class run(mmtbx.f_model.manager):
           refine_hd_scattering = refine_hd_scattering,
           back_trace = (cycle == 1))
     else:
-      result = self.update_solvent_and_scale_2(
+      kwds = dict(
         fast                 = fast,
         params               = params,
         apply_back_trace     = apply_back_trace,
         refine_hd_scattering = refine_hd_scattering,
         log                  = log)
+      if(mosaic):
+        # Flat model first: the mosaic model starts from its scales
+        result = self.update_solvent_and_scale_2(**kwds)
+        self._update_mosaic(params = params, log = log)
+      elif(self.mosaic_correction is not None and
+           not self.mosaic_correction_is_current()):
+        self.remove_mosaic()
+        if(log is not None):
+          print("mosaic: stored correction dropped (the model changed), "
+            "flat bulk-solvent model is used", file=log)
+      if(self.mosaic_correction is not None):
+        result = self.update_solvent_and_scale_2(
+          mask_correction = self.mosaic_correction, **kwds)
+        self.show(prefix = "mosaic bulk solvent", log = log)
+      elif(not mosaic):
+        result = self.update_solvent_and_scale_2(**kwds)
+      if(squeeze):
+        result_squeeze = self._update_squeeze(params = params,
+          water_selection = water_selection, log = log, kwds = kwds)
+        if(result_squeeze is not None): result = result_squeeze
     #XXX if(remove_outliers and not self.twinned()):
     #XXX   self.remove_outliers(use_model = True, log = None) # XXX
     if(remove_outliers and not self.twinned()):
@@ -84,6 +130,75 @@ class run(mmtbx.f_model.manager):
       self.show(prefix = "remove outliers", log = log)
     self._show_scaling_b_values(result = result, log = log)
     return result
+
+  def _update_mosaic(self, params, log):
+    """
+    Regions of the solvent mask and their occupancies, with the scales of the
+    flat bulk-solvent model that self has now. Stores the correction to the
+    mask structure factors, or removes a stored one if there is nothing to
+    correct.
+    """
+    from mmtbx.bulk_solvent import mosaic as mosaic_model
+    result = mosaic_model.run(
+      fmodel = self,
+      params = getattr(params, "mosaic", None),
+      log    = log)
+    self.remove_mosaic()
+    if(result is None): return
+    f_obs = self.f_obs()
+    self._set_mosaic_arrays(
+      correction = f_obs.array(data = result.correction),
+      signature  = self.mosaic_signature(),
+      result     = result)
+    if(log is not None): print(result.summary(), file=log)
+
+  def _squeeze_params(self, params):
+    result = getattr(params, "squeeze", None)
+    if(result is None):
+      from mmtbx.bulk_solvent import squeeze as squeeze_model
+      result = squeeze_model.default_params()
+    return result
+
+  def _update_squeeze(self, params, water_selection, log, kwds):
+    """
+    Squeeze contribution from the difference map of self, which has the
+    scales of the bulk-solvent model (flat or mosaic) and no squeeze
+    contribution. Then rounds of: store it, all scales with it, its scale
+    and B with the new scales. Returns the result of the last scaling, None
+    if there is no contribution.
+    """
+    from mmtbx.bulk_solvent import squeeze as squeeze_model
+    sp = self._squeeze_params(params)
+    sq = squeeze_model.run(
+      fmodel          = self,
+      params          = sp,
+      water_selection = water_selection,
+      log             = log)
+    if(sq is None): return None
+    result = None
+    for cycle in range(sp.number_of_cycles):
+      if(cycle > 0):
+        sq = squeeze_model.refit(fmodel = self,
+          result = self._squeeze_result, params = sp)
+      self._set_squeeze(result = sq, signature = self.mosaic_signature())
+      result = self.update_solvent_and_scale_2(
+        mask_correction = self.mosaic_correction, **kwds)
+      self.show(prefix = "squeeze (k=%.2f B=%.1f)"%(
+        self._squeeze_result.k, self._squeeze_result.b), log = log)
+    if(log is not None):
+      print(self._squeeze_result.summary(), file=log)
+    return result
+
+  def _squeeze_follows_overall_b(self, b_adj):
+    """
+    Overall B moved to atoms by b_adj: the squeeze contribution gets the same
+    factor as the atoms and the bulk solvent do, so that F_model is the same.
+    """
+    sq = self._squeeze_result
+    if(sq is None or b_adj is None or b_adj == 0): return
+    self._set_squeeze(
+      result    = sq.customized_copy(b = sq.b + b_adj),
+      signature = self.squeeze_signature)
 
   def reset_all_scales(self):
     size = self.f_obs().data().size()
@@ -288,7 +403,8 @@ class run(mmtbx.f_model.manager):
     return kh, bh, f_part2, o
 
   def update_solvent_and_scale_2(self, fast, params, apply_back_trace,
-                                 refine_hd_scattering, log):
+                                 refine_hd_scattering, log,
+                                 mask_correction = None):
     """
     Bulk-solvent and overall scales (fast: per resolution bin; slow: k_sol,
     b_sol, b_cart by minimization), then the contribution of riding H
@@ -301,7 +417,25 @@ class run(mmtbx.f_model.manager):
     and b_h stop changing. The overall B is moved to the atoms
     (apply_back_trace) after that, which changes b_sol, b_cart and b_h by
     b_adj but not the model structure factors.
+
+    mask_correction (cctbx.miller.array, optional): added to the mask
+    structure factors for the purpose of scaling (mosaic bulk-solvent model:
+    F_mask + sum (q_n-1) F_n). F_mask of self is not changed; the scaled
+    correction k_mask*mask_correction is stored as f_part1.
+
+    A stored squeeze contribution (self.f_squeeze()) is a fixed part of the
+    model during scaling, as F_calc is; it is added to f_part1.
     """
+    f_masks = self.f_masks()
+    if(mask_correction is not None):
+      assert len(f_masks) == 1
+      f_masks = [f_masks[0].array(
+        data = f_masks[0].data() + mask_correction.data())]
+    def f_part1(k_masks):
+      data = self.f_squeeze().data()
+      if(mask_correction is not None):
+        data = data + k_masks[0]*mask_correction.data()
+      return zero.array(data = data)
     refine_h = (refine_hd_scattering and
       self.need_to_refine_hd_scattering_contribution())
     if(self.xray_structure is not None):
@@ -330,8 +464,9 @@ class run(mmtbx.f_model.manager):
       # found in the previous cycle, zero in the first one).
       fmodel_kbu = mmtbx.f_model.manager_kbu(
         f_obs   = self.f_obs(),
-        f_calc  = f_calc_no_h.array(data = f_calc_no_h.data()+f_part2.data()),
-        f_masks = self.f_masks(),
+        f_calc  = f_calc_no_h.array(data = f_calc_no_h.data()+f_part2.data()+
+          self.f_squeeze().data()),
+        f_masks = f_masks,
         ss      = self.ss)
       # Compute k_total and k_mask using one of the two methods (anal or min).
       if(fast): # analytical
@@ -357,6 +492,7 @@ class run(mmtbx.f_model.manager):
           xray_structure = o.xray_structure,
           update_f_calc  = True)
         f_calc_no_h = self.f_calc()
+        self._squeeze_follows_overall_b(b_adj = b_adj)
         self.show(prefix = "overall B=%s to atoms"%str("%7.2f"%o.b_adj).strip(),
           log = log)
       # Update self with new arrays so that H correction knows current R factor.
@@ -368,6 +504,7 @@ class run(mmtbx.f_model.manager):
         k_mask        = k_masks,
         k_anisotropic = k_anisotropic,
         k_isotropic   = k_isotropic,
+        f_part1       = f_part1(k_masks),
         f_part2       = f_part2)
       self.show(prefix = "bulk-solvent and scaling", log = log)
       scaling_b_info = self._capture_scaling_b_values(fast=fast, result=result)
@@ -385,14 +522,15 @@ class run(mmtbx.f_model.manager):
         f_h = self.compute_f_calc(
           xray_structure = xrs_h.set_occupancies(value=1).set_b_iso(value = 0))
       # Accumulate all mask contributions: Fcalc_atoms+Fbulk_1+...+Fbulk_N
-      data = f_calc_no_h.data()
+      data = f_calc_no_h.data() + self.f_squeeze().data()
       for k_mask_, f_mask_ in zip(k_masks, fmodel_kbu.f_masks):
         data = data + k_mask_*f_mask_.data()
       f_calc_plus_f_bulk_no_scales = f_calc_no_h.array(data = data)
       # Consistency check
       assert approx_equal(self.f_model().data(),
         f_calc_plus_f_bulk_no_scales.data()*k_isotropic*k_anisotropic)
-      assert approx_equal(self.f_model_no_scales().data(),
+      assert approx_equal(
+        self.f_model_no_scales().data() + self.f_part1().data(),
         f_calc_plus_f_bulk_no_scales.data())
       # Compute contribution from H (F_H)
       b_mean = flex.mean(xrs_no_h.extract_u_iso_or_u_equiv())*adptbx.u_as_b(1.)
@@ -403,7 +541,9 @@ class run(mmtbx.f_model.manager):
         k_total            = k_isotropic*k_anisotropic,
         ss                 = fmodel_kbu.ss,
         b_mean             = b_mean,
-        r_ref              = self.r_work(),
+        # R of all reflections: the search computes R with all reflections
+        # it is given, and returns r_ref if it finds no H contribution
+        r_ref              = self.r_all(),
         zero               = zero,
         log                = log)
       # THIS HELPS if fast=true is used, see how it works in reality
@@ -428,6 +568,7 @@ class run(mmtbx.f_model.manager):
         k_mask        = k_masks,
         k_anisotropic = k_anisotropic,
         k_isotropic   = k_isotropic,
+        f_part1       = f_part1(k_masks),
         f_part2       = f_part2)
       # Make sure what came out of scaling matches what self thinks it really is
       # It must match at least up to 1.e-6.
@@ -450,10 +591,12 @@ class run(mmtbx.f_model.manager):
         update_f_calc  = True)
       f_part2 = f_part2.array(data = f_part2.data()*flex.exp(-self.ss*b_adj))
       if(kh != 0): bh = bh + b_adj
+      self._squeeze_follows_overall_b(b_adj = b_adj)
       self.update_core(
         k_mask        = result.k_masks(),
         k_anisotropic = result.k_anisotropic(),
         k_isotropic   = result.k_isotropic(),
+        f_part1       = f_part1(result.k_masks()),
         f_part2       = f_part2)
       scaling_b_info = self._capture_scaling_b_values(fast=fast, result=result)
       self.show(prefix = "overall B=%s to atoms"%str("%7.2f"%o.b_adj).strip(),

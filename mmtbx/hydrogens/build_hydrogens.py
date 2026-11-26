@@ -385,20 +385,20 @@ def run(file_name):
                                       new_atom_name        = h,
                                       new_atom_coordinates = xyz)
             missing_h.remove(h)
-### CA hydrogen(s): HA or/and HA1 or/and HA2
-      if(h == "HA" or h == "HA1" or h == "HA2"):
+### CA hydrogen(s): HA or/and HA2 or/and HA3
+      if(h == "HA" or h == "HA2" or h == "HA3"):
         build_one = False
         build_two = False
         if("HA" in missing_h):
           build_one = True
-        if("HA1" in missing_h and "HA2" in missing_h):
+        if("HA2" in missing_h and "HA3" in missing_h):
           build_two = True
-        if(("HA1" in missing_h or "HA2" in missing_h) and build_two == False):
+        if(("HA2" in missing_h or "HA3" in missing_h) and build_two == False):
           build_one = True
         assert build_one == True and build_two == False or \
                build_one == False and build_two == True
         if(build_two == True):
-          print("Building: HA1 and HA2")
+          print("Building: HA2 and HA3")
           site_0 = None
           site_1 = None
           site_2 = None
@@ -417,15 +417,15 @@ def run(file_name):
             atom_number = write_atoms(monomer_mapping,
                                       atom_number,
                                       file,
-                                      new_atom_name        = "HA1",
+                                      new_atom_name        = "HA2",
                                       new_atom_coordinates = xyz[0])
             atom_number = write_atoms(monomer_mapping,
                                       atom_number,
                                       file,
-                                      new_atom_name        = "HA2",
+                                      new_atom_name        = "HA3",
                                       new_atom_coordinates = xyz[1])
-            missing_h.remove("HA1")
             missing_h.remove("HA2")
+            missing_h.remove("HA3")
         if(build_one == True):
           print("Building: ", h)
           site_0 = None
@@ -439,14 +439,14 @@ def run(file_name):
               site_1 = atom.xyz
             if(atom_name == "N"):
               site_2 = atom.xyz
-            if(atom_name == "CB" or atom_name == "HA1" or atom_name == "HA2"):
+            if(atom_name == "CB" or atom_name == "HA2" or atom_name == "HA3"):
               site_3 = atom.xyz
-              cb_or_ha1_or_ha2 = atom_name
+              cb_or_ha2_or_ha3 = atom_name
           if(site_0 is not None and site_1 is not None and site_2 is not None):
             for angle in angles:
               if("C" in angle and "CA" in angle): alpha  = angle[0]
               if("N" in angle and "CA" in angle): beta   = angle[0]
-              if("CA" in angle and cb_or_ha1_or_ha2 in angle): gamma = angle[0]
+              if("CA" in angle and cb_or_ha2_or_ha3 in angle): gamma = angle[0]
             xyz = add_ca_ha1_or_ha2(site_0,site_1,site_2,site_3,bond_dist,alpha,beta,gamma)
             atom_number = write_atoms(monomer_mapping,
                                       atom_number,
@@ -454,16 +454,18 @@ def run(file_name):
                                       new_atom_name        = h,
                                       new_atom_coordinates = xyz)
             missing_h.remove(h)
-### CB hydrogen(s): HB1 or/and HB2 and similar
+### CB hydrogen(s): HB2 or/and HB3 and similar (PDB v3 names)
       cb_like_h = {
-       "HB1":[["CB","CA","CG","HB2"],["CB","CA","OG","HB2"],["CB","CA","SG","HB2"]],
-       "HB2":[["CB","CA","CG","HB1"],["CB","CA","OG","HB1"],["CB","CA","SG","HB1"]],
-       "HG1":[["CG","CB","CD","HG2"],],
-       "HG2":[["CG","CB","CD","HG1"],],
-       "HD1":[["CD","CG","NE","HD2"],["CD","CG","CE","HD2"]],
-       "HD2":[["CD","CG","NE","HD1"],["CD","CG","CE","HD1"]],
-       "HE1":[["CE","CD","NZ","HE2"],],
-       "HE2":[["CE","CD","NZ","HE1"],],
+       "HB2":[["CB","CA","CG","HB3"],["CB","CA","OG","HB3"],["CB","CA","SG","HB3"]],
+       "HB3":[["CB","CA","CG","HB2"],["CB","CA","OG","HB2"],["CB","CA","SG","HB2"]],
+       "HG2":[["CG","CB","CD","HG3"],],
+       "HG3":[["CG","CB","CD","HG2"],],
+       "HD2":[["CD","CG","NE","HD3"],["CD","CG","CE","HD3"]],
+       "HD3":[["CD","CG","NE","HD2"],["CD","CG","CE","HD2"]],
+       "HE2":[["CE","CD","NZ","HE3"],],
+       "HE3":[["CE","CD","NZ","HE2"],],
+       "HG12":[["CG1","CB","CD1","HG13"],],
+       "HG13":[["CG1","CB","CD1","HG12"],],
        "HG" :[["CG","CB","CD1","CD2"],],
        "HB" :[["CB","CG2","CA","CG1"],["CB","CG2","CA","OG1"]]
                   }

@@ -20,7 +20,6 @@ from iotbx.pdb import common_residue_names_get_class
 from scitbx import matrix
 
 from mmtbx.geometry_restraints.endo_exo.util import neighbour_iseqs
-from mmtbx.geometry_restraints.endo_exo.seeds import SeedFinder
 from mmtbx.geometry_restraints.endo_exo.graph import (
   AtomGraphBuilder, nodes_within_radius, sites_within_radius)
 from mmtbx.geometry_restraints.endo_exo.cutting import BondCutDetector
@@ -34,14 +33,8 @@ master_phil_str = """
 selection = None
   .type = atom_selection
   .multiple = True
-  .help = "Atoms that seed a QM region; each entry produces one region. If no \
-selection is given, every metal in the structure seeds its own region."
-element_filter = None
-  .type = str
-  .multiple = True
-  .help = "Restrict the seed search to atoms of these element(s). Element \
-symbols are case-insensitive and need not be metals. Consulted only when no \
-selection is given."
+  .help = "Atoms that seed a QM region; each entry produces one region. At \
+least one is required."
 altloc = auto
   .type = str
   .help = "Which altloc to retain per residue. 'auto' keeps the non-blank \
@@ -138,12 +131,11 @@ element.  Their positions are constructed, not measured, so a consumer may \
 wish to leave them free to relax."
   seed_iseqs = None
     .type = ints
-    .help = "Indices of seed atoms in the QM-region output file (the metal \
-atom in metal-scan mode, or all atoms matched by the selection string)."
+    .help = "Indices of seed atoms in the QM-region output file (the atoms \
+matched by the selection string)."
   selection_string = None
     .type = str
-    .help = "Original CCTBX selection string that seeded the region; \
-None for metal-scan regions."
+    .help = "Original CCTBX selection string that seeded the region."
 }
 """
 
@@ -230,10 +222,11 @@ class QMRegionBuilder:
         One region per seed group, with
 
         ``label`` (str)
-            The seed's identity, unique within the run: atom name, chain,
-            residue number and insertion code, and altloc when it has one,
-            as in ``FE1_chainB_res301`` or ``FE_chainA_res55A_altB``; or
-            ``sel001``, ``sel002``, ... for selection groups, in order.
+            The seed's identity, unique within the run: for a single seed
+            atom its name, chain, residue number and insertion code, and
+            altloc when it has one, as in ``FE1_chainB_res301`` or
+            ``FE_chainA_res55A_altB``; for several seed atoms ``sel001``,
+            ``sel002``, ... by the selection's place in ``selection``.
         ``model`` (mmtbx.model.manager)
             The truncated, capped sub-model, without a restraints manager.
         ``seed_iseqs`` (list of int)
@@ -292,42 +285,26 @@ class QMRegionBuilder:
     self._hbond_cache = None
     self._waters_cache = None
 
-    seed_finder = SeedFinder()
     selection_strings = [s for s in (self.params.selection or []) if s]
-    element_filter = [
-      e for e in (self.params.element_filter or []) if e and e.strip()
-    ]
-    if element_filter and selection_strings:
-      print(
-        f"Note: ignoring element_filter={element_filter} because an "
-        f"explicit selection was provided.",
-        file=self.logger,
-      )
-    seed_groups = seed_finder.find(
-      model,
-      selection_strings=selection_strings,
-      element_filter=element_filter,
-    )
-
-    if not seed_groups:
-      raise Sorry('No seed atoms found in the model.')
-
-    if selection_strings:
-      for sel_str, seeds in seed_groups:
-        if not seeds:
-          raise Sorry(
-            f"Selection '{sel_str}' matched no atoms in the model."
-          )
-        print(
-          f"Selection '{sel_str}' matched {len(seeds)} atom(s):",
-          file=self.logger,
-        )
-        self._print_seeds(seeds, label='selected atoms')
-    else:
-      seeds_all = []
-      for _, grp in seed_groups:
-        seeds_all.extend(grp)
-      self._print_seeds(seeds_all, label='seed atoms')
+    if not selection_strings:
+      raise Sorry('No seed selection given: set selection to the atoms that '
+                  'seed a QM region.')
+    hierarchy_atoms = model.get_hierarchy().atoms()
+    seed_groups = []
+    labels = {}
+    for seed_index, sel_str in enumerate(selection_strings, start=1):
+      seeds = [hierarchy_atoms[i] for i in model.iselection(sel_str)]
+      if not seeds:
+        raise Sorry(f"Selection '{sel_str}' matched no atoms in the model.")
+      label = self._region_label(seed_index, seeds)
+      if label in labels:
+        raise Sorry(f"Selections '{labels[label]}' and '{sel_str}' both "
+                    f"seed {label}.")
+      labels[label] = sel_str
+      print(f"Selection '{sel_str}' matched {len(seeds)} atom(s):",
+            file=self.logger)
+      self._print_seeds(seeds, label='selected atoms')
+      seed_groups.append((label, sel_str, seeds))
 
     # seeds_flat = [atom for _, grp in seed_groups for atom in grp]  # needed for contact_cutoff
 
@@ -356,11 +333,9 @@ class QMRegionBuilder:
     )
 
     self._results = []
-    for seed_index, (sel_str, seeds) in enumerate(seed_groups, start=1):
-      result = self._process_seed(
-        seed_index, seeds, model, adjacency, selection_str=sel_str
-      )
-      self._results.append(result)
+    for label, sel_str, seeds in seed_groups:
+      self._results.append(
+        self._process_seed(label, sel_str, seeds, model, adjacency))
     return self._results
 
   def get_results(self):
@@ -496,21 +471,20 @@ class QMRegionBuilder:
       print(f'  {idx}: {atom.format_atom_record().rstrip()}',
             file=self.logger)
 
-  def _process_seed(self, seed_index, seeds, model, adjacency,
-                    selection_str=None):
+  def _process_seed(self, label, selection_str, seeds, model, adjacency):
     """Run the full pipeline for one seed site.
 
     Parameters
     ----------
-    seed_index : int
-        1-based index used in the labels of selection groups.
+    label : str
+        The region's label (:meth:`_region_label`).
+    selection_str : str
+        The selection that seeded the group.
     seeds : list of iotbx.pdb.hierarchy.atom
         Seed atom(s).
     model : mmtbx.model.manager
     adjacency : collections.defaultdict of set
         Full covalent graph (not modified).
-    selection_str : str or None, optional
-        The selection that seeded the group.
 
     Returns
     -------
@@ -532,7 +506,7 @@ class QMRegionBuilder:
       model, visited_nodes, cap_nodes, adjacency, region.completed_nodes)
 
     return group_args(
-      label=self._region_label(seed_index, seeds, selection_str),
+      label=label,
       model=region.model,
       seed_iseqs=region.seed_iseqs,
       cap_iseqs=region.cap_iseqs,
@@ -1428,24 +1402,23 @@ class QMRegionBuilder:
     return sym_image_provenance
 
   @staticmethod
-  def _region_label(seed_index, seeds, selection_str=None):
+  def _region_label(seed_index, seeds):
     """Return the label of a region, from its seed.
 
-    ``sel{seed_index:03d}`` for a selection group; for a metal seed
-    ``{name}_chain{chain}_res{resseq}{icode}``, with ``_alt{altloc}`` after
-    it when the seed has an altloc.
+    For a single seed atom ``{name}_chain{chain}_res{resseq}{icode}``, with
+    ``_alt{altloc}`` after it when the atom has an altloc; for several
+    ``sel{seed_index:03d}``.
 
     Parameters
     ----------
     seed_index : int
     seeds : list of iotbx.pdb.hierarchy.atom
-    selection_str : str or None, optional
 
     Returns
     -------
     str
     """
-    if selection_str:
+    if len(seeds) > 1:
       return f'sel{seed_index:03d}'
     seed = seeds[0]
     atom_group = seed.parent()

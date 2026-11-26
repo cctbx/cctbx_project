@@ -292,6 +292,7 @@ class manager(object):
     focus_chain_ids = pdb_hierarchy.chain_ids()
     new_chain_ids = iotbx.pdb.utils.chain_id_generator(
       used_ids=focus_chain_ids)
+    self._new_chain_ids = new_chain_ids
     focus_ss = " or ".join(["chain %s"%it for it in focus_chain_ids])
     # Create super_cell: apply symmetry to chains and add new copies to master
     # hierarchy
@@ -396,6 +397,37 @@ class manager(object):
     #  log               = null_out())
     #model.process(make_restraints=True, grm_normalization=True)
     #STOP()
+
+  def add_copies(self, ops):
+    """Add symmetry copies of the master to the super cell.
+
+    The copies are appended to super_cell_hierarchy, outside the super
+    sphere, which does not change; update() moves them with the rest.
+
+    Parameters
+    ----------
+    ops : iterable of cctbx.sgtbx.rt_mx
+        Applied to the fractional coordinates of the master.  The identity
+        and the operator of a copy already in the super cell are skipped.
+    """
+    model = self.super_cell_hierarchy.models()[0]
+    n_atoms = self.super_cell_hierarchy.atoms_size()
+    for op in ops:
+      op = op.new_denominators(1, 12)
+      if(op.is_unit_mx() or op in self.chain_op_dict): continue
+      new_ids = []
+      for chain in self.pdb_hierarchy.models()[0].chains():
+        chain_dc = chain.detached_copy()
+        chain_dc.id = next(self._new_chain_ids)
+        new_ids.append(chain_dc.id)
+        apply_symop_inplace_chain(
+          chain=chain_dc, op=op, unit_cell=self.unit_cell)
+        model.append_chain(chain_dc)
+      self.chain_op_dict[op] = new_ids
+    self.super_cell_hierarchy.atoms().reset_i_seq()
+    self.keep_selection.extend(flex.bool(
+      self.super_cell_hierarchy.atoms_size() - n_atoms, False))
+    self.scasc = self.super_cell_hierarchy.atom_selection_cache()
 
   def update(self, sites_cart, debug=False):
     """

@@ -212,7 +212,12 @@ def tst_01(log = sys.stdout):
 
   chainid_list = model_info.chainid_list
   print("Segments found: %s" %(" ".join(chainid_list)), file = log)
-  assert len(chainid_list) == 1
+  # The number of clusters in the 15 A map (5 or 6) depends on tiny changes
+  # of structure factors. It was 5 (one segment); it is 6 since the table of
+  # exponents used to compute structure factors with FFT is interpolated,
+  # and the two segments are those found below with adjust_domain_size
+  # (split at residues 1447/1448).
+  assert len(chainid_list) == 2, len(chainid_list)
 
   # Check processing and splitting model into domains, adjusting domain size automatically
   print("\nProcessing and splitting model into domains", file = log)
@@ -262,13 +267,14 @@ def tst_01(log = sys.stdout):
 
   chainid_list = model_info.chainid_list
   print("Segments found: %s" %(" ".join(chainid_list)), file = log)
-  assert len(chainid_list) == 1
+  # two segments, see above: 6 clusters in the 15 A map
+  assert len(chainid_list) == 2, len(chainid_list)
 
 
   mmm = model_info.model.as_map_model_manager()
   mmm.write_model('model_with_groupings.pdb')
   residue_count = []
-  expected_residue_count = [172]
+  expected_residue_count = [84, 88] # was [172], see above
   for chainid in chainid_list:
     selection_string = "chain %s" %(chainid)
     ph = model_info.model.get_hierarchy()

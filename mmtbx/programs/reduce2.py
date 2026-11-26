@@ -37,17 +37,17 @@ import copy
 from iotbx.data_manager import DataManager
 import csv
 
-version = "3.23.0"
+version = "3.25.2"
 
 master_phil_str = '''
 approach = *add remove optimize place
   .type = choice
   .short_caption = Add (and optimize), remove, optimize, or place Hydrogens
   .help = Determines whether Reduce will add (and optimize), remove, or optimize Hydrogens from the model, or place them without optimizing (place). Note: with optimize, a His gets a His Mover only if it has both HD1 and HE2. A His with one ring H keeps its H as in the input: no protonation choice, no flip score in the Suggested flips and, with add_flip_movers=True, no flip. remove removes all H and D atoms and renames DOD waters to HOH.
-keep_existing_H = False
+keep_existing_H = Auto
   .type = bool
-  .short_caption = Do not remove Hydrogens in the original model
-  .help = Keep existing H and D atoms in the model. Kept D need a neutron_option other than none.
+  .short_caption = Do not remove Hydrogens in the original model (Auto: with qmready=True)
+  .help = Keep existing H and D atoms in the model. Auto: True with qmready=True, False otherwise. With qmready=True, keep_existing_H=False discards the input H and D: the result is the same as for the input without them. Kept D need a neutron_option other than none.
 n_terminal_charge = *residue_one first_in_chain all_chain_starts no_charge
   .type = choice(multi=False)
   .short_caption = N terminal charge approach
@@ -85,7 +85,7 @@ water_hydrogens
             adds the missing H of a water with one H, keep leaves them as \
             they are. complete and keep need the input H kept \
             (approach=optimize, keep_existing_H=True, or qmready=True with \
-            approach=add).
+            approach=add, which keeps them unless keep_existing_H=False).
   symmetry = True
     .type = bool
     .short_caption = Symmetry mates in the water environment
@@ -1160,9 +1160,16 @@ NOTES:
   for the final alternate tested.  This may leave other alternates in sub-optimal configurations.
   When a single alternate is selected using alt_id= on the command line, everything is
   optimized a single time and for that configuration.
-  A residue that carries a single altloc and no blank atoms (e.g. a ligand copy given
-  altloc B in its own chain) is left out of the other alternates' passes, also with
-  alt_id=, unless every atom of it has occupancy >= 0.99.
+  In the pass for an alternate X, a residue without X takes part with its blank atoms
+  and, with one other altloc, that conformer only if every atom of it has occupancy
+  >= 0.99 (a ligand copy given altloc B is left out); with several, its alphabetically
+  first conformer; none if another residue group at its site (same chain, residue number
+  and insertion code) has X, as in microheterogeneity (e.g. Pro A / Ser B,C). The same
+  in every chain, also with alt_id=. Such a residue is only the environment of that
+  pass: its own passes optimize it and decide its H, the last of them its blank atoms
+  (e.g. a residue with B and C in a model with A: pass B).
+  With alt_id= the single pass optimizes every atom it holds, those of the other
+  conformer it gives such a residue included.
 
   By default (add_flip_movers=False) no heavy atom moves: each His chooses HD1, HE2 or
   both in its input orientation, and Asn/Gln amides keep theirs. The flips that would
@@ -1255,7 +1262,9 @@ NOTES:
   acid keep both H. At a chain start, n_terminal_charge decides the H on N, and the H on
   OXT is never added.
 
-  qmready=True prepares a model for QM: H on water (as add_h_to_water=True), longer XH
+  qmready=True prepares a model for QM: the input H kept (keep_existing_H=Auto, the
+  default, is True with qmready=True; keep_existing_H=False discards them, which gives
+  the same model as the input without H), H on water (as add_h_to_water=True), longer XH
   distances, OXT and NH3+ at chain ends and breaks, HO3' and HO5' at nucleic-acid chain
   ends and breaks, OP3 on a 5' phosphate that lacks it (a P with three O cannot be
   capped with H), altloc labels for unlabelled partial-occupancy alternates around waters
@@ -1417,7 +1426,7 @@ NOTES:
         n_terminal_charge     = "all_chain_starts",
         exclude_water         = True,
         stop_for_unknowns     = self.params.stop_on_any_missing_hydrogen,
-        keep_existing_H       = True,
+        keep_existing_H       = self.params.keep_existing_H,
         mon_lib_srv           = self.model.get_mon_lib_srv(),
         na_terminal_h         = True,
         metal_bound_amines_as_nh2 = self.params.metal_bound_amines_as_nh2,
@@ -1670,7 +1679,7 @@ NOTES:
     model = self.data_manager.get_model()
     hierarchy = model.get_hierarchy()
     n_models = len(hierarchy.models())
-    keep_input_h = p.keep_existing_H or p.qmready
+    keep_input_h = p.keep_existing_H
     owner = {}
     for k, e in enumerate(entries):
       try:
@@ -1716,7 +1725,8 @@ NOTES:
               '(the supplied H are kept: %s). Remove %s or change the state.'
               % (name(k, e), label, ', '.join(wrong),
               's' if len(wrong) == 1 else '', e.state,
-              'qmready=True' if p.qmready else 'keep_existing_H=True',
+              'keep_existing_H=True%s' % (
+                ', the default with qmready=True' if p.qmready else ''),
               'it' if len(wrong) == 1 else 'them'))
         altlocs = sorted(set(ag.altloc for ag in ags) - {''})
         result.states[key] = e.state
@@ -1760,7 +1770,7 @@ NOTES:
     # :return: The description-file text ('' without entries).
     pr = self._protonation
     if not pr.residues: return ''
-    keep_input_h = self.params.keep_existing_H or self.params.qmready
+    keep_input_h = self.params.keep_existing_H
     ags = {}
     for rg in self.model.get_hierarchy().residue_groups():
       key = reduce_hydrogen.protonation_key(rg)
@@ -2196,7 +2206,7 @@ NOTES:
     # :return: The description-file text ('' if none).
     if not self._unrestrained.labels: return ''
     if self.params.approach != 'optimize' and \
-       not (self.params.keep_existing_H or self.params.qmready):
+       not self.params.keep_existing_H:
       return ''
     text = ('\nResidues without restraints, left unchanged:\n' +
       '\n'.join(self._unrestrained.labels) + '\n')
@@ -2357,11 +2367,9 @@ NOTES:
 # ------------------------------------------------------------------------------
 
   def _RebuildHint(self):
-    # The parameters that discard the input H/D for this run: qmready and
-    # optimize always keep them (add also optimizes), add/place keep them
-    # only on request.
-    if self.params.qmready:
-      return 'remove the H/D first (approach=remove), then run qmready=True'
+    # The parameters that discard the input H/D for this run: optimize
+    # always keeps them (add also optimizes), add/place keep them only on
+    # request (keep_existing_H, by default with qmready).
     if self.params.approach == 'optimize':
       return 'approach=add keep_existing_H=False'
     return 'keep_existing_H=False'
@@ -3221,6 +3229,11 @@ NOTES:
 
   def validate(self):
     p = self.params
+    # keep_existing_H: Auto follows qmready (a model prepared for QM keeps the
+    # protonation it came with); an explicit False discards the input H/D
+    # also with qmready. Resolved here, so the run gets a bool
+    if p.keep_existing_H in (None, Auto):
+      p.keep_existing_H = bool(p.qmready)
     # phil turns an explicit neutron_option=none into None
     if p.neutron_option is None:
       p.neutron_option = 'none'
@@ -3252,9 +3265,9 @@ NOTES:
       raise Sorry('water_hydrogens requires add_h_to_water=True, or '
         'qmready=True with approach=add: %s' % ', '.join(changed))
     if (w.existing_h != 'reorient' and p.approach in ('add', 'place') and
-        not (p.keep_existing_H or p.qmready)):
+        not p.keep_existing_H):
       keep = 'keep_existing_H=True'
-      if p.approach == 'add':
+      if p.approach == 'add' and not p.qmready:
         keep += ' or qmready=True'
       raise Sorry('water_hydrogens.existing_h=%s needs the input H kept: %s.'
         % (w.existing_h, keep))
@@ -3485,7 +3498,10 @@ NOTES:
         print("qmready=True: added OP3 to %d 5' phosphate(s) that lacked it"
           % n_op3, file=self.logger)
       # residues with partial alternative conformations: borrow the atoms
-      # their conformers lack from each other. An ambiguous borrow is a Sorry
+      # their conformers lack from each other. An ambiguous borrow is a Sorry.
+      # A blank atom of a microheterogeneity site (1ejg N of Pro A / Ser B, C
+      # 22) goes into every conformer of the site: without its own N a Ser
+      # conformer gets no H on it and a charge of -1
       completion = self.model.complete_altlocs()
       self._altloc_completion = completion
       lines = altloc_completion.report_lines(completion)
@@ -3520,23 +3536,6 @@ NOTES:
 
     self._input_renames = []
     self._placement_renames = []
-    if self.data_manager.has_restraints():
-      self.model.set_stop_for_unknowns(self.params.stop_on_any_missing_hydrogen)
-      # default interpretation parameters without the IUPAC flip (B23): a
-      # restraint file must not decide the names. optimize and remove keep the
-      # input names; add and place rename once, in placement.
-      no_flip = mmtbx.model.manager.get_default_pdb_interpretation_params()
-      no_flip.pdb_interpretation.flip_symmetric_amino_acids = False
-      sites_before = reduce_hydrogen.atom_group_sites(self.model.get_hierarchy())
-      self.model.process(make_restraints=False,
-        pdb_interpretation_params=no_flip)
-      self._input_renames = reduce_hydrogen.symmetric_renames(sites_before,
-        self.model.get_hierarchy())
-      if self.params.model_id is not None:
-        selected = _SelectModelNumber(self.model.get_hierarchy(),
-          self.params.model_id).id.strip()
-        self._input_renames = [r for r in self._input_renames
-          if r.model == selected]
 
     # If we've been asked to only to a single model from the file, strip the model down to
     # only that one (checked in validate()); it keeps its MODEL number.
@@ -3576,20 +3575,20 @@ NOTES:
       # sites. A model read from a file has none of these.
       self.model._mon_lib_srv = None
       self.model.unset_riding_h_manager()
-      # Rebuilt unless it is already the hierarchy's own: process() (restraint
-      # file) replaces it with its interpretation's, the shift back changes it.
-      # Boxing and qmready's hierarchy changes rebuild it from the hierarchy.
+      # Rebuilt unless it is already the hierarchy's own: the shift back
+      # changes it. Boxing and qmready's hierarchy changes rebuild it from the
+      # hierarchy.
       self.model.get_xray_structure(force=not (xrs_from_hierarchy and
-        self._input_shift is None and not self.data_manager.has_restraints()))
+        self._input_shift is None))
       self.model.set_refinement_flags(None)
       self._unrestrained = self._PrepareRestraints()
 
-    # Input with D that the run keeps (never for remove; qmready forces
-    # keep_existing_H=True in _AddHydrogens()): checked and normalized to H;
+    # Input with D that the run keeps (never for remove; keep_existing_H is
+    # True by default with qmready): checked and normalized to H;
     # the H-only model is the snapshot for the flipkins
     snapshot = None
     if self.params.approach != 'remove' and \
-       (self.params.keep_existing_H or self.params.qmready or
+       (self.params.keep_existing_H or
         self.params.approach == 'optimize') and \
        any(e.strip().upper() == 'D'
            for e in self.model.get_hierarchy().atoms().extract_element()):
@@ -3674,6 +3673,19 @@ NOTES:
           if text:
             print('\n' + text, file=self.logger)
             outString += '\n' + text + '\n'
+        # a supplied amide H on a peptide bond that a pass holds across two
+        # letters: as placement puts it (riding treats it as rotatable);
+        # after the metal amines, which keep a manager set up without them
+        moved = reduce_hydrogen.place_amide_h_across_letters(self.model,
+          use_neutron_distances = True if self.params.use_neutron_distances
+            else None)
+        moved = [(h, d) for h, d in moved if d > 0.005]
+        if moved:
+          text = 'Amide H set on peptide bonds across altloc letters:\n' + \
+            ''.join('  %s moved %.2f A\n' % (h.id_str().replace('pdb=', ''), d)
+              for h, d in moved)
+          print('\n' + text, file=self.logger)
+          outString += '\n' + text + '\n'
 
       # A model of waters (and ions) has no H before its water H are placed:
       # nothing for the Optimizer.
@@ -3819,6 +3831,30 @@ NOTES:
       make_sub_header('Removing Hydrogens', out=self.logger)
       if self._input_renames:
         outString += self._RenamesText(self._input_renames)
+      # H and D are selected by element. Blank element fields: taken from
+      # an interpretation of this run's model, as a restraint file gave them
+      n_blank = [a.element.strip() for a in self.model.get_atoms()].count('')
+      if n_blank:
+        # a new monomer library server, as for the other approaches: a model
+        # passed in memory has the restraint files of its earlier runs in its
+        # server
+        self.model._mon_lib_srv = None
+        no_flip = mmtbx.model.manager.get_default_pdb_interpretation_params()
+        no_flip.pdb_interpretation.flip_symmetric_amino_acids = False
+        self.model.set_stop_for_unknowns(
+          self.params.stop_on_any_missing_hydrogen)
+        try:
+          self.model.process(make_restraints=False,
+            pdb_interpretation_params=no_flip)
+        except Sorry as e:
+          raise Sorry('%d atom(s) of the input have a blank element column. '
+            'approach=remove selects H and D by element and takes missing '
+            'elements from an interpretation of the model, which stopped:\n%s'
+            % (n_blank, str(e)))
+        still = [a.element.strip() for a in self.model.get_atoms()].count('')
+        print('Blank element columns in %d atom(s): the model was '
+          'interpreted for their elements; %d still blank.' % (n_blank,
+          still), file=self.logger)
       sel = self.model.selection("element H or element D")
       for a in self.model.get_atoms():
         if sel[a.i_seq]:

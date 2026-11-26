@@ -60,7 +60,8 @@ HETATM   20  OXT 01W A 406      25.883  20.339  18.679  1.00 20.00           O
 END
 """
 
-# beta-amino acid: its dictionary bonds N to CB
+# beta-amino acid, the CCD's names: N on CA, C on CB (GeoStd until 2026-11-25:
+# N on CB, C on CA)
 pdb_b3a = """\
 CRYST1   40.000   40.000   40.000  90.00  90.00  90.00 P 1
 HETATM    1  CG  B3A A   1      20.110  19.607  18.983  1.00 20.00           C
@@ -127,7 +128,8 @@ def test_sam_sah_standalone():
     assert 'N %s A 406: no peptide bond' % resname in text, text
 
 def test_01w_amq():
-  # 01W, whose dictionary is NH3 (H1N, H2N, H3N): all three; AMQ (no C=O,
+  # 01W, whose old dictionary (tml.OLD_DICTIONARIES, supplied by ff.place())
+  # is NH3 (H1N, H2N, H3N): all three; AMQ (no C=O,
   # undetermined in pdb_interpretation): H and HN2; no next residue makes 01W
   # (an amino acid) ambiguous, AMQ standalone
   for pdb_str, resname, names, why in (
@@ -140,15 +142,15 @@ def test_01w_amq():
         'N %s A 406: %s' % (resname, why))], kept(o)
 
 def test_b3a():
-  # beta-amino acid: N bonded to CB in the dictionary, never built by the
-  # CA-based propeller; its dictionary H stays and the line says why
+  # beta-amino acid alone: its dictionary H stays, listed as any amino acid
+  # without a next residue (GeoStd bonds N to CA since 2026-11-25, as the
+  # CCD; before, N to CB: "N bonded to CB, not CA, in the dictionary")
   for setting in ('residue_one',) + START:
     o = ff.place(pdb_b3a, n_terminal_charge=setting)
     assert h_on_n(o, 'B3A') == ['H'], (setting, h_on_n(o, 'B3A'))
-    assert kept(o) == ['N B3A A 1: N bonded to CB, not '
-      'CA, in the dictionary: terminal conversion not supported; dictionary '
-      'placement retained'], \
-      kept(o)
+    assert kept(o) == ['N B3A A 1: ambiguous, no next residue (a free amino '
+      'acid, or the next residue is missing); terminal conversion not '
+      'applied; dictionary placement retained'], kept(o)
 
 def test_conformers():
   # outgoing_peptide_bond() compares C and N within each complete conformer:

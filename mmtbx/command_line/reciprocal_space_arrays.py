@@ -207,7 +207,8 @@ def run(args, log = sys.stdout):
   fmodel.update_all_scales(
     update_f_part1 = True,
     remove_outliers = params.remove_f_obs_outliers,
-    bulk_solvent_and_scaling = params.bulk_solvent_and_scaling)
+    bulk_solvent_and_scaling = params.bulk_solvent_and_scaling,
+    mosaic = params.bulk_solvent_and_scaling)
   print("Overall statistics:")
   fmodel.info().show_all()
   #

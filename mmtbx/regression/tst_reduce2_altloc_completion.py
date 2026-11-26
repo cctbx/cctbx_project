@@ -227,6 +227,42 @@ def test_truncated_still_needs_capping():
   assert HEADING in log, log
   assert " -> shared " not in log and ": copied " not in log, log
 
+def test_microheterogeneity_shared_n():
+  """1ejg Pro A 22 / Ser B, C 22 with one blank N, stored in the Pro residue
+  group. The Ser conformers had no N of their own: no H on it, a charge of
+  -1 each, and qmready stopped with 'The alternate conformations have
+  different total charges (A: 0, B: -1, C: -1)'. Altloc completion gives
+  every conformer of the site its N."""
+  from mmtbx.regression.tst_reduce2_pass_environment import m_1ejg_22
+  out = "tst_r2ac_5_out.pdb"
+  fn_txt = "tst_r2ac_5_out.txt"
+  log = run_log(m_1ejg_22, "tst_r2ac_5",
+    ["qmready=True", "output.description_file_name=" + fn_txt], out)
+  line = " PRO A  22  N: blank -> A, B (SER), C (SER)"
+  with open(fn_txt) as f:
+    description = f.read()
+  for text in (log, description):
+    assert HEADING in text, text
+    assert line in text, text
+  assert "Total charge: 0" in log, log
+  h = iotbx.pdb.input(out).construct_hierarchy()
+  atoms = [a for a in h.atoms() if a.parent().parent().resseq.strip() == "22"]
+  n = dict((a.parent().altloc, a) for a in atoms if a.name.strip() == "N")
+  assert sorted(n.keys()) == ["A", "B", "C"], sorted(n.keys())
+  assert [n[x].parent().resname for x in "ABC"] == ["PRO", "SER", "SER"]
+  assert [round(n[x].occ, 2) for x in "ABC"] == [0.57, 0.21, 0.22]
+  # the amide H of each Ser conformer on its own N; Pro has none
+  hn = dict((a.parent().altloc, a) for a in atoms if a.name.strip() == "H")
+  assert sorted(hn.keys()) == ["B", "C"], sorted(hn.keys())
+  for x in "BC":
+    assert hn[x].parent().resname == "SER"
+    assert 0.9 < hn[x].distance(n[x]) < 1.1, hn[x].distance(n[x])
+  # no H of Ser 22 is reported as not placed (was: parent atom not in the
+  # model, SER A 22 conformer B and C: H on N)
+  for text in (log, description):
+    assert not [l for l in text.splitlines()
+                if l.strip().startswith("SER A 22")], text
+
 def test_constants_agree():
   from mmtbx.hydrogens import capping
   from iotbx.pdb import altloc_completion
@@ -239,6 +275,7 @@ def run_all():
   test_multi_source_copies()
   test_ambiguous_sorry()
   test_truncated_still_needs_capping()
+  test_microheterogeneity_shared_n()
 
 if __name__ == "__main__":
   run_all()

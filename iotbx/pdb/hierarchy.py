@@ -2920,14 +2920,16 @@ class _():
     residue gets the residue's atoms it lacks, borrowed from the residue's
     other conformers when bonded to the conformer (an atom needed by every
     other label becomes blank, otherwise it is copied and its occupancy
-    split). Total occupancy of every atom site is kept, so structure
-    factors do not change. Restraints built before this call must be
-    rebuilt if the hierarchy changes.
+    split). A blank atom of a microheterogeneity site (residue groups of
+    different residue names at one position) is copied into every conformer
+    of the site that lacks it. Total occupancy of every atom site is kept,
+    so structure factors do not change. Restraints built before this call
+    must be rebuilt if the hierarchy changes.
 
     :param check_only: report changes without applying them
     :param log: receives one line per shared, copied or truncated case
-    :returns: group_args with shared, copied, truncated, inconsistent,
-      changed and the details report_lines needs (see
+    :returns: group_args with shared, copied, distributed, truncated,
+      inconsistent, changed and the details report_lines needs (see
       iotbx.pdb.altloc_completion.run)
     :raises Sorry: if an atom could come from more than one conformer
     """

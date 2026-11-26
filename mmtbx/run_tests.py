@@ -106,6 +106,7 @@ general_tests = [
   "$D/regression/model/tst_model_ncs.py",
   "$D/regression/model/tst_model_2.py",
   "$D/regression/model/tst_model_restraints_scale.py",
+  "$D/regression/tst_geo_vs_map.py",
   "$D/regression/model/tst_model_biomt_mtrix.py",
   "$D/regression/model/tst_model_biomt_mtrix_2.py",
   "$D/regression/model/tst_model_neutralize_scatterers.py",
@@ -259,6 +260,7 @@ general_tests = [
   "$D/bulk_solvent/tst_aniso_scaler.py",
   "$D/bulk_solvent/tst_kb_sol_u_star_fd.py",
   "$D/bulk_solvent/tst_mosaic.py",
+  "$D/bulk_solvent/tst_squeeze.py",
   #
   "$D/invariant_domain.py",
   # restraints
@@ -386,6 +388,7 @@ general_tests = [
   "$D/regression/tst_cif_as_mtz_wavelengths.py",
   "$D/building/tst_extend_sidechains.py",
   "$D/building/tst_extend_sidechains_2.py",
+  "$D/building/tst_split_into_conformers.py",
   # alt confs
   "$D/disorder/tst.py",
   "$D/disorder/tst_backbone.py",
@@ -469,6 +472,10 @@ general_tests = [
   "$D/regression/tst_cc_star.py",
   "$D/regression/tst_reduce_cryoem_resolution.py", # TODO move to maptbx?
   "$D/regression/tst_fmodel_2.py",
+  "$D/regression/tst_fmodel_mosaic.py",
+  "$D/regression/tst_fmodel_squeeze.py",
+  "$D/regression/tst_squeeze_programs.py",
+  "$D/regression/tst_mosaic_programs.py",
   "$D/regression/tst_rigid_bond_test.py",
   "$D/validation/regression/tst_cablam.py",
   "$D/validation/regression/tst_barbed_wire_analysis.py",
@@ -520,10 +527,12 @@ molprobity_tests = [
   "$D/regression/tst_reduce2_no_symmetry.py",
   "$D/regression/tst_reduce2_qmready_charge.py",
   "$D/regression/tst_reduce2_qmready_clash.py",
+  "$D/regression/tst_reduce2_qmready_keep_h.py",
   "$D/regression/tst_reduce2_qmready_regularize.py",
   "$D/regression/tst_reduce2_symmetry_optimizer.py",
   "$D/regression/tst_reduce2_capping.py",
   "$D/regression/tst_reduce2_altloc_completion.py",
+  "$D/regression/tst_reduce2_microheterogeneity.py",
   "$D/regression/tst_reduce2_altloc_charge.py",
   "$D/regression/tst_reduce2_his_charges.py",
   "$D/regression/tst_reduce2_his_charges_optimizer.py",
@@ -548,6 +557,7 @@ molprobity_tests = [
   "$D/regression/tst_reduce2_metal_amine_supplied.py",
   "$D/regression/tst_reduce2_optimizer_conformers.py",
   "$D/regression/tst_reduce2_altloc_deletions.py",
+  "$D/regression/tst_reduce2_pass_environment.py",
   "$D/regression/tst_reduce2_his_acceptor.py",
   "$D/regression/tst_reduce2_output_files.py",
   "$D/regression/tst_reduce2_returned_model.py",
@@ -575,8 +585,10 @@ molprobity_tests = [
   "$D/regression/tst_reduce2_clique_polish.py",
   "$D/regression/tst_reduce2_clique_limits.py",
   "$D/regression/tst_reduce2_optimizer_release.py",
+  "$D/regression/tst_reduce2_remove_blank_element.py",
   "$D/regression/tst_reduce2_report_renaming.py",
   "$D/regression/tst_reduce2_blank_parent_split.py",
+  "$D/regression/tst_reduce2_cross_letter_links.py",
   "$D/regression/tst_reduce2_nh2_names.py",
   "$D/regression/tst_reduce2_amide_h_sides.py",
   "$D/regression/tst_reduce2_water_h.py",
@@ -597,6 +609,7 @@ molprobity_tests = [
   "$D/validation/regression/tst_cbetadev_05.py",
   "$D/validation/regression/tst_cbetadev_06.py",
   "$D/validation/regression/tst_cbetadev_07.py",
+  "$D/validation/regression/tst_cbetadev_08.py",
   "$D/validation/regression/tst_cbetadev_mahalanobis.py",
   "$D/validation/regression/tst_cbd_utils.py",
   "$D/validation/regression/tst_undowser.py",
@@ -633,6 +646,8 @@ else:
 tst_list_expected_failures = [
   "$D/monomer_library/tst_pdb_interpretation_2.py",
   "$D/monomer_library/tst_pdb_interpretation_4.py",
+  # an atom shared by the residues of a microheterogeneity site (1ejg 22)
+  "$D/monomer_library/tst_pdb_interpretation_microheterogeneity.py",
   ]
 
 def run():

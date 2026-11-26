@@ -155,7 +155,8 @@ def run(args,
     process_pdb_file=True,
     usage_string=usage_string,
     prefer_anomalous=True,
-    out=out)
+    out=out,
+    mosaic=True)
   params = cmdline.params
   fmodel = cmdline.fmodel
   if (params.output.maps is Auto) and (fmodel is not None):

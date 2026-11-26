@@ -1,3 +1,94 @@
+r"""Run regression tests in parallel.
+
+Run in an empty directory (or with run_in_tmp_dir=True):
+
+  libtbx.run_tests_parallel module=mmtbx module=iotbx nproc=8
+  libtbx.run_tests_parallel directory=/path/to/tests nproc=8
+
+Which tests
+
+  module=NAME      The tests listed in NAME/run_tests.py: tst_list, with
+                   slow_tests=True also tst_list_slow, and the tests listed
+                   there as expected failures or expected unstable.
+  directory=PATH   Every tst*.py, tst*.sh and tst*.csh below PATH.
+  script=FILE      One more test file, beside a module= or directory=.
+
+How they run
+
+  Each test is a process of its own, and nproc of them run at a time
+  (nproc=Auto: as many as there are processors). Without timings= the order
+  is script=, then directory=, then module= tests, each as given. A line
+  with the result and the run time is printed as each test ends; that and
+  the output of every test go to run_tests_parallel_zlog in the current
+  directory.
+
+  A test passes if it exits 0. One that does not is a FAIL, unless
+  run_tests.py lists it as an expected failure or expected unstable. The
+  exit status of the run is 1 if there is a FAIL.
+
+  run_in_unique_dirs=True  Run each test in a directory of its own below
+                           the current one, named after the test.
+  max_retries=N            Rerun a test that fails, up to N times, except
+                           the expected failures. Implies
+                           run_in_unique_dirs=True.
+  max_time=SECONDS         List the tests that took longer. Not a time limit.
+  shuffle=True             Run in random order.
+  skip_missing=True        Ignore a module that is not configured.
+  quiet=True               Send the result lines to the log only.
+
+Run times, and chunks for several machines
+
+  timings=FILE     Run the tests longest first by the run times in FILE, and
+                   when the run ends add the times of the tests that passed
+                   to FILE. A missing FILE is created. It is CSV with one
+                   row per test, name,seconds,seconds,... holding the last
+                   five times; the median of them is the estimate.
+                   shuffle=True still randomizes the order.
+  n_chunks=K chunk=I
+                   Run only chunk I of K chunks of the tests that take about
+                   equally long by FILE (of equal numbers of tests if there
+                   are no times). The same tests and the same FILE give the
+                   same chunks on every machine, with each test in exactly
+                   one, so K machines can run one chunk each. Such a run
+                   reads FILE and never writes it, and the first line of its
+                   log says which chunk it is.
+  timings_from_log=LOG
+                   Run nothing. Add the times of the tests that passed in
+                   the log of an earlier run to FILE: to start a FILE, or to
+                   add the times of the chunks of a run. Each use adds one
+                   time per test, so use it once per log. It prints how
+                   many times it added per log, and a warning if the logs
+                   are not every chunk of one run, each once; it prints
+                   nothing about failures.
+
+  One machine; FILE keeps itself up to date:
+
+    libtbx.run_tests_parallel module=mmtbx nproc=8 timings=~/timings.csv
+
+  Two machines, each in an empty directory:
+
+    libtbx.run_tests_parallel module=mmtbx nproc=8 timings=~/timings.csv \
+      n_chunks=2 chunk=1                    (chunk=2 on the other machine)
+
+  Each chunk reports its own failures and writes its own log. Afterwards,
+  to add the times of both chunks to FILE:
+
+    libtbx.run_tests_parallel timings=~/timings.csv \
+      timings_from_log=one/run_tests_parallel_zlog \
+      timings_from_log=two/run_tests_parallel_zlog
+
+  Where phenix_regression is installed, one command instead prints a single
+  summary of the failures of all chunks, says if a chunk is missing or
+  repeated, and adds the times:
+
+    phenix_regression.check_test_fails one/run_tests_parallel_zlog \
+      two/run_tests_parallel_zlog timings=~/timings.csv
+
+  Use one of the two, not both: each of them adds the times.
+
+  All chunks of a run must read the same FILE, so add times to it only when
+  every chunk has finished.
+"""
 from __future__ import absolute_import, division, print_function
 import libtbx.test_utils.parallel
 from libtbx.utils import Sorry, Usage
@@ -55,9 +146,36 @@ max_time = 180
 slow_tests = False
   .type = bool
   .help = "If True, also run any tests marked as slow, if any"
+timings = None
+  .type = path
+  .help = "CSV file of test run times, one row per test: the test's path "
+          "in the install plus its arguments, then its last run times in "
+          "seconds. When given, the tests run longest first by the median "
+          "of those times (shuffle=True still randomizes the order), and "
+          "the times of the tests that pass are added to the file at the "
+          "end. A missing file is created."
+n_chunks = 1
+  .type = int(value_min=1)
+  .help = "Divide the tests into this many chunks that take about equally "
+          "long by the timings file, and run only the one selected with "
+          "chunk. Runs given the same tests and the same timings file "
+          "select the same chunks, so each test runs in exactly one of "
+          "them. A chunked run does not update the timings file."
+chunk = None
+  .type = int
+  .help = "The chunk to run, from 1 to n_chunks."
+timings_from_log = None
+  .type = path
+  .multiple = True
+  .help = "Instead of running tests, add the times of the tests that "
+          "passed in this run_tests_parallel log (its captured output or "
+          "run_tests_parallel_zlog) to the timings file. Use it to start "
+          "a timings file from an earlier run, or to add the times of "
+          "chunked runs. Each use adds one more time per test. A warning "
+          "is printed if the logs are not every chunk of one run, each "
+          "once."
 """)
 
-_QUOTED_PATH_RE = re.compile(r'^[^"]*"([^"]*)"(.*)$')
 _INVALID_NAME_CHARS_RE = re.compile(r'[^A-Za-z0-9_-]+')
 
 
@@ -65,7 +183,7 @@ def _derive_unique_dir_name(command, used_names):
   """Return a filesystem-safe directory name for the given test command,
   unique within `used_names`. Mutates `used_names` to include the name
   that is returned."""
-  m = _QUOTED_PATH_RE.match(command)
+  m = libtbx.test_utils.parallel.QUOTED_PATH_RE.match(command)
   if m:
     file_path = m.group(1)
     args = m.group(2).strip()
@@ -106,6 +224,22 @@ def _build_unique_dir_mapping(commands, base_dir):
     os.makedirs(dir_path)
     mapping[cmd] = dir_path
   return mapping
+
+
+def _select_chunk_of_lists(tests, parallel_tests, n_chunks, chunk, timings):
+  """Divide the tests and the one-at-a-time tests into chunks together and
+  return this chunk's part of each list, longest first."""
+  selected = libtbx.test_utils.parallel.select_chunk(
+    tests + parallel_tests, n_chunks, chunk, timings)
+  one_at_a_time = set(parallel_tests)
+  chunk_tests = []
+  chunk_parallel_tests = []
+  for command in selected:
+    if command in one_at_a_time:
+      chunk_parallel_tests.append(command)
+    else:
+      chunk_tests.append(command)
+  return chunk_tests, chunk_parallel_tests
 
 
 def run(args,
@@ -163,7 +297,7 @@ def run(args,
   """
 
   if (len(args) == 0):
-    raise Usage("""libtbx.run_tests_parallel [module=NAME] [directory=path]""")
+    raise Usage(__doc__)
   user_phil = []
   for arg in args :
     if os.path.isdir(arg):
@@ -176,12 +310,38 @@ def run(args,
       else :
         user_phil.append(arg_phil)
 
-  params = master_phil.fetch(sources=user_phil).extract()
+  working_phil, unused = master_phil.fetch(sources=user_phil,
+    track_unused_definitions=True)
+  if len(unused) > 0:
+    raise Sorry("Unrecognized parameter(s)\n%s"
+      % "\n".join([str(p) for p in unused]))
+  params = working_phil.extract()
   if params.max_retries > 0 and not params.run_in_unique_dirs:
     print("Note: max_retries=%d enabled run_in_unique_dirs=True "
           "(retries require per-test directories for safe cleanup)."
           % params.max_retries)
     params.run_in_unique_dirs = True
+  if params.n_chunks > 1 and params.chunk is None:
+    raise Sorry("Please select a chunk: chunk=1 to chunk=%d."
+      % params.n_chunks)
+  if params.chunk is not None:
+    if params.chunk < 1 or params.chunk > params.n_chunks:
+      raise Sorry("chunk=%d is not one of the n_chunks=%d chunks, which "
+        "are numbered from 1." % (params.chunk, params.n_chunks))
+  if params.timings is not None:
+    params.timings = libtbx.test_utils.parallel.check_timings_file(
+      params.timings, will_write=(params.n_chunks == 1))
+  if len(params.timings_from_log) > 0:
+    if params.timings is None:
+      raise Sorry("timings_from_log needs timings=<file to update>.")
+    n_added = libtbx.test_utils.parallel.add_test_timings_from_logs(
+      params.timings, params.timings_from_log)
+    for log_file, n_tests in zip(params.timings_from_log, n_added):
+      print("%s: times of %d tests" % (log_file, n_tests))
+    for problem in libtbx.test_utils.parallel.chunk_log_problems(
+        params.timings_from_log):
+      print("Warning: %s" % problem)
+    return 0
   if params.run_in_tmp_dir:
     from libtbx.test_utils import open_tmp_directory
     run_dir = open_tmp_directory()
@@ -295,9 +455,24 @@ def run(args,
     all_tests=all_tests[:max_tests]
     print("Running only %s tests" %(max_tests))
 
+  n_tests_before_chunking = len(all_tests)
+  chunk_line = None
+  if params.timings is not None or params.n_chunks > 1:
+    timings = {}
+    if params.timings is not None:
+      timings = libtbx.test_utils.parallel.read_test_timings(params.timings)
+    tests_of_all_chunks = all_tests + parallel_list
+    all_tests, parallel_list = _select_chunk_of_lists(
+      all_tests, parallel_list, params.n_chunks, params.chunk or 1, timings)
+    if params.n_chunks > 1:
+      chunk_line = libtbx.test_utils.parallel.format_chunk_line(
+        params.chunk, params.n_chunks, len(all_tests) + len(parallel_list),
+        tests_of_all_chunks, timings)
+      print(chunk_line)
+
   if return_list_of_tests:
     return all_tests
-  if (len(all_tests) == 0):
+  if (n_tests_before_chunking == 0):
     if (supplied_list_of_tests is not None):
       raise Sorry("No tests to run")
     else: # usual
@@ -305,14 +480,14 @@ def run(args,
   cwd_map = None
   if params.run_in_unique_dirs:
     cwd_map = _build_unique_dir_mapping(
-      all_tests + expected_failure_list + expected_unstable_list
-        + parallel_list,
-      os.getcwd())
+      all_tests + parallel_list, os.getcwd())
   if (params.shuffle):
     random.shuffle(all_tests)
   if (params.quiet):
     params.verbosity = 0
   with open("run_tests_parallel_zlog", "w") as log:
+    if chunk_line is not None:
+      print(chunk_line, file=log)
     result = libtbx.test_utils.parallel.run_command_list(
       cmd_list=all_tests,
       expected_failure_list=expected_failure_list,
@@ -324,6 +499,18 @@ def run(args,
       max_time=params.max_time,
       cwd_map=cwd_map,
       max_retries=params.max_retries)
+  if params.timings is not None and params.n_chunks == 1:
+    passed = []
+    for test_result in result.results:
+      if test_result.return_code == 0:
+        passed.append((test_result.command, test_result.wall_time))
+    try:
+      timings = libtbx.test_utils.parallel.read_test_timings(params.timings)
+      libtbx.test_utils.parallel.add_test_timings(timings, passed)
+      libtbx.test_utils.parallel.write_test_timings(params.timings, timings)
+    except (OSError, UnicodeError, Sorry) as e:
+      print("Warning: the timings file %s was not updated: %s"
+        % (params.timings, e))
   print("\nSee run_tests_parallel_zlog for full output.\n")
   if (result.failure > 0):
     print("")

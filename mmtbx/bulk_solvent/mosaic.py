@@ -1,47 +1,410 @@
+"""
+Mosaic bulk-solvent model.
+
+Reference: Afonine, Adams, Sobolev & Urzhumtsev (2024). Protein Science,
+33, e4909.
+
+The standard flat bulk-solvent model fills every part of the unit cell that
+is not occupied by the atomic model with the same solvent. The solvent mask
+consists of one large connected region (main) and, usually, a number of
+isolated regions (secondary): pockets and cavities of the macromolecule.
+Their content differs from one to another: empty, partially or fully filled
+with disordered solvent, or filled with something denser than bulk solvent.
+
+Here each secondary region n gets its own occupancy q_n relative to the main
+bulk solvent:
+
+  F_bulk = k_mask(s) * [ F_whole + sum_n (q_n - 1) * F_n ],
+
+F_whole: structure factors of the whole mask (as used by the flat model),
+F_n: structure factors of region n. Regions smaller than volume_min are
+emptied (q_n=0); all others are fitted to the data, 0 <= q_n <= 1, with
+work reflections only.
+
+Entry point: run(fmodel, params, log). Used by
+mmtbx.f_model.manager.update_all_scales(mosaic=True).
+"""
+
 from __future__ import absolute_import, division, print_function
+
 from cctbx.array_family import flex
-from scitbx import matrix
-import math
-from libtbx import adopt_init_args
-import scitbx.lbfgs
-from mmtbx.bulk_solvent import kbu_refinery
 from cctbx import maptbx
+from scitbx import matrix
+from scitbx import minimizers
+from scitbx import fftpack
+from libtbx import adopt_init_args
+from libtbx import group_args
+from mmtbx.bulk_solvent import kbu_refinery
 import mmtbx.masks
 import boost_adaptbx.boost.python as bp
-asu_map_ext = bp.import_ext("cctbx_asymmetric_map_ext")
-from libtbx import group_args
-from mmtbx import bulk_solvent
-from collections import OrderedDict
-import mmtbx.f_model
-import sys
-from libtbx.test_utils import approx_equal
-from libtbx.utils import Sorry
-from cctbx import miller
-
-from mmtbx import masks
-from cctbx.masks import vdw_radii_from_xray_structure
-ext = bp.import_ext("mmtbx_masks_ext")
+import math
 mosaic_ext = bp.import_ext("mmtbx_mosaic_ext")
 
-from scitbx import minimizers
+# A bound that is not a bound.
+NO_LIMIT = 1.e30
 
-APPLY_SCALE_K1_TO_FOBS = False
+# Upper limit of a fitted occupancy: a region has at most as much solvent as
+# the main bulk solvent. What a region has in excess of that (for example a
+# ligand that is not in the model yet) is not bulk solvent: it is left in
+# the difference map, as it is with the flat model. Without the limit such
+# density is absorbed by the solvent model, and at low resolution R-free
+# gets worse.
+OCCUPANCY_MAX = 1.0
 
-def moving_average(x, n):
-  r = []
-  for i, xi in enumerate(x):
-    s = 0
-    cntr = 0
-    for j in range(max(0,i-n), min(i+n+1, len(x))):
-      s+=x[j]
-      cntr+=1
-    s = s/cntr
-    r.append(s)
-  return r
+# Number of calls of run() that did the region analysis (used by tests to
+# make sure the analysis is not repeated when it should not be).
+number_of_runs = 0
 
-# Utilities used by algorithm 2 ------------------------------------------------
+# Cost of one (grid point, reflection) pair of direct summation and of one
+# grid point of FFT, in arbitrary but equal units; used only to choose the
+# faster of the two ways to get the structure factors of a region.
+_COST_DIRECT = 1.0
+_COST_FFT    = 80.0
+
+# ------------------------------------------------------------------------------
+# Regions of the bulk-solvent mask
+# ------------------------------------------------------------------------------
+
+class regions(object):
+  """
+  Connected regions of the bulk-solvent mask of a model.
+
+  The mask is computed in the whole unit cell (P1) on the same grid and with
+  the same radii as mmtbx.masks.manager does for structure factors.
+  Symmetry-related regions are one region.
+
+  Parameters
+  ----------
+  xray_structure : cctbx.xray.structure
+      Atoms that define the mask, as mmtbx.masks.manager holds them (hydrogens
+      and zero-occupancy atoms already removed if the mask ignores them).
+  mask_params : libtbx.phil.scope_extract
+      mmtbx.masks.mask_master_params.
+  d_min : float, optional
+      Resolution of the data; needed only if
+      mask_params.use_resolution_based_gridding is True.
+
+  Attributes
+  ----------
+  n_real : tuple of int
+  n_grid : int
+  volume_per_point : float
+  solvent_fraction : float
+  main : libtbx.group_args
+      The largest region: label, n_points, volume (its points are not kept,
+      see solvent_mask).
+  secondary : list of libtbx.group_args
+      All other regions, largest first. Fields: label (int), n_points (int),
+      volume (A^3, all symmetry copies in the unit cell together), points
+      (flex.size_t, 1d grid indices of all copies, sorted), centroid_frac
+      (fractional coordinates of the centre of one connected copy).
+  """
+
+  def __init__(self, xray_structure, mask_params, d_min=None):
+    mp = mask_params
+    self.unit_cell = xray_structure.unit_cell()
+    self.space_group = xray_structure.space_group()
+    self._xray_structure = xray_structure
+    self._mask_params = mask_params
+    if(not mp.use_resolution_based_gridding): d_min = None
+    self.n_real = tuple(mmtbx.masks.gridding_n_real(
+      mask_params = mp, xray_structure = xray_structure, d_min = d_min))
+    mask = self.solvent_mask()
+    self.n_grid = self.n_real[0]*self.n_real[1]*self.n_real[2]
+    self.volume_per_point = self.unit_cell.volume()/self.n_grid
+    co = maptbx.connectivity(
+      map_data                   = mask,
+      threshold                  = 0.01,
+      preprocess_against_shallow = False,
+      wrapping                   = True)
+    del mask
+    # Labels of connected pieces; then the same with all symmetry copies of
+    # a region under one label
+    pieces = co.result().as_1d().deep_copy()
+    co.merge_symmetry_related_regions(space_group = self.space_group)
+    labels = co.result().as_1d()
+    counts = co.regions() # label 0: not solvent
+    del co
+    self.main = None
+    self.secondary = []
+    solvent = [(c, i) for i, c in enumerate(counts) if i != 0 and c > 0]
+    self.solvent_fraction = sum([c for c, i in solvent])/self.n_grid
+    if(len(solvent) == 0): return
+    main_count, main_label = max(solvent)
+    self.main = group_args(
+      label    = main_label,
+      n_points = main_count,
+      volume   = main_count*self.volume_per_point)
+    if(len(solvent) == 1): return
+    # Points of all secondary regions in one pass, grouped by label and
+    # sorted within a label.
+    points = ((labels != 0) & (labels != main_label)).iselection()
+    labels_sel = labels.select(points)
+    key = labels_sel.as_double()*float(self.n_grid) + points.as_double()
+    perm = flex.sort_permutation(key)
+    points = points.select(perm)
+    labels_sel = labels_sel.select(perm)
+    pieces_sel = pieces.select(points)
+    start = 0
+    for label, count in enumerate(counts):
+      if(label == 0 or label == main_label or count == 0): continue
+      end = start + count
+      assert labels_sel[start] == label and labels_sel[end-1] == label
+      p = points[start:end]
+      self.secondary.append(group_args(
+        label         = label,
+        n_points      = count,
+        volume        = count*self.volume_per_point,
+        points        = p,
+        centroid_frac = self._centroid(
+          points = p.select(pieces_sel[start:end] == pieces_sel[start]))))
+      start = end
+    assert start == points.size()
+    self.secondary.sort(key = lambda r: (-r.n_points, r.label))
+
+  def solvent_mask(self, padded=False):
+    """
+    The whole bulk-solvent mask (main and secondary regions) in the unit
+    cell: flex.double on n_real, one in the solvent, zero elsewhere.
+    Computed at each call. padded: with the padding that an in-place Fourier
+    transform needs (see structure_factors.of_map).
+    """
+    mp = self._mask_params
+    mask = mmtbx.masks.mask_from_xray_structure(
+      xray_structure           = self._xray_structure,
+      p1                       = True,
+      for_structure_factors    = True,
+      solvent_radius           = mp.solvent_radius,
+      shrink_truncation_radius = mp.shrink_truncation_radius,
+      n_real                   = self.n_real,
+      in_asu                   = False).mask_data
+    assert mask.is_padded() and mask.focus() == self.n_real
+    if(not padded): maptbx.unpad_in_place(map = mask)
+    return mask
+
+  def _centroid(self, points):
+    """
+    Centre (fractional) of a connected set of grid points; the set may cross
+    the unit cell boundaries.
+    """
+    nx,ny,nz = self.n_real
+    p = points.as_double()
+    jz = flex.fmod(p, nz)
+    jy = flex.fmod(flex.floor(p/nz), ny)
+    jx = flex.floor(p/(ny*nz))
+    result = []
+    for j, n in [(jx,nx), (jy,ny), (jz,nz)]:
+      # shortest shifts from the first point, then their mean
+      d = (j - j[0])/n
+      d = d - flex.floor(d + 0.5)
+      c = j[0]/n + flex.mean(d)
+      result.append(c - math.floor(c))
+    return tuple(result)
+
+  def mask_of(self, regions):
+    """
+    Map (flex.double on n_real) that is one in the given regions and zero
+    elsewhere.
+    """
+    return self.mask_of_points(points = [r.points for r in regions])
+
+  def mask_of_points(self, points, values=None, padded=False):
+    """
+    Map that has values[i] (one if values is None) at the grid points
+    points[i] (flex.size_t), zero elsewhere. padded: with the padding that
+    an in-place Fourier transform needs (see structure_factors.of_map).
+    """
+    if(values is None): values = [1]*len(points)
+    nz = self.n_real[2]
+    grid = flex.grid(self.n_real)
+    extra = 0
+    if(padded):
+      m_real = fftpack.real_to_complex_3d(self.n_real).m_real()
+      grid = flex.grid(m_real).set_focus(self.n_real)
+      extra = m_real[2] - nz
+    m = flex.double(grid.size_1d(), 0)
+    for p, v in zip(points, values):
+      if(v == 0 or p.size() == 0): continue
+      # position in the padded array: each row along z is longer by extra
+      if(extra > 0): p = p + (p/nz)*extra # integer division (flex.size_t)
+      m.set_selected(p, v)
+    m.reshape(grid)
+    return m
+
+class structure_factors(object):
+  """
+  Structure factors of regions of the mask for the reflections of
+  miller_array with d >= d_min (zero for the others, and for those not in
+  selection if that is given), by direct summation
+  over the region grid points (cctbx.maptbx.loft) or by FFT of the unit
+  cell, whichever is faster for the region.
+
+  Parameters
+  ----------
+  regions : mmtbx.bulk_solvent.mosaic.regions
+  miller_array : cctbx.miller.array
+      Defines the reflections; data are not used.
+  d_min : float
+      High-resolution limit of the bulk-solvent contribution
+      (mask_params.Fmask_res_high).
+  selection : flex.bool, optional
+      Reflections of miller_array to compute structure factors for.
+
+  Attributes
+  ----------
+  selection : flex.bool
+      Reflections that structure factors are computed for.
+  n_selected : int
+  """
+
+  def __init__(self, regions, miller_array, d_min, selection=None):
+    self.regions = regions
+    self.size = miller_array.indices().size()
+    self.selection = miller_array.d_spacings().data() >= d_min
+    if(selection is not None): self.selection = self.selection & selection
+    self.n_selected = self.selection.count(True)
+    ms = miller_array.select(self.selection)
+    self.low = ms.customized_copy(
+      data = flex.complex_double(ms.indices().size(), 0), sigmas = None)
+
+  def of_points(self, points, method=None, compact=False):
+    """
+    Parameters
+    ----------
+    points : flex.size_t
+        1d grid indices of all symmetry copies of the region(s).
+    method : str, optional
+        "direct" or "fft"; default: the faster one.
+    compact : bool
+        Return values for the selected reflections only.
+
+    Returns
+    -------
+    flex.complex_double
+        One value per reflection of miller_array, or per selected
+        reflection (compact=True).
+    """
+    assert method in [None, "direct", "fft"]
+    if(self.n_selected == 0 or points.size() == 0):
+      if(compact): return flex.complex_double(self.n_selected, 0)
+      return flex.complex_double(self.size, 0)
+    # Direct summation is over one of the points related by lattice
+    # centring (same result, see maptbx.loft)
+    space_group = self.regions.space_group
+    if(method is None):
+      method = "fft"
+      if(_COST_DIRECT*points.size()*self.n_selected/space_group.n_ltr() <
+         _COST_FFT*self.regions.n_grid): method = "direct"
+    if(method == "direct"):
+      data = maptbx.loft(
+        points           = points,
+        n_real           = self.regions.n_real,
+        miller_indices   = self.low.indices(),
+        volume_per_point = self.regions.volume_per_point,
+        space_group      = space_group)
+    else:
+      data = self.of_map(
+        map_data = self.regions.mask_of_points(points = [points],
+          padded = True),
+        compact  = True)
+    if(compact): return data
+    return flex.complex_double(self.size, 0).set_selected(
+      self.selection, data)
+
+  def of_map(self, map_data, compact=False):
+    """
+    FFT of a map given in the whole unit cell (it must obey the space group
+    symmetry). Returns one value per reflection of miller_array, or per
+    selected reflection (compact=True).
+
+    A padded map (see regions.mask_of_points, regions.solvent_mask) is
+    transformed in place: no copy of the map is made, and the map cannot be
+    used after this call. Whole-cell maps are what limits memory for large
+    unit cells.
+    """
+    if(self.n_selected == 0):
+      if(compact): return flex.complex_double(0)
+      return flex.complex_double(self.size, 0)
+    data = self.low.structure_factors_from_map(
+      map          = map_data,
+      in_place_fft = map_data.is_padded(),
+      use_scale    = True,
+      # the map is real: one half of its transform is computed, the rest
+      # follows from Friedel's law (also for anomalous sets of indices)
+      anomalous_flag = False).data()
+    if(compact): return data
+    return flex.complex_double(self.size, 0).set_selected(
+      self.selection, data)
+
+  def mask_mismatch(self, f_mask):
+    """
+    Relative difference between f_mask (cctbx.miller.array, the mask
+    structure factors that fmodel uses) and the structure factors of all
+    regions found here taken together. Zero if the regions are the regions
+    of that mask.
+    """
+    r = self.regions
+    if(r.main is None): return 1.
+    f = self.of_map(map_data = r.solvent_mask(padded = True))
+    den = flex.sum(flex.abs(f_mask.data()))
+    if(den == 0): return 1.
+    return flex.sum(flex.abs(f - f_mask.data()))/den
+
+# ------------------------------------------------------------------------------
+# Search for region occupancies
+# ------------------------------------------------------------------------------
+
+def alg4(f_obs, base, G, lower=None, upper=None, x_start=None, n_cycles=5,
+         normal_matrix=None):
+  """
+  Phased simultaneous search (Alg4 of Afonine et al., 2024) for the
+  coefficients x_n of
+
+    F_model = base + sum_n x_n * G_n
+
+  minimizing sum |F_obs*exp(i*phi) - F_model|^2, phi being the phases of the
+  current F_model. All x_n are found at once from a system of linear
+  equations, solved with bounds lower <= x_n <= upper; phases are then
+  updated and the search repeated, n_cycles times in total.
+
+  Parameters
+  ----------
+  f_obs : flex.double
+  base : flex.complex_double
+      Part of the model that is not fitted.
+  G : list of flex.complex_double
+  lower, upper : flex.double, optional
+      Bounds for x; no bound if None.
+  x_start : flex.double, optional
+      Starting values, zero if None; they define the first set of phases.
+  n_cycles : int
+  normal_matrix : flex.double (n x n), optional
+      mosaic_ext.normal_matrix(G), if it has been computed already (it is
+      the expensive part and does not depend on f_obs and base).
+
+  Returns
+  -------
+  flex.double
+  """
+  n = len(G)
+  if(normal_matrix is None): normal_matrix = flex.double(flex.grid(0, 0))
+  if(lower is None):   lower   = flex.double(n, -NO_LIMIT)
+  if(upper is None):   upper   = flex.double(n,  NO_LIMIT)
+  if(x_start is None): x_start = flex.double(n, 0)
+  return mosaic_ext.alg4(
+    G        = G,
+    f_obs    = f_obs,
+    base     = base,
+    lower    = lower,
+    upper    = upper,
+    x_start  = x_start,
+    n_cycles = n_cycles,
+    normal_matrix = normal_matrix)
 
 class minimizer2(object):
+  """
+  L-BFGS minimizer (optionally with curvatures) used by algorithm_2.
+  """
 
   def __init__(self, calculator, min_iterations=0, max_iterations=2000):
     adopt_init_args(self, locals())
@@ -70,15 +433,21 @@ class minimizer2(object):
       self.d = None
     if (requests_diag):
       self.d = self.calculator.curvatures()
-      #assert self.d.all_ne(0)
       if(self.d.all_eq(0)): self.d=None
       else:
         self.d = 1 / self.d
-    #print "step: %4d"%self.cntr, "target:", self.f, "params:", \
-    #  " ".join(["%10.6f"%i for i in self.x]) #, math.log(self.f)
     return self.x, self.f, self.g, self.d
 
 class tg(object):
+  """
+  Target, gradients and curvatures of the unphased search (algorithm_2):
+
+    T(x) = sum_i (I_model_i - I_obs_i)^2 / (4 * sum_i I_obs_i),
+    I_model = | sum_n x_n F_n |^2.
+
+  i_obs and F are arrays with data() and select() (cctbx.miller.array).
+  """
+
   def __init__(self, x, i_obs, F, use_curvatures,
                bound_flags=None, lower_bound=None, upper_bound=None):
     self.x = x
@@ -90,12 +459,12 @@ class tg(object):
     self.bound_flags=bound_flags
     self.lower_bound=lower_bound
     self.upper_bound=upper_bound
-    # Needed to do sums from small to large to prefent loss
+    # Sum from small to large values to reduce loss of precision
     s = flex.sort_permutation(self.i_obs.data())
     self.i_obs = self.i_obs.select(s)
     self.F = [f.select(s) for f in self.F]
     #
-    self.sum_i_obs = flex.sum(self.i_obs.data()) # needed for Python version
+    self.sum_i_obs = flex.sum(self.i_obs.data())
     self.use_curvatures=use_curvatures
     self.tgo = mosaic_ext.alg2_tg(
       F     = [f.data() for f in self.F],
@@ -110,43 +479,6 @@ class tg(object):
     self.tgo.update(self.x)
     self.t = self.tgo.target()
     self.g = self.tgo.gradient()
-#
-# Reference implementation in Python
-#    s = 1 #180/math.pi
-#    i_model = flex.double(self.i_obs.data().size(),0)
-#    for n, kn in enumerate(self.x):
-#      for m, km in enumerate(self.x):
-#        tmp = self.F[n].data()*flex.conj(self.F[m].data())
-#        i_model += kn*km*flex.real(tmp)
-#        #pn = self.F[n].phases().data()*s
-#        #pm = self.F[m].phases().data()*s
-#        #Fn = flex.abs(self.F[n].data())
-#        #Fm = flex.abs(self.F[m].data())
-#        #i_model += kn*km*Fn*Fm*flex.cos(pn-pm)
-#    diff = i_model - self.i_obs.data()
-#    #print (flex.min(diff), flex.max(diff))
-#    t = flex.sum(diff*diff)/4
-#    #
-#    g = flex.double()
-#    for j in range(len(self.F)):
-#      tmp = flex.double(self.i_obs.data().size(),0)
-#      for m, km in enumerate(self.x):
-#        tmp += km * flex.real( self.F[j].data()*flex.conj(self.F[m].data()) )
-#        #pj = self.F[j].phases().data()*s
-#        #pm = self.F[m].phases().data()*s
-#        #Fj = flex.abs(self.F[j].data())
-#        #Fm = flex.abs(self.F[m].data())
-#        #tmp += km * Fj*Fm*flex.cos(pj-pm)
-#      g.append(flex.sum(diff*tmp))
-#    self.t = t/self.sum_i_obs
-#    self.g = g/self.sum_i_obs
-#    #print (self.t,t1)
-#    #print (list(self.g))
-#    #print (list(g1))
-#    #print ()
-#    #assert approx_equal(self.t, t1, 5)
-#    #assert approx_equal(self.g, g1, 1.e-6)
-#
     if self.use_curvatures:
       d = flex.double()
       for j in range(len(self.F)):
@@ -156,11 +488,6 @@ class tg(object):
           zz = flex.real( self.F[j].data()*flex.conj(self.F[m].data()) )
           tmp1 += km * zz
           tmp2 += zz
-          #pj = self.F[j].phases().data()*s
-          #pm = self.F[m].phases().data()*s
-          #Fj = flex.abs(self.F[j].data())
-          #Fm = flex.abs(self.F[m].data())
-          #tmp += km * Fj*Fm*flex.cos(pj-pm)
         d.append(flex.sum(tmp1*tmp1 + tmp2))
       self.d=d
 
@@ -171,948 +498,125 @@ class tg(object):
   def gradient(self): return self.gradients()
 
   def curvatures(self): return self.d/self.sum_i_obs
-#-------------------------------------------------------------------------------
 
-def write_map_file(crystal_symmetry, map_data, file_name):
-  from iotbx import mrcfile
-  mrcfile.write_ccp4_map(
-    file_name   = file_name,
-    unit_cell   = crystal_symmetry.unit_cell(),
-    space_group = crystal_symmetry.space_group(),
-    map_data    = map_data,
-    labels      = flex.std_string([""]))
-
-def thiken_bins(bins, n, ds):
-  result = []
-  group = []
-  cntr = 0
-  for bin in bins:
-    bs = bin.count(True)
-    if bs>=n and len(group)==0:
-      result.append(bin)
-      cntr=0
-    else:
-      group.append(bin)
-      cntr += bs
-    if cntr>=n:
-      result.append(group)
-      group = []
-      cntr = 0
-  #
-  for i, r in enumerate(result):
-    if(not isinstance(r, flex.bool)):
-      r0 = r[0]
-      for r_ in r:
-        r0 = r0 | r_
-      result[i] = r0
-  #
-  if(len(result)==0):
-    result = [flex.bool(bins[0].size(), True)]
-  #
-  tmp=[]
-  for i, bin in enumerate(result):
-    ds_ = ds.select(bin)
-    mi, ma = flex.min(ds_), flex.max(ds_)
-    if(mi<3 and ma>=3 and len(tmp)>0):
-      tmp[i-1] = tmp[i-1] | bin
-    else:
-      tmp.append(bin)
-  result = tmp
-  #
-  return result
-
-class refinery(object):
-  def __init__(self, fmodel, fv, alg, log = sys.stdout):
-    assert alg in ["alg0", "alg2", "alg4", "alg4a"]
-    self.log             = log
-    self.fv              = fv
-    self.f_obs           = fmodel.f_obs()
-    self.r_free_flags    = fmodel.r_free_flags()
-    k_mask_overall       = fmodel.k_masks()[0]
-    bin_selections_input = fmodel.bin_selections
-    self.f_calc          = fmodel.f_calc()
-    phase_source_init    = fmodel.f_model()
-    k_total              = fmodel.k_total()
-    self.F               = [self.f_calc.deep_copy()] + list(self.fv.keys())
-    n_zones_start        = len(self.F)
-    r4_start             = fmodel.r_work4()
-    r4_best              = r4_start
-    del fmodel
-    self.fmodel          = None
-    r4_start             = None
-    r4_best              = None
-    self.fmodel_best     = None
-    self.n_regions       = None
-    #
-
-    #alg_save = alg
-
-    for it in range(5):
-
-      #if it in [0,1]:
-      #  alg = "alg4a"
-      #else:
-      #  alg = alg_save
-
-      #
-      if(it==1):
-        r4_start         = self.fmodel.r_work4()
-        r4_best          = r4_start
-        self.fmodel_best = self.fmodel.deep_copy()
-      if(it>1):
-        r4 = self.fmodel.r_work4()
-        if(abs(round(r4-r4_start,4))<1.e-4):
-          break
-        r4_start = r4
-
-      self._print("cycle: %2d (regions: %d)"%(it, len(self.F[1:])))
-      self._print("  Region #:                  "+"".join(["%7d"%fv[f] for f in self.F[1:]]))
-
-      f_obs   = self.f_obs.deep_copy()
-      if it>0: k_total = self.fmodel.k_total()
-      i_obs   = f_obs.customized_copy(data = f_obs.data()*f_obs.data())
-      K_MASKS = OrderedDict()
-
-      if(alg.endswith('a')):
-        self.bin_selections = [self.f_calc.d_spacings().data()>4]
-      else:
-        self.bin_selections = thiken_bins(
-          bins=bin_selections_input, n=50*len(self.F), ds=self.f_calc.d_spacings().data())
-      for i_bin, sel in enumerate(self.bin_selections):
-        d_max, d_min = f_obs.select(sel).d_max_min()
-        #if d_max<3 or d_min<3: continue
-        if d_max<3: continue
-        bin = "  bin %2d: %5.2f-%-5.2f: "%(i_bin, d_max, d_min)
-        F = [f.select(sel) for f in self.F]
-        k_total_sel = k_total.select(sel)
-        #
-        F_scaled = [f.customized_copy(data=f.data()*k_total_sel) for f in F]
-        # algorithm_0
-        if(alg.startswith("alg0")):
-          k_masks = algorithm_0(
-            f_obs = f_obs.select(sel),
-            F     = F_scaled,
-            kt=k_total_sel)
-        # algorithm_4
-        if(alg.startswith("alg4")):
-          if it==0: phase_source = phase_source_init.select(sel)
-          else:     phase_source = self.fmodel.f_model().select(sel)
-          k_masks = algorithm_4(
-            f_obs             = self.f_obs.select(sel),
-            F                 = F_scaled,
-            auto_converge_eps = 0.0001,
-            phase_source = phase_source)
-        # algorithm_2
-        if(alg.startswith("alg2")):
-          k_masks = algorithm_2(
-            i_obs          = i_obs.select(sel),
-            F              = F_scaled,
-            x              = self._get_x_init(i_bin),
-            use_curvatures = False)
-
-        self._print(bin+" ".join(["%6.2f"%k for k in k_masks]) )
-        K_MASKS[sel] = [k_masks, k_masks]
-      #
-      if(len(self.F)==2): break # stop and fall back onto using largest mask
-      #
-      f_calc_data = self.f_calc.data().deep_copy()
-      f_bulk_data = flex.complex_double(self.f_calc.data().size(), 0)
-      k_mask_0 = None
-      for sel, k_masks in zip(K_MASKS.keys(), K_MASKS.values()):
-        k_masks = k_masks[0] # 1 is shifted!
-        f_bulk_data_ = flex.complex_double(sel.count(True), 0)
-        for i_mask, k_mask in enumerate(k_masks):
-          if i_mask==0:
-            f_calc_data = f_calc_data.set_selected(sel,
-              f_calc_data.select(sel)*k_mask)
-            k_mask_0 = k_mask
-            continue
-          if k_mask_0 is not None: k_mask = k_mask/k_mask_0
-          f_bulk_data_ += self.F[i_mask].data().select(sel)*k_mask
-        f_bulk_data = f_bulk_data.set_selected(sel,f_bulk_data_ )
-      #
-
-      #if it in [0,1]:
-      #  self.update_F(K_MASKS, cutoff=0)
-      #else:
-      #  self.update_F(K_MASKS, cutoff=0.03)
-      self.update_F(K_MASKS, cutoff=0.03)
-
-
-      f_bulk = self.f_calc.customized_copy(data = f_bulk_data)
-
-      if(len(self.F)==2):
-        self.fmodel = mmtbx.f_model.manager(
-          f_obs          = self.f_obs,
-          r_free_flags   = self.r_free_flags,
-          f_calc         = self.f_calc,
-          f_mask         = self.F[1],
-          k_mask         = flex.double(f_obs.data().size(),1)
-          )
-        self.fmodel.update_all_scales(remove_outliers=False,
-          apply_scale_k1_to_f_obs = APPLY_SCALE_K1_TO_FOBS)
-        self._print(self.fmodel.r_factors(prefix="  "))
-      else:
-        self.fmodel = mmtbx.f_model.manager(
-          f_obs          = self.f_obs,
-          r_free_flags   = self.r_free_flags,
-          #f_calc         = self.f_obs.customized_copy(data = f_calc_data),
-          f_calc         = self.f_calc,
-          bin_selections = bin_selections_input,
-          #bin_selections = self.bin_selections,
-          f_mask         = f_bulk,
-          k_mask         = flex.double(f_obs.data().size(),1)
-          )
-        self.fmodel.update_all_scales(remove_outliers=False,
-          apply_scale_k1_to_f_obs = APPLY_SCALE_K1_TO_FOBS)
-        #
-        self.fmodel = mmtbx.f_model.manager(
-          f_obs          = self.f_obs,
-          r_free_flags   = self.r_free_flags,
-          #f_calc         = self.f_obs.customized_copy(data = f_calc_data),
-          bin_selections = bin_selections_input,
-          f_calc         = self.fmodel.f_calc(),
-          f_mask         = self.fmodel.f_bulk(),
-          k_mask         = flex.double(f_obs.data().size(),1)
-          )
-        self.fmodel.update_all_scales(remove_outliers=False,
-          apply_scale_k1_to_f_obs = APPLY_SCALE_K1_TO_FOBS)
-        self._print(self.fmodel.r_factors(prefix="  "))
-      #
-      r4 = self.fmodel.r_work4()
-      if(r4_best is not None and r4<=r4_best):
-        r4_best = r4
-        self.fmodel_best = self.fmodel.deep_copy()
-    #
-    self.fmodel = self.fmodel_best
-    self.n_regions = len(self.F)-1
-
-
-  #def update_k_masks(self, K_MASKS):
-  #  tmp = []
-  #  for i_mask, F in enumerate(self.F):
-  #    k_masks = [k_masks_bin[i_mask] for k_masks_bin in K_MASKS.values()]
-  #    found = False
-  #    for i_bin, k_masks_bin in enumerate(K_MASKS.values()):
-  #      if(not found and k_masks_bin[i_mask]<=0.009):
-  #        found = True
-  #        K_MASKS.values()[i_bin][i_mask]=0
-  #      elif found:
-  #        K_MASKS.values()[i_bin][i_mask]=0
-
-  def _print(self, m):
-    if(self.log is not None):
-      print(m, file=self.log)
-
-  def update_F(self, K_MASKS, cutoff=0.03):
-    tmp = []
-    for i_mask, F in enumerate(self.F):
-      k_masks = [k_masks_bin[1][i_mask] for k_masks_bin in K_MASKS.values()]
-      #print(i_mask, flex.mean(flex.double(k_masks)), [round(i,2) for i in k_masks])
-      if(i_mask == 0):                        tmp.append(self.F[0])
-      #elif moving_average(k_masks,2)[0]>=cutoff: tmp.append(F)
-      elif flex.mean(flex.double(k_masks))>0.01: tmp.append(F)
-      self.F = tmp[:]
-
-  def _get_x_init(self, i_bin):
-    return flex.double([1] + [1]*len(self.F[1:]))
-    #k_maks1_init = 0.35 - i_bin*0.35/len(self.bin_selections)
-    #x = flex.double([1,k_maks1_init])
-    #x.extend( flex.double(len(self.F)-2, 0.1))
-    #return x
-
-def get_f_mask(xrs, ma, step, option = 2, r_shrink = None, r_sol = None):
-  #
-  result = ma.deep_copy()
-  sel = ma.d_spacings().data()>=3
-  ma = ma.select(sel)
-  #
-  crystal_gridding = maptbx.crystal_gridding(
-    unit_cell        = xrs.unit_cell(),
-    space_group_info = xrs.space_group_info(),
-    symmetry_flags   = maptbx.use_space_group_symmetry,
-    step             = step)
-  n_real = crystal_gridding.n_real()
-  atom_radii = vdw_radii_from_xray_structure(xray_structure = xrs)
-  mask_params = masks.mask_master_params.extract()
-  grid_step_factor = ma.d_min()/step
-  if(r_shrink is not None): mask_params.shrink_truncation_radius = r_shrink
-  if(r_sol is not None):    mask_params.solvent_radius           = r_sol
-  mask_params.grid_step_factor = grid_step_factor
-  # 1
-  if(option==1):
-    asu_mask = ext.atom_mask(
-      unit_cell                = xrs.unit_cell(),
-      group                    = xrs.space_group(),
-      resolution               = ma.d_min(),
-      grid_step_factor         = grid_step_factor,
-      solvent_radius           = mask_params.solvent_radius,
-      shrink_truncation_radius = mask_params.shrink_truncation_radius)
-    asu_mask.compute(xrs.sites_frac(), atom_radii)
-    fm_asu = asu_mask.structure_factors(ma.indices())
-    f_mask = ma.set().array(data = fm_asu)
-  # 2
-  elif(option==2):
-    asu_mask = ext.atom_mask(
-      unit_cell                = xrs.unit_cell(),
-      space_group              = xrs.space_group(),
-      gridding_n_real          = n_real,
-      solvent_radius           = mask_params.solvent_radius,
-      shrink_truncation_radius = mask_params.shrink_truncation_radius)
-    asu_mask.compute(xrs.sites_frac(), atom_radii)
-    fm_asu = asu_mask.structure_factors(ma.indices())
-    f_mask = ma.set().array(data = fm_asu)
-  # 3
-  elif(option==3):
-    mask_p1 = mmtbx.masks.mask_from_xray_structure(
-      xray_structure           = xrs,
-      p1                       = True,
-      for_structure_factors    = True,
-      solvent_radius           = mask_params.solvent_radius,
-      shrink_truncation_radius = mask_params.shrink_truncation_radius,
-      n_real                   = n_real,
-      in_asu                   = False).mask_data
-    maptbx.unpad_in_place(map=mask_p1)
-    mask = asu_map_ext.asymmetric_map(
-      xrs.crystal_symmetry().space_group().type(), mask_p1).data()
-    f_mask = ma.structure_factors_from_asu_map(
-      asu_map_data = mask, n_real = n_real)
-  # 4
-  elif(option==4):
-    f_mask = masks.bulk_solvent(
-      xray_structure              = xrs,
-      ignore_zero_occupancy_atoms = False,
-      solvent_radius              = mask_params.solvent_radius,
-      shrink_truncation_radius    = mask_params.shrink_truncation_radius,
-      ignore_hydrogen_atoms       = False,
-      grid_step                   = step,
-      atom_radii                  = atom_radii).structure_factors(
-        miller_set = ma)
-  elif(option==5):
-    o = mmtbx.masks.bulk_solvent(
-      xray_structure              = xrs,
-      ignore_zero_occupancy_atoms = False,
-      solvent_radius              = mask_params.solvent_radius,
-      shrink_truncation_radius    = mask_params.shrink_truncation_radius,
-      ignore_hydrogen_atoms       = False,
-      gridding_n_real             = n_real,
-      atom_radii                  = atom_radii)
-    assert approx_equal(n_real, o.data.accessor().all())
-    f_mask = o.structure_factors(ma)
-  elif(option==6):
-    # XXX No control over n_real, so results with others don't match
-    mask_manager = masks.manager(
-      miller_array      = ma,
-      miller_array_twin = None,
-      mask_params       = mask_params)
-    f_mask = mask_manager.shell_f_masks(xray_structure=xrs, force_update=True)[0]
-  else: assert 0
-  #
-  data = flex.complex_double(result.indices().size(), 0)
-  data = data.set_selected(sel, f_mask.data())
-  result = result.array(data = data)
-  return result
-
-def filter_mask(mask_p1, volume_cutoff, crystal_symmetry,
-                for_structure_factors = False):
-  co = maptbx.connectivity(
-    map_data                   = mask_p1,
-    threshold                  = 0.01,
-    preprocess_against_shallow = True,
-    wrapping                   = True,
-    space_group                = crystal_symmetry.space_group())
-  mi, ma = flex.min(mask_p1), flex.max(mask_p1)
-  print (mask_p1.size(), (mask_p1<0).count(True))
-  assert mi == 0, mi
-  assert ma == 1, ma
-  a,b,c    = crystal_symmetry.unit_cell().parameters()[:3]
-  na,nb,nc = mask_p1.accessor().all()
-  step = flex.mean(flex.double([a/na, b/nb, c/nc]))
-  if(crystal_symmetry.space_group_number() != 1):
-    co.merge_symmetry_related_regions(space_group=crystal_symmetry.space_group())
-  conn = co.result().as_double()
-  z = zip(co.regions(),range(0,co.regions().size()))
-  sorted_by_volume = sorted(z, key=lambda x: x[0], reverse=True)
-  for i_seq, p in enumerate(sorted_by_volume):
-    v, i = p
-    if(i==0): continue # skip macromolecule
-    # skip small volume
-    volume = v*step**3
-    if volume < volume_cutoff:
-      conn = conn.set_selected(conn==i, 0)
-  conn = conn.set_selected(conn>0, 1)
-  if for_structure_factors:
-    conn = conn / crystal_symmetry.space_group().order_z()
-  return conn
-
-
-def modify(fofc, R, cutoff, crystal_gridding, mask=None):
-  G = fofc.g_function(R=R)
-
-  fft_map = fofc.fft_map(crystal_gridding = crystal_gridding)
-  fft_map.apply_volume_scaling()
-  map_data = fft_map.real_map_unpadded()
-
-  if mask is not None: map_data = map_data*mask
-
-  sel = map_data<cutoff
-  map_data = map_data.set_selected(sel, cutoff)
-
-  B = miller.structure_factor_box_from_map(
-    crystal_symmetry=fofc.crystal_symmetry(),
-    map=map_data, n_real=None,
-     anomalous_flag=False, include_000=True)
-  GB = B.g_function(R=R)
-  B = B.customized_copy(data = B.data()*GB)
-  fft_map = B.fft_map(crystal_gridding = crystal_gridding)
-  fft_map.apply_volume_scaling()
-  map_data = fft_map.real_map_unpadded()
-
-  print(flex.min(map_data), flex.max(map_data), flex.mean(map_data))
-
-  map_data = map_data.set_selected(map_data<abs(flex.min(map_data)), 0)
-
-  print(flex.min(map_data), flex.max(map_data), flex.mean(map_data))
-
-  F=B
-
-
-  #F = fofc.structure_factors_from_map(map = map_data, in_place_fft=False,
-  #  use_scale=True, use_sg=False)
-  #
-  #F = F.customized_copy(data = F.data()*G)
-  #
-  #fft_map = F.fft_map(crystal_gridding = crystal_gridding)
-  #fft_map.apply_volume_scaling()
-  #map_data = fft_map.real_map_unpadded()
-
-  mtz_dataset = F.as_mtz_dataset(column_root_label = "F")
-  mtz_object = mtz_dataset.mtz_object()
-  mtz_object.write(file_name = "map.mtz")
-
-  write_map_file(crystal_symmetry=fofc.crystal_symmetry(),
-    map_data=map_data, file_name="map.ccp4")
-
-  return map_data
-
-class mask_and_regions(object):
-  def __init__(self,
-      xray_structure,
-      crystal_gridding,
-      step=0.6,
-      r_sol=1.1,
-      r_shrink=0.9,
-      volume_cutoff=50,
-      wrapping=True,
-      force_symmetry=True,
-      log=None,
-      modifier=None
-      ):
-    """
-    Split 0/1 traditional bulk-solvent mask into a series of isolated masks
-    covering the whole unit cell in P1.
-    """
-    self.crystal_gridding = crystal_gridding
-    self.crystal_symmetry = xray_structure.crystal_symmetry()
-    self.step = step
-    # Compute mask in P1
-    self.mask_p1 = mmtbx.masks.mask_from_xray_structure(
-      xray_structure           = xray_structure,
-      p1                       = True,
-      for_structure_factors    = True,
-      solvent_radius           = r_sol,
-      shrink_truncation_radius = r_shrink,
-      n_real                   = self.crystal_gridding.n_real(),
-      in_asu                   = False).mask_data
-    maptbx.unpad_in_place(map=self.mask_p1)
-    #
-    # TO-DO: instead of excluding, add them as mosaic regions, may be?
-    #
-    tmp  = flex.double(flex.grid(self.mask_p1.all()), 1)
-    if(modifier is not None):
-      modifier = modifier * self.mask_p1 # bulk solvent only
-      # modifier becomes a mask defining very negative regions
-      sel = modifier <  -2.0
-      modifier = modifier.set_selected(sel, 1)
-      modifier = modifier.set_selected(~sel, 0)
-      #
-      co = maptbx.connectivity(
-        map_data                   = modifier,
-        threshold                  = 0.01,
-        preprocess_against_shallow = False,
-        wrapping                   = wrapping)
-      if(force_symmetry and xray_structure.space_group().type().number() != 1):
-        co.merge_symmetry_related_regions(
-          space_group = xray_structure.space_group())
-      conn = co.result().as_double()
-      z = zip(co.regions(),range(0,co.regions().size()))
-      sorted_by_volume = sorted(z, key=lambda x: x[0], reverse=True)
-      for i_seq, p in enumerate(sorted_by_volume):
-        v, i = p
-        if(i==0): continue
-        # Skip small volume regions
-        volume = v*self.step**3
-        tmp = tmp.set_selected(conn==i, 0)
-        if(volume_cutoff is not None and volume < volume_cutoff):
-          break
-    modifier = tmp
-    #write_map_file(
-    #    crystal_symmetry = self.crystal_symmetry,
-    #    map_data         = modifier,
-    #    file_name        = "modifier.mrc")
-    #
-    #
-    # Solvent fraction
-    self.solvent_content=100.*(self.mask_p1!=0).count(True)/self.mask_p1.size()
-    if(log is not None):
-      print("Solvent content: %7.3f"%self.solvent_content, file=log)
-    # Connectivity
-    co = maptbx.connectivity(
-      map_data                   = self.mask_p1 * modifier, #!!!!!!!!!!!!!!!!!!!
-      threshold                  = 0.01,
-      preprocess_against_shallow = False, # XXX WHY False?
-      wrapping                   = wrapping)
-    if(force_symmetry and xray_structure.space_group().type().number() != 1):
-      co.merge_symmetry_related_regions(
-        space_group = xray_structure.space_group())
-    # Regions
-    self.conn = co.result().as_double() # 0 = protein, 1 = solvent, >1 = other
-    z = zip(co.regions(),range(0,co.regions().size()))
-    self.sorted_by_volume = sorted(z, key=lambda x: x[0], reverse=True)
-    self.n_regions_total = co.regions().size()
-    print("Total number of regions: %d"%self.n_regions_total, file=log)
-    #
-    if(log is not None):
-      print("Regions (V > %d):"%volume_cutoff, file=log)
-      print("  #   #   Vol. (A^3)    uc(%)", file=log)
-    self.small_selection = flex.size_t()
-    self.regions = []
-    cntr = 0
-    for i_seq, p in enumerate(self.sorted_by_volume):
-      v, i = p
-      # skip macromolecule
-      if(i==0): continue
-      # Region (i)selection
-      iselection = (self.conn==i).iselection()
-      # Skip small volume regions
-      volume = v*self.step**3
-      uc_fraction = v*100./self.conn.size()
-      if(volume_cutoff is not None and volume < volume_cutoff):
-        self.small_selection.extend(iselection)
-        continue
-      # Region
-      region = group_args(
-        i_seq       = cntr,
-        i           = i,
-        volume      = volume,
-        uc_fraction = uc_fraction,
-        iselection  = iselection)
-      cntr+=1
-      self.regions.append(region)
-      if(log is not None):
-        print("%3d %3d %12.3f %8.4f"%(region.i_seq, region.i, region.volume,
-          region.uc_fraction), file=log)
-    #
-    self.n_regions = len(self.regions)
-    print("Number of regions (V > %d): %d"%(
-      volume_cutoff, self.n_regions), file=log)
-
-  def get_selection(self, region):
-    result = flex.bool(self.conn.size(), region.iselection)
-    result.resize(self.conn.accessor())
-    return result
-
-  def get_region_asu_mask(self, region, map_data=None, write=False):
-    # This is ASU mask, NOT P1 !
-    selection = self.get_selection(region = region)
-    mask_i = flex.double(flex.grid(self.crystal_gridding.n_real()), 0)
-    mask_i = mask_i.set_selected(selection, 1)
-    if(map_data is not None):
-      mask_i = mask_i * map_data # may beed to divide by max value of map_data
-    if(write): # This write P1 mask for region
-      write_map_file(
-        crystal_symmetry = self.crystal_symmetry,
-        map_data         = mask_i,
-        file_name        = "mask_%s.mrc"%str(round(region.volume,3)))
-    return asu_map_ext.asymmetric_map(
-      self.crystal_symmetry.space_group().type(), mask_i).data()
-
-  def _mask_to_sf(self, mask_data, miller_array, d_min_cutoff=3):
-    # Cutoff incoming Miller array
-    result = miller_array.deep_copy()
-    d_spacings    = miller_array.d_spacings().data()
-    sel           = d_spacings >= 3
-    miller_array_ = miller_array.select(sel)
-    # Compute SF for truncated Miller array
-    mask_asu = asu_map_ext.asymmetric_map(
-      self.crystal_symmetry.space_group().type(), mask_data).data()
-    sf = miller_array_.structure_factors_from_asu_map(
-        asu_map_data = mask_asu, n_real = self.crystal_gridding.n_real())
-    # Inflate Miller array to original hkl set before returning
-    data = flex.complex_double(d_spacings.size(), 0)
-    data = data.set_selected(sel, sf.data())
-    return result.set().array(data=data)
-
-  def f_mask_whole(self, miller_array):
-    return self._mask_to_sf(mask_data=self.mask_p1, miller_array=miller_array)
-
-  def f_mask_whole_filtered(self, miller_array):
-    mask_p1_corrected = self.mask_p1.deep_copy()
-    sel = flex.bool(self.conn.size(), self.small_selection)
-    sel.resize(self.conn.accessor())
-    mask_p1_corrected = mask_p1_corrected.set_selected(sel, 0)
-    return self._mask_to_sf(
-      mask_data=mask_p1_corrected, miller_array=miller_array)
-
-class f_masks(object):
-  def __init__(self,
-               mask_and_regions,
-               crystal_gridding,
-               xray_structure,
-               f_obs,
-               f_calc=None,
-               r_free_flags=None,
-               mean_diff_map_threshold=0.5,
-               log = None,
-               write_masks=False):
-    """
-    Compute Fmask(whole), Fmask(main) and list of mosaic contributions.
-    Fmask match input miller array set but zeroed out in 3A-better resolution.
-    """
-    adopt_init_args(self, locals())
-    #
-    self.d_spacings   = f_obs.d_spacings().data()
-    self.sel_gte3     = self.d_spacings >= 3
-    self.miller_array = f_obs.select(self.sel_gte3)
-    #
-    self.crystal_symmetry = self.xray_structure.crystal_symmetry()
-    self.n_real = self.crystal_gridding.n_real()
-    #
-    f_mask_data_main = flex.complex_double(f_obs.data().size(), 0)
-    self.f_mask_main = None
-    self.FV          = OrderedDict()
-    self.mFoDFc_main = None
-    self.diff_map    = None # mFo-DFc map computed using F_mask_0 (main mask)
-    #
-    if(log is not None):
-      print("Regions satisfying volume and map criteria:", file=log)
-      print("                                   mFo-DFc (sigma)", file=log)
-      print("  #   Vol. (A^3)    uc(%)     min     max    mean      sd", file=log)
-    #
-    for region in self.mask_and_regions.regions:
-      f_mask_i = None # must be here inside the loop!
-      # Compute i-th region mask
-      mask_i_asu = self.mask_and_regions.get_region_asu_mask(region = region)
-      # Compute F_mask_0 (F_mask for main mask)
-      if(region.uc_fraction >= 1):
-        f_mask_i = self.compute_f_mask_i(mask_i_asu)
-        f_mask_data_main += f_mask_i.data()
-      # Compute mFo-DFc map using main mask (once done computing main mask!)
-      if(region.uc_fraction < 1 and self.diff_map is None and
-         self.f_calc is not None and mean_diff_map_threshold is not None):
-        self.diff_map = self.compute_diff_map(f_mask_data = f_mask_data_main)
-      if(self.diff_map is not None):
-        # Analyze mFo-DFc map in the i-th region
-        map_info = self._get_map_info(iselection = region.iselection)
-        # Skip regions with weak mean density
-        if(map_info.mean is not None and map_info.mean < mean_diff_map_threshold):
-          continue
-        if(log is not None):
-          print("%3d"%region.i_seq,"%12.3f"%region.volume,
-                "%8.4f"%round(region.uc_fraction,4), map_info.string, file=log)
-      else:
-        print("%3d"%region.i_seq,"%12.3f"%region.volume,
-              "%8.4f"%round(region.uc_fraction,4), file=log)
-      # Compute F_mask for i-th region
-      if(f_mask_i is None):
-        f_mask_i = self.compute_f_mask_i(mask_i_asu)
-      # Compose result object
-      self.FV[f_mask_i] = region.i_seq
-    # END OF LOOP OVER REGIONS
-
-
-    ############################################################################
-    """
-    #self.FV          = OrderedDict()
-    #self.FV[f_obs.customized_copy(data = f_mask_data_main)] = 0
-
-    self.diff_map = self.compute_diff_map(f_mask_data = f_mask_data_main)
-
-    mask_ = mmtbx.masks.mask_from_xray_structure(
-      xray_structure           = self.xray_structure,
-      p1                       = True,
-      for_structure_factors    = True,
-      #solvent_radius           = 0.5,
-      #shrink_truncation_radius = 0.5,
-      n_real                   = self.n_real,
-      in_asu                   = False).mask_data
-    maptbx.unpad_in_place(map=mask_)
-
-    mc = self.mFoDFc_main
-    fft_map = mc.fft_map(
-      symmetry_flags   = maptbx.use_space_group_symmetry,
-      crystal_gridding = self.crystal_gridding)
-    fft_map.apply_sigma_scaling()
-    map_data = fft_map.real_map_unpadded() #* mask_
-
-    map_data = map_data.set_selected(map_data<2.5,0)
-
-    #sgt = self.f_obs.space_group().type()
-    #asu_map = asu_map_ext.asymmetric_map(sgt, map_data)
-    #map_data_asu = asu_map.data()
-    #map_data_asu = map_data_asu.shift_origin()
-    #
-    #asu_map = asu_map_ext.asymmetric_map(sgt, map_data_asu,
-    #  self.crystal_gridding.n_real())
-    #f_mask_i = self.f_calc.customized_copy(
-    #  indices = self.f_calc.indices(),
-    #  data    = asu_map.structure_factors(self.f_calc.indices() ))
-
-    def _sf_from_map(map_data):
-      return self.f_calc.structure_factors_from_map(
-        map            = map_data,
-        use_scale      = True,
-        anomalous_flag = False,
-        use_sg         = False)
-
-    #f_mask_i = _sf_from_map(map_data = map_data)
-    #
-    #
-    #self.FV[f_mask_i] = -99
-
-    OFFSET = region.i_seq+1
-    print("<><><><><><><><><><>")
-    #dmd = modify(fofc=self.mFoDFc_main, R=2, cutoff=0.3, #0.1/10,
-    #   crystal_gridding=self.crystal_gridding,
-    #   mask = self.mask_and_regions.mask_p1)
-    #dmd = map_data
-    #STOP()
-
-    mask_p1 = self.mask_and_regions.mask_p1.deep_copy()
-
-    #mask_ = mmtbx.masks.mask_from_xray_structure(
-    #  xray_structure           = self.xray_structure,
-    #  p1                       = True,
-    #  for_structure_factors    = True,
-    #  solvent_radius           = 0.5,
-    #  shrink_truncation_radius = 0.5,
-    #  n_real                   = self.n_real,
-    #  in_asu                   = False).mask_data
-    #maptbx.unpad_in_place(map=mask_)
-    #dmd = dmd * mask_
-
-    dmd = map_data
-
-    co = maptbx.connectivity(
-      map_data                   = dmd,
-      threshold                  = 2.5, #0.001/10,
-      preprocess_against_shallow = False,
-      wrapping                   = True)
-    if(xray_structure.space_group().type().number() != 1): # not P1
-      co.merge_symmetry_related_regions(
-        space_group = xray_structure.space_group())
-    conn = co.result().as_double()
-    z = zip(co.regions(),range(0,co.regions().size()))
-    sorted_by_volume = sorted(z, key=lambda x: x[0], reverse=True)
-    for i_seq, p in enumerate(sorted_by_volume):
-      i_seq = OFFSET + i_seq
-      v, i = p
-
-      #if(i==0 or i==1): continue
-      if i==0: continue
-
-      step=0.3
-      volume = v*step**3
-      volume_cutoff = 50
-      if(volume_cutoff is not None and volume < volume_cutoff): continue
-      uc_fraction = v*100./conn.size()
-      print(i, "%3d"%i_seq,"%12.3f"%volume, "%8.4f"%round(uc_fraction,4),
-            "%7s"%str(None), file=log)
-      iselection = (conn==i).iselection()
-      selection = flex.bool(conn.size(), iselection)
-      selection.resize(conn.accessor())
-
-      mask_p1 = mask_p1.set_selected(selection, 0)
-
-      region = group_args(
-        i           = i,
-        i_seq       = i_seq,
-        volume      = volume,
-        uc_fraction = uc_fraction,
-        iselection  = iselection)
-      self.mask_and_regions.regions.append( region )
-
-      dmd_i = dmd.deep_copy()
-      mask_i_asu = dmd_i.set_selected(~selection, 0)
-      #mask_i_asu = mask_i_asu.set_selected(mask_i_asu>0, 1)
-      f_mask_i = _sf_from_map(map_data=mask_i_asu)
-
-      #mask_i_asu = mask_i_asu/flex.max(mask_i_asu)
-      #mask_i_asu = self.mask_and_regions.get_region_asu_mask(region = region, map_data=dmd_i)
-      #mask_i_asu = mask_i_asu/flex.max(mask_i_asu)
-      #
-      #f_mask_i = self.compute_f_mask_i(mask_i_asu)
-      self.FV[f_mask_i] = -1*i_seq
-    print("<><><><><><><><><><>")
-
-
-    fmodel = mmtbx.f_model.manager(
-      f_obs        = self.f_obs,
-      f_calc       = self.f_calc,
-      r_free_flags = self.r_free_flags,
-      f_mask       = _sf_from_map(map_data=mask_p1))
-    fmodel.update_all_scales(remove_outliers=True,
-      apply_scale_k1_to_f_obs = APPLY_SCALE_K1_TO_FOBS)
-    mc = fmodel.electron_density_map().map_coefficients(
-      map_type   = "mFobs-DFmodel",
-      isotropize = False,
-      exclude_free_r_reflections = True)
-    mtz_dataset = mc.as_mtz_dataset(column_root_label = "F")
-    mtz_object = mtz_dataset.mtz_object()
-    mtz_object.write(file_name = "map2.mtz")
-
-    """
-    ############################################################################
-
-    #
-    # Determine number of secondary regions. Must happen here!
-    # Preliminarily if need to do mosaic.
-
-    self.n_regions = len(self.FV.values())
-    print("Number of regions (mean(mFo-DFc) >= %s): %d"%(
-      mean_diff_map_threshold, self.n_regions), file=log)
-    if(self.n_regions==0):
-      raise Sorry("Region selection criteria lead to no regions")
-    self.do_mosaic = False
-    if(self.n_regions>1 and flex.max(self.d_spacings)>6):
-      self.do_mosaic = True
-    # Finalize main Fmask
-    self.f_mask_main = f_obs.customized_copy(data = f_mask_data_main)
-    # Delete large objects from memory
-    del self.diff_map
-
-  def _get_sum_f_masks(self):
-    f_masks = list(self.FV.keys())
-    data = f_masks[0].data().deep_copy()
-    for f in f_masks[1:]:
-      data += f.data()
-    return self.f_obs.set().array(data = data)
-
-  def _get_map_info(self, iselection):
-    if(self.diff_map is None):
-      return group_args(min=None, max=None, mean=None, sd=None,
-                        string="   None    None    None    None")
-    blob = self.diff_map.select(iselection)
-    mi,ma,me = flex.min(blob), flex.max(blob), flex.mean(blob)
-    sd = blob.sample_standard_deviation()
-    return group_args(min=mi, max=ma, mean=me, sd=sd,
-                      string="%7.3f %7.3f %7.3f %7.3f"%(mi,ma,me,sd))
-
-  def _inflate(self, f):
-    data = flex.complex_double(self.d_spacings.size(), 0)
-    data = data.set_selected(self.sel_gte3, f.data())
-    return self.f_obs.set().array(data = data)
-
-  def compute_f_mask_i(self, mask_i_asu):
-    return self._inflate(self.miller_array.structure_factors_from_asu_map(
-      asu_map_data = mask_i_asu, n_real = self.n_real))
-
-  def compute_diff_map(self, f_mask_data):
-    if(self.f_calc is None): return None
-    f_mask = self.f_obs.customized_copy(data = f_mask_data)
-    fmodel = mmtbx.f_model.manager(
-      f_obs        = self.f_obs,
-      f_calc       = self.f_calc,
-      r_free_flags = self.r_free_flags,
-      f_mask       = f_mask)
-    fmodel.update_all_scales(remove_outliers=True,
-      apply_scale_k1_to_f_obs = APPLY_SCALE_K1_TO_FOBS)
-    self.mFoDFc_main = fmodel.electron_density_map().map_coefficients(
-      map_type   = "mFobs-DFmodel",
-      isotropize = False,
-      exclude_free_r_reflections = True)
-    fft_map = self.mFoDFc_main.fft_map(crystal_gridding = self.crystal_gridding)
-    fft_map.apply_sigma_scaling()
-    return fft_map.real_map_unpadded()
-
-def algorithm_0(f_obs, F, kt):
+def algorithm_2(i_obs, F, x, use_curvatures=False, use_lbfgsb=False,
+                macro_cycles=10, max_iterations=100, lower=None, upper=None):
   """
-  Grid search
-  """
-  fc, f_masks = F[0], F[1:]
-  k_mask_trial_range=[]
-  s = -1
-  while s<1:
-    k_mask_trial_range.append(s)
-    s+=0.0001
-  r = []
-  fc_data = fc.data()
-  for i, f_mask in enumerate(f_masks):
-    #print("mask ",i)
-    assert f_obs.data().size() == fc.data().size()
-    assert f_mask.data().size() == fc.data().size()
-    #print (bulk_solvent.r_factor(f_obs.data(),fc_data))
-    kmask_, k_ = \
-      bulk_solvent.k_mask_and_k_overall_grid_search(
-        f_obs.data()*kt,
-        fc_data*kt,
-        f_mask.data()*kt,
-        flex.double(k_mask_trial_range),
-        flex.bool(fc.data().size(),True))
-    r.append(kmask_)
-    fc_data += fc_data*k_ + kmask_*f_mask.data()
-    #print (bulk_solvent.r_factor(f_obs.data(),fc_data + kmask_*f_mask.data(),k_))
-  r = [1,]+r
-  return r
+  Unphased one-step search (Alg2 of Afonine et al., 2024): coefficients x_n
+  of F_model = sum_n x_n F_n that minimize the residual between I_obs and
+  |F_model|^2 (see class tg), by L-BFGS minimization from the start x.
 
-def algorithm_2(i_obs, F, x, use_curvatures, use_lbfgsb, macro_cycles=10,
-                max_iterations=100):
-  """
-  Unphased one-step search
+  Parameters
+  ----------
+  i_obs : cctbx.miller.array
+      Observed intensities.
+  F : list of cctbx.miller.array
+      Complex arrays F_n; the first one is usually the atomic model.
+  x : flex.double
+      Starting values, one per array of F.
+  use_curvatures : bool or None
+      True: L-BFGS with curvatures; False: without; None: with curvatures
+      first, then without.
+  use_lbfgsb : bool
+      Use L-BFGS-B in the steps that do not use curvatures.
+  macro_cycles : int
+  max_iterations : int
+  lower, upper : flex.double, optional
+      Bounds for x. If given, minimization is done by L-BFGS-B with these
+      bounds, without curvatures. If not given, x is kept positive by
+      resetting negative values between macro-cycles, and with
+      use_curvatures=None the last step of each macro-cycle uses the bounds
+      0.9 <= x[0] <= 1.1, 0 <= x[n] <= 12.
+
+  Returns
+  -------
+  flex.double
   """
   assert use_curvatures in [True, False, None]
   assert use_lbfgsb in [True, False, None]
-  upper = flex.double([1.1] + [12]*(x.size()-1))
-  lower = flex.double([0.9] + [0]*(x.size()-1))
+  n = x.size()
+  assert n == len(F)
+  if(lower is not None or upper is not None):
+    if(lower is None): lower = flex.double(n, -NO_LIMIT)
+    if(upper is None): upper = flex.double(n,  NO_LIMIT)
+    assert lower.size() == n and upper.size() == n
+    # 0: unbounded, 1: lower only, 2: both, 3: upper only
+    flags = flex.int()
+    for lo, hi in zip(lower, upper):
+      assert lo <= hi
+      has_lo, has_hi = lo > -NO_LIMIT, hi < NO_LIMIT
+      if(has_lo and has_hi): flags.append(2)
+      elif(has_lo):          flags.append(1)
+      elif(has_hi):          flags.append(3)
+      else:                  flags.append(0)
+    def clip(x):
+      return flex.double([min(hi, max(lo, v))
+        for v, lo, hi in zip(x, lower, upper)])
+    x = clip(x)
+    for it in range(macro_cycles):
+      # the minimizer works on the array it is given
+      calculator = tg(i_obs = i_obs, F=F, x = x.deep_copy(),
+        use_curvatures=False,
+        bound_flags=flags, lower_bound=lower, upper_bound=upper)
+      m = minimizers.lbfgs(
+        mode='lbfgsb', max_iterations=max_iterations, calculator=calculator)
+      x_new = clip(m.x)
+      converged = flex.max(flex.abs(x_new-x)) < 1.e-6
+      x = x_new
+      if(converged): break
+    return x
+  upper_default = flex.double([1.1] + [12]*(n-1))
+  lower_default = flex.double([0.9] + [0]*(n-1))
+  mode = 'lbfgs'
+  if(use_lbfgsb): mode = 'lbfgsb'
   for it in range(macro_cycles):
     x = x.set_selected(x<0,1.e-6)
     if(use_curvatures is True): # Curvatures only
       calculator = tg(i_obs = i_obs, F=F, x = x, use_curvatures=True)
       m = minimizer2(
-        max_iterations=max_iterations, calculator=calculator).run(use_curvatures=True)
+        max_iterations=max_iterations, calculator=calculator).run(
+          use_curvatures=True)
       x = m.x
       x = x.set_selected(x<0,1.e-6)
     elif(use_curvatures is False): # No curvatures at all
       calculator = tg(i_obs = i_obs, F=F, x = x, use_curvatures=False)
-      if(use_lbfgsb is True):
-        m = scitbx.minimizers.lbfgs(
-           mode='lbfgsb', max_iterations=max_iterations, calculator=calculator)
-      else:
-        m = scitbx.minimizers.lbfgs(
-           mode='lbfgs', max_iterations=max_iterations, calculator=calculator)
+      m = minimizers.lbfgs(
+        mode=mode, max_iterations=max_iterations, calculator=calculator)
       x = m.x
       x = x.set_selected(x<0,1.e-6)
     elif(use_curvatures is None):
       calculator = tg(i_obs = i_obs, F=F, x = x, use_curvatures=True)
       m = minimizer2(
-        max_iterations=max_iterations, calculator=calculator).run(use_curvatures=True)
+        max_iterations=max_iterations, calculator=calculator).run(
+          use_curvatures=True)
       x = m.x
       x = x.set_selected(x<0,1.e-6)
       calculator = tg(i_obs = i_obs, F=F, x = x, use_curvatures=False,
-        bound_flags=flex.int(x.size(),2), lower_bound=lower, upper_bound=upper)
-      if(use_lbfgsb is True):
-        m = scitbx.minimizers.lbfgs(
-           mode='lbfgsb', max_iterations=max_iterations, calculator=calculator)
-      else:
-        m = scitbx.minimizers.lbfgs(
-           mode='lbfgs', max_iterations=max_iterations, calculator=calculator)
+        bound_flags=flex.int(x.size(),2), lower_bound=lower_default,
+        upper_bound=upper_default)
+      m = minimizers.lbfgs(
+        mode=mode, max_iterations=max_iterations, calculator=calculator)
       x = m.x
       x = x.set_selected(x<0,1.e-6)
   return m.x
 
 def algorithm_3(i_obs, fc, f_masks):
   """
-  Unphased two-step search
+  Unphased two-step search: first the products X_nm = x_n*x_m are found
+  from a system of linear equations, then x_n are derived from them.
+
+  Parameters
+  ----------
+  i_obs : cctbx.miller.array
+      Observed intensities.
+  fc : cctbx.miller.array
+      Atomic model structure factors.
+  f_masks : list of cctbx.miller.array
+
+  Returns
+  -------
+  list of float
+      Coefficients of [fc]+f_masks.
   """
   F = [fc]+f_masks
   Gnm = []
@@ -1155,7 +659,7 @@ def algorithm_3(i_obs, fc, f_masks):
       x_ = x[cs[(n,m)]]
       rows.append(x_)
     Xmn.append(rows)
-  # Do formula (19)
+  # x_n from X_nm
   lnK = []
   for j, Fj in enumerate(F):
     t1 = flex.sum( flex.log( flex.double(Xmn[j]) ) )
@@ -1167,67 +671,470 @@ def algorithm_3(i_obs, fc, f_masks):
     lnK.append( 1/len(F)*(t1-t2) )
   return [math.exp(x) for x in lnK]
 
-def algorithm_4(f_obs, F, phase_source, max_cycles=100, auto_converge_eps=1.e-7,
-                use_cpp=True, x_init=None):
+# ------------------------------------------------------------------------------
+# Mosaic model for an fmodel
+# ------------------------------------------------------------------------------
+
+def default_params():
   """
-  Phased simultaneous search (alg4)
+  Default settings: the mosaic scope of
+  mmtbx.bulk_solvent.bulk_solvent_and_scaling.master_params.
   """
-  fc, f_masks = F[0], F[1:]
-  if(x_init is not None):
-    assert x_init.size() == len(f_masks)
-    # Apply scale
-    tmp = []
-    for fm, s in zip(f_masks, x_init):
-      fm = fm.array(data = fm.data()*s)
-      tmp.append(fm)
-    f_masks = tmp
-  #
-  fc = fc.deep_copy()
-  F = [fc]+f_masks
-  # C++ version
-  if(use_cpp):
-    result = mosaic_ext.alg4(
-      [f.data() for f in F],
-      f_obs.data(),
-      phase_source.data(),
-      max_cycles,
-      auto_converge_eps)
+  from mmtbx.bulk_solvent import bulk_solvent_and_scaling as bss
+  return bss.master_params.extract().mosaic
+
+def mask_xray_structure(fmodel):
+  """
+  Atoms that define the bulk-solvent mask of fmodel.
+  """
+  mm = fmodel.mask_manager
+  if(mm is not None and mm.xray_structure is not None):
+    return mm.xray_structure
+  xrs = fmodel.xray_structure
+  if(xrs is None): return None
+  mp = fmodel.mask_params
+  selection = flex.bool(xrs.scatterers().size(), True)
+  if(mp.ignore_zero_occupancy_atoms):
+    selection &= xrs.scatterers().extract_occupancies() > 0
+  if(mp.ignore_hydrogens):
+    selection &= ~xrs.hd_selection()
+  return xrs.select(selection)
+
+def work_selection(fmodel):
+  """
+  Reflections used to fit occupancies: work reflections; all reflections if
+  no reflection is flagged as free.
+  """
+  flags = fmodel.r_free_flags()
+  n = fmodel.f_obs().data().size()
+  if(flags is None or flags.data().count(True) == 0):
+    return flex.bool(n, True)
+  return ~flags.data()
+
+def not_applicable(fmodel):
+  """
+  Reason (str) why the mosaic model cannot be used with this fmodel, or None
+  if it can.
+  """
+  if(fmodel.twinned()): return "twinned data"
+  xrs = fmodel.xray_structure
+  if(xrs is None): return "no atomic model"
+  if(xrs.scattering_type_registry().last_table() == "neutron"):
+    return "neutron data"
+  if(len(fmodel.f_masks()) != 1): return "more than one bulk-solvent mask"
+  d = fmodel.f_obs().d_spacings().data()
+  low = d >= fmodel.mask_params.Fmask_res_high
+  n_low_work = (low & work_selection(fmodel)).count(True)
+  if(n_low_work < 50):
+    return "%d work reflections at d >= %s A, at least 50 needed"%(
+      n_low_work, str(fmodel.mask_params.Fmask_res_high))
+  if(flex.abs(fmodel.f_masks()[0].data()).all_eq(0)):
+    return "no bulk-solvent contribution"
+  return None
+
+class result(object):
+  """
+  Result of run().
+
+  Attributes
+  ----------
+  correction : flex.complex_double
+      sum_n (q_n - 1) F_n over all secondary regions, one value per
+      reflection of fmodel.f_obs(). F_whole + correction is the mask term of
+      the mosaic model.
+  regions : list of libtbx.group_args
+      Regions with volume >= volume_min, largest first: volume, occupancy,
+      status ("fitted"), centroid_frac, centroid_cart, near (str, set by
+      annotate()).
+  n_small, volume_small : int, float
+      Number and total volume of the emptied small regions.
+  n_not_fitted, volume_not_fitted : int, float
+      Regions left as in the flat model because there are more regions than
+      can be fitted in reasonable time (see _MAX_FITTED_REGIONS).
+  n_fitted : int
+  volume_min : float
+  algorithm : str
+  """
+
+  def __init__(self, correction, regions, n_small,
+               volume_small, volume_min, algorithm, solvent_fraction,
+               n_not_fitted=0, volume_not_fitted=0):
+    adopt_init_args(self, locals())
+    self.n_fitted = len(regions)
+
+  def n_regions(self):
+    return self.n_small + self.n_fitted + self.n_not_fitted
+
+  def mean_occupancy(self):
+    if(self.n_fitted == 0): return None
+    return sum([r.occupancy for r in self.regions])/self.n_fitted
+
+  def summary(self):
+    s = "mosaic: regions %d, small %d, fitted %d"%(self.n_regions(),
+      self.n_small, self.n_fitted)
+    if(self.n_not_fitted > 0): s += ", not fitted %d"%self.n_not_fitted
+    if(self.n_fitted > 0): s += ", <q> %.2f"%self.mean_occupancy()
+    return s
+
+  def annotate(self, model):
+    """
+    Set the near field of each region: the residues of model
+    (mmtbx.model.manager) nearest to the region centre.
+    """
+    sites_frac = model.get_xray_structure().sites_frac()
+    if(sites_frac.size() == 0): return self
+    uc = model.crystal_symmetry().unit_cell()
+    ops = model.crystal_symmetry().space_group().all_ops()
+    atoms = model.get_hierarchy().atoms()
+    for r in self.regions:
+      # symmetry copy of the region centre that is nearest to the model
+      best = None
+      for op in ops:
+        c = op * r.centroid_frac
+        d = uc.min_mod_short_distance(sites_frac, c)
+        if(best is None or d < best[0]): best = (d, c)
+      c = best[1]
+      x,y,z = (sites_frac - c).parts()
+      x = x - flex.floor(x + 0.5)
+      y = y - flex.floor(y + 0.5)
+      z = z - flex.floor(z + 0.5)
+      dist = uc.orthogonalize(flex.vec3_double(x,y,z)).norms()
+      near = []
+      for i in flex.sort_permutation(dist):
+        ag = atoms[i].parent()
+        rg = ag.parent()
+        label = "%s %s%s%s"%(rg.parent().id.strip(), ag.resname.strip(),
+          rg.resseq.strip(), rg.icode.strip())
+        if(not label in [n[0] for n in near]):
+          near.append((label, dist[i]))
+        if(len(near) == 3): break
+      r.near = ", ".join(["%s (%.1f)"%n for n in near])
+      r.centroid_cart = uc.orthogonalize(c)
+    return self
+
+  def show(self, log, prefix="", max_regions=None):
+    """
+    Print the summary and the table of regions (the max_regions largest ones
+    if given).
+    """
+    if(log is None): return
+    p = prefix
+    print(p+"Mosaic bulk-solvent model (%s)"%self.algorithm, file=log)
+    print(p+"  isolated regions of the solvent mask: %d"%self.n_regions(),
+      file=log)
+    print(p+"  smaller than %s A^3, emptied: %d (%.0f A^3 in total)"%(
+      ("%.1f"%self.volume_min).rstrip("0").rstrip("."), self.n_small,
+      self.volume_small), file=log)
+    print(p+"  occupancy fitted: %d"%self.n_fitted, file=log)
+    if(self.n_not_fitted > 0):
+      print(p+"  too many regions, the smaller ones are not fitted "
+        "(occupancy 1): %d (%.0f A^3 in total)"%(self.n_not_fitted,
+        self.volume_not_fitted), file=log)
+    if(self.n_fitted == 0): return
+    print(p+"  Occupancy is relative to the main bulk solvent: 0 - empty, "
+"1 - same\n%s  (upper limit)."%p, file=log)
+    has_near = len([r for r in self.regions if r.near is not None]) > 0
+    head = p+"    #  volume(A^3)  occupancy"
+    if(has_near): head += "          nearest residues (distance, A)"
+    print(head, file=log)
+    shown = self.regions
+    if(max_regions is not None): shown = self.regions[:max_regions]
+    for i, r in enumerate(shown):
+      line = p+"  %3d  %11.0f  %9.2f      "%(i+1, r.volume, r.occupancy)
+      if(r.near is not None): line += "    %s"%r.near
+      print(line, file=log)
+    if(len(shown) < self.n_fitted):
+      print(p+"  ... and %d smaller regions, <q> %.2f"%(
+        self.n_fitted-len(shown),
+        sum([r.occupancy for r in self.regions[len(shown):]])/
+          (self.n_fitted-len(shown))), file=log)
+
+# Smallest number of work reflections (with bulk-solvent contribution) per
+# fitted occupancy.
+_REFLECTIONS_PER_REGION = 20
+
+# Limits on the number of regions with fitted occupancy. Time grows with the
+# square of this number. Memory: one array of structure factors per region,
+# for the reflections of the fit; _MAX_FIT_ELEMENTS is the largest total
+# number of elements of these arrays (16 bytes each, about 1 GB).
+# Structures that reach these limits are rare (virus capsids). The largest
+# regions are fitted, the others stay as in the flat bulk-solvent model
+# (occupancy 1).
+_MAX_FITTED_REGIONS = 300
+_MAX_FIT_ELEMENTS = 60000000
+
+# Limits for the two overall scales of fit_occupancies; outside of them the
+# scales of the flat model are used as they are.
+_SCALE_MIN, _SCALE_MAX = 0.5, 2.0
+
+def _fit_with_scales(f_obs, atoms, rest, G, algorithm, normal_matrix=None):
+  """
+  a, b and q_n >= 0 of F_model = a*atoms + b*(rest + sum_n q_n G_n).
+  Returns (a, b, q), or None if a or b comes out unreasonable.
+  normal_matrix: of [atoms, rest] + G (alg4 only).
+  """
+  n = len(G)
+  if(algorithm == "alg4"):
+    x = alg4(
+      f_obs   = f_obs,
+      base    = flex.complex_double(f_obs.size(), 0),
+      G       = [atoms, rest] + G,
+      lower   = flex.double([-NO_LIMIT, -NO_LIMIT] + [0]*n),
+      x_start = flex.double(n+2, 1),
+      normal_matrix = normal_matrix)
   else:
-    # Python version (1.2-3 times slower, but much more readable!)
-    cntr = 0
-    x_prev = None
-    while True:
-      f_obs_cmpl = f_obs.phase_transfer(phase_source = phase_source)
-      A = []
-      b = []
-      for j, Fj in enumerate(F):
-        A_rows = []
-        for n, Fn in enumerate(F):
-          Gjn = flex.real( Fj.data()*flex.conj(Fn.data()) )
-          A_rows.append( flex.sum(Gjn) )
-        Hj = flex.real( Fj.data()*flex.conj(f_obs_cmpl.data()) )
-        b.append(flex.sum(Hj))
-        A.extend(A_rows)
-      A = matrix.sqr(A)
-      A_1 = A.inverse()
-      b = matrix.col(b)
-      x = A_1 * b
-      #
-      fc_d = flex.complex_double(phase_source.indices().size(), 0)
-      for i, f in enumerate(F):
-        fc_d += f.data()*x[i]
-      phase_source = phase_source.customized_copy(data = fc_d)
-      x_ = x[:]
-      #
-      cntr+=1
-      if(cntr>max_cycles): break
-      if(x_prev is None): x_prev = x_[:]
-      else:
-        max_diff = flex.max(flex.abs(flex.double(x_prev)-flex.double(x_)))
-        if(max_diff<=auto_converge_eps): break
-        x_prev = x_[:]
-    result = x_
-  if(x_init is not None):
-    for i,tmp in enumerate(x_init):
-      result[i+1] = result[i+1] * x_init[i]
-  return result
+    x = algorithm_2(
+      i_obs = _array(f_obs*f_obs),
+      F     = [_array(atoms), _array(rest)] + [_array(g) for g in G],
+      x     = flex.double(n+2, 1),
+      lower = flex.double([_SCALE_MIN, _SCALE_MIN] + [0]*n),
+      upper = flex.double([_SCALE_MAX, _SCALE_MAX] + [NO_LIMIT]*n))
+  if(_SCALE_MIN < x[0] < _SCALE_MAX and _SCALE_MIN < x[1] < _SCALE_MAX):
+    return x[0], x[1], x[2:]/x[1]
+  return None
+
+def _fit_bounded(f_obs, base, G, q_max, q_start, algorithm,
+                 normal_matrix=None):
+  """
+  0 <= q_n <= q_max of F_model = base + sum_n q_n G_n.
+  normal_matrix: of G (alg4 only).
+  """
+  n = len(G)
+  if(algorithm == "alg4"):
+    return alg4(f_obs = f_obs, base = base, G = G,
+      lower = flex.double(n, 0), upper = flex.double(n, q_max),
+      x_start = q_start, normal_matrix = normal_matrix)
+  x = flex.double([1])
+  x.extend(q_start)
+  x = algorithm_2(
+    i_obs = _array(f_obs*f_obs),
+    F     = [_array(base)] + [_array(g) for g in G],
+    x     = x,
+    lower = flex.double([1] + [0]*n),
+    upper = flex.double([1] + [q_max]*n))
+  return x[1:]
+
+def fit_occupancies(f_obs, atoms, rest, G, algorithm="alg4",
+                    refine_scales=True, q_max=OCCUPANCY_MAX):
+  """
+  Occupancies 0 <= q_n <= q_max of regions in
+
+    F_model = a*atoms + b*(rest + sum_n q_n G_n),
+
+  fitted to the amplitudes f_obs.
+
+  atoms, rest and G_n carry the overall and bulk-solvent scales of the flat
+  model. Those scales were found with all regions at q=1, so they are
+  biased when the regions are far from that; a and b (two numbers for all
+  reflections) take this up, which makes q_n relative to the main bulk
+  solvent as it is with the regions adjusted. a and b are not used after
+  that: all scales are determined again with the fitted q_n.
+
+  If a region comes out above q_max, the occupancies are fitted once more
+  within the limits, with a and b kept: these are the scales of the model
+  that describes the data best, and they should not change to make up for
+  what the limit leaves unexplained in one region.
+
+  Parameters
+  ----------
+  f_obs : flex.double
+  atoms : flex.complex_double
+      Atomic model contribution with its overall scale.
+  rest : flex.complex_double
+      Scaled contribution of the part of the mask that is not fitted (main
+      region; small regions excluded).
+  G : list of flex.complex_double
+      Scaled contributions of the regions.
+  algorithm : str
+      "alg4" (phased) or "alg2" (unphased).
+  refine_scales : bool
+      If False a=b=1.
+  q_max : float, optional
+      None: no upper limit.
+
+  Returns
+  -------
+  flex.double
+  """
+  assert algorithm in ["alg4", "alg2"]
+  n = len(G)
+  if(n == 0): return flex.double()
+  if(q_max is None): q_max = NO_LIMIT
+  assert q_max > 0
+  # The normal matrix of the search (the expensive part) is computed once
+  # for all terms; its lower right block is the matrix of the regions alone.
+  A, A_regions = None, None
+  if(algorithm == "alg4"):
+    A = mosaic_ext.normal_matrix(G = [atoms, rest] + G)
+    A_regions = A.matrix_copy_block(i_row = 2, i_column = 2, n_rows = n,
+      n_columns = n)
+  q = None
+  if(refine_scales):
+    fit = _fit_with_scales(f_obs = f_obs, atoms = atoms, rest = rest, G = G,
+      algorithm = algorithm, normal_matrix = A)
+    if(fit is not None):
+      a, b, q = fit
+      if((q > q_max).count(True) > 0):
+        q.set_selected(q > q_max, q_max)
+        if(algorithm == "alg4"):
+          # same as fitting q with the regions scaled by b: b*q is fitted
+          # with the regions as they are
+          x_max = q_max
+          if(q_max < NO_LIMIT): x_max = q_max*b
+          x = _fit_bounded(f_obs = f_obs, base = atoms*a + rest*b, G = G,
+            q_max = x_max, q_start = q*b, algorithm = algorithm,
+            normal_matrix = A_regions)
+          at_limit = x >= x_max
+          q = x/b
+          q.set_selected(at_limit, q_max) # (q_max*b)/b may not be q_max
+        else:
+          q = _fit_bounded(f_obs = f_obs, base = atoms*a + rest*b,
+            G = [g*b for g in G], q_max = q_max, q_start = q,
+            algorithm = algorithm)
+  if(q is None):
+    q = _fit_bounded(f_obs = f_obs, base = atoms + rest, G = G,
+      q_max = q_max, q_start = flex.double(n, 1), algorithm = algorithm,
+      normal_matrix = A_regions)
+  q.set_selected(q < 0, 0)
+  q.set_selected(q > q_max, q_max)
+  return q
+
+def _same_mask(fmodel, regions, sf):
+  """
+  True if the regions are the regions of the mask that fmodel uses. The
+  solvent fraction is compared if the mask manager of fmodel has it for the
+  current mask (no cost), else the structure factors (one FFT).
+  """
+  mm = fmodel.mask_manager
+  fraction = getattr(mm, "solvent_content_via_mask", None)
+  if(fraction is not None and mm.xray_structure is not None and
+     mm.xray_structure.scatterers().size() ==
+     regions._xray_structure.scatterers().size()):
+    return abs(fraction - regions.solvent_fraction) < 1.e-6
+  return sf.mask_mismatch(f_mask = fmodel.f_masks()[0]) < 1.e-3
+
+def _log(log, message):
+  if(log is not None): print(message, file=log)
+
+def run(fmodel, params=None, log=None):
+  """
+  Mosaic bulk-solvent model for an fmodel that has the scales of the flat
+  model (mmtbx.f_model.manager after update_all_scales): isolated regions of
+  the mask, and their occupancies fitted to the work reflections.
+
+  fmodel is not changed.
+
+  Parameters
+  ----------
+  fmodel : mmtbx.f_model.manager
+  params : libtbx.phil.scope_extract, optional
+      The mosaic scope of
+      mmtbx.bulk_solvent.bulk_solvent_and_scaling.master_params; defaults if
+      None.
+  log : file-like, optional
+
+  Returns
+  -------
+  mmtbx.bulk_solvent.mosaic.result or None
+      None if the model is not applicable (see not_applicable) or the mask
+      has no isolated regions; the reason is printed to log.
+  """
+  if(params is None): params = default_params()
+  if(params.volume_min is None or params.volume_min < 0):
+    from libtbx.utils import Sorry
+    raise Sorry("mosaic.volume_min must be zero or positive.")
+  reason = not_applicable(fmodel)
+  if(reason is None and fmodel.k_masks()[0].all_eq(0)):
+    # bulk solvent switched off, or no contribution found by scaling
+    reason = "no bulk-solvent contribution"
+  if(reason is not None):
+    _log(log, "mosaic: skipped (%s)"%reason)
+    return None
+  global number_of_runs
+  number_of_runs += 1
+  mp = fmodel.mask_params
+  f_obs = fmodel.f_obs()
+  regs = regions(
+    xray_structure = mask_xray_structure(fmodel),
+    mask_params    = mp,
+    d_min          = f_obs.d_min())
+  if(len(regs.secondary) == 0):
+    _log(log, "mosaic: skipped (no isolated regions in the solvent mask)")
+    return None
+  sf = structure_factors(regions = regs, miller_array = f_obs,
+    d_min = mp.Fmask_res_high)
+  f_whole = fmodel.f_masks()[0]
+  if(not _same_mask(fmodel = fmodel, regions = regs, sf = sf)):
+    _log(log, "mosaic: skipped (cannot reproduce the bulk-solvent mask)")
+    return None
+  small = [r for r in regs.secondary if r.volume <  params.volume_min]
+  fit   = [r for r in regs.secondary if r.volume >= params.volume_min]
+  # Reflections of the fit
+  sf_fit = structure_factors(regions = regs, miller_array = f_obs,
+    d_min = mp.Fmask_res_high, selection = work_selection(fmodel))
+  sel, n_work = sf_fit.selection, sf_fit.n_selected
+  # regs.secondary is sorted by size, largest first
+  n_max = min(_MAX_FITTED_REGIONS, _MAX_FIT_ELEMENTS//max(1, n_work))
+  not_fitted = fit[n_max:]
+  fit = fit[:n_max]
+  if(n_work < _REFLECTIONS_PER_REGION*len(fit)):
+    _log(log, "mosaic: skipped (%d work reflections for %d regions, at "
+      "least %d per region needed)"%(n_work, len(fit),
+      _REFLECTIONS_PER_REGION))
+    return None
+  points_small = flex.size_t()
+  for r in small: points_small.extend(r.points)
+  q = flex.double(len(fit), 1)
+  if(len(fit) > 0):
+    # Scales of the flat model. Structure factors of the regions are kept
+    # for the reflections of the fit only, and only until the fit is done.
+    k_total = (fmodel.k_isotropic()*fmodel.k_anisotropic()).select(sel)
+    scale = k_total*fmodel.k_masks()[0].select(sel)
+    G = [sf_fit.of_points(points = r.points, compact = True)*scale
+         for r in fit]
+    # Current F_model = atoms + all of the mask (every region at q=1)
+    f_model = fmodel.f_model().data().select(sel)
+    whole = f_whole.data().select(sel)*scale
+    atoms = f_model - whole
+    # Mask without the small regions (emptied) and the regions being fitted
+    rest = whole - sf_fit.of_points(points = points_small,
+      compact = True)*scale
+    for g in G: rest = rest - g
+    q = fit_occupancies(
+      f_obs     = f_obs.data().select(sel),
+      atoms     = atoms,
+      rest      = rest,
+      G         = G,
+      algorithm = params.algorithm)
+    del G, rest, atoms, whole, f_model
+  # sum_n (q_n - 1) F_n for all reflections with a bulk-solvent
+  # contribution, in one Fourier transform
+  correction = sf.of_map(map_data = regs.mask_of_points(
+    points = [points_small] + [r.points for r in fit],
+    values = [-1.] + [qn-1. for qn in q],
+    padded = True))
+  uc = regs.unit_cell
+  return result(
+    correction       = correction,
+    regions          = [group_args(
+      volume        = r.volume,
+      occupancy     = qn,
+      status        = "fitted",
+      centroid_frac = r.centroid_frac,
+      centroid_cart = uc.orthogonalize(r.centroid_frac),
+      near          = None) for r, qn in zip(fit, q)],
+    n_small          = len(small),
+    volume_small     = sum([r.volume for r in small]),
+    n_not_fitted      = len(not_fitted),
+    volume_not_fitted = sum([r.volume for r in not_fitted]),
+    volume_min       = params.volume_min,
+    algorithm        = params.algorithm,
+    solvent_fraction = regs.solvent_fraction)
+
+class _array(object):
+  """
+  Minimal array with data() and select(), as class tg needs.
+  """
+  def __init__(self, data): self._data = data
+  def data(self): return self._data
+  def select(self, selection): return _array(self._data.select(selection))

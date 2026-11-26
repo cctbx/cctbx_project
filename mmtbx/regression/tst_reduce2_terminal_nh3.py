@@ -23,6 +23,7 @@ from mmtbx.programs import reduce2
 from mmtbx.monomer_library import pdb_interpretation, terminal_nh3
 from mmtbx.regression import tst_reduce2_not_placed as tnp
 from mmtbx.regression import tst_reduce2_chain_start_ligands as tcs
+from mmtbx.regression import tst_monomer_library_terminal_nh3 as tml
 
 pdb_2kz = """\
 CRYST1   40.000   40.000   40.000  90.00  90.00  90.00 P 1
@@ -156,7 +157,7 @@ CONVERTED = [
   ('2KZ', tnp.with_next_gly(pdb_2kz), ['H', 'H4', 'H5'], ('H2', 'CB'), 1.402),
   ('5CA', tnp.with_next_gly(pdb_5ca), ['H', 'HN2', 'HN3'], ('H2', 'C2'),
     1.491),
-  ('NPH', pdb_nph, ['H', 'HN3', 'HNT'], ('H3', 'C3'), 1.491),
+  ('NPH', pdb_nph, ['H', 'H2', 'HN3'], ('H3', 'C3'), 1.491),
   ('0A0', tnp.with_next_gly(tnp.pdb_0a0), ['HN1', 'HN2', 'HN3'], None, 1.491),
   ('004', tnp.with_next_gly(tnp.pdb_004), ['HN', 'HNA', 'HNB'], None, 1.491),
   ('SAM', tnp.with_next_gly(pdb_sam), ['HN1', 'HN2', 'HN3'], None, 1.491)]
@@ -174,9 +175,16 @@ def run(prefix, pdb_str, *args):
       f.write(pdb_str)
     for p in (out, txt):
       if os.path.exists(p): os.remove(p)
+    cifs = []
+    names = tml.old_residue_names(pdb_str)
+    for comp, text in tml.OLD_DICTIONARIES:
+      if comp not in names: continue
+      cifs.append('tst_reduce2_terminal_nh3_%s_old.cif' % comp)
+      with open(cifs[-1], 'w') as f:
+        f.write(text)
     run_program(program_class=reduce2.Program, logger=StringIO(), args=[fn,
       'output.filename=' + out, 'output.description_file_name=' + txt,
-      'overwrite=True'] + list(args))
+      'overwrite=True'] + cifs + list(args))
     with open(txt) as f:
       description = f.read()
     _runs[key] = (iotbx.pdb.input(out).construct_hierarchy(), description,
@@ -187,10 +195,13 @@ _mon_lib_srv = []
 def reread(fn):
   """The output processed as phenix.refine reads it: the model, the
   residue names with their modifications."""
-  m = mmtbx.model.manager(model_input=iotbx.pdb.input(fn), log=null_out())
+  with open(fn) as f:
+    restraint_objects = tml.old_dictionaries(f.read())
+  m = mmtbx.model.manager(model_input=iotbx.pdb.input(fn),
+    restraint_objects=restraint_objects, log=null_out())
   m.process(make_restraints=True)
   if not _mon_lib_srv:
-    _mon_lib_srv.append(mmtbx.monomer_library.server.server())
+    _mon_lib_srv.append(tml.server())
     _mon_lib_srv.append(mmtbx.monomer_library.server.ener_lib())
   p = pdb_interpretation.process(mon_lib_srv=_mon_lib_srv[0],
     ener_lib=_mon_lib_srv[1], log=null_out(), pdb_inp=iotbx.pdb.input(fn),
@@ -500,12 +511,17 @@ def test_metal_bound_start():
 
 def geostd_peptide(comp):
   """comp's GeoStd ideal heavy atoms as residue 1 (+20 A, P1 cell of 40 A)
-  with a GLY 2 peptide-bonded to it; None without chem_data"""
+  with a GLY 2 peptide-bonded to it; None without chem_data. The old
+  dictionary where the tests supply one (tml.OLD_DICTIONARIES)"""
   path = libtbx.env.find_in_repositories(relative_path='chem_data/geostd/'
     '%s/data_%s.cif' % (comp[0].lower(), comp), test=os.path.isfile)
   if path is None: return None
-  loop = iotbx.cif.reader(file_path=path).model()['comp_' + comp].get_loop(
-    '_chem_comp_atom')
+  old = dict(tml.OLD_DICTIONARIES)
+  if comp in old:
+    cif = iotbx.cif.reader(input_string=old[comp]).model()
+  else:
+    cif = iotbx.cif.reader(file_path=path).model()
+  loop = cif['comp_' + comp].get_loop('_chem_comp_atom')
   lines = ['CRYST1   40.000   40.000   40.000  90.00  90.00  90.00 P 1']
   for i, name in enumerate(loop['_chem_comp_atom.atom_id']):
     e = loop['_chem_comp_atom.type_symbol'][i]
@@ -532,6 +548,9 @@ def test_computed_rule_names():
   # a computed name that pdb_interpretation's name rules also test (0AA,
   # CTE: HN2 -> mod_NH2) is restrained by NH3-<comp>, in every neutron
   # option, read again with the angles at N at their restraints
+  # (0AA, CTE, BB8, MH8, TY2 from the dictionaries of tml.OLD_DICTIONARIES:
+  # GeoStd's CTE has H, HN1 since 2026-11-25, BB8, MH8, TY2 H, HA2; with an
+  # atom H the entry gets mod_NH3 and H1, H2, H3)
   for comp, names in (('0AA', ['HA2', 'HN1', 'HN2']),
                       ('CTE', ['HN', 'HN1', 'HN2'])):
     pdb_str = geostd_peptide(comp)
@@ -616,8 +635,9 @@ def test_blank_n_ca():
 
 def test_supplied_computed_name():
   # keep_existing_H: a supplied H on N under the computed name (07O, TSY:
-  # H3) is the terminus's own: no unknown-atom line, output as without it
-  for comp in ('07O', 'TSY'):
+  # H3; 0G6: H2, H3) is the terminus's own: no unknown-atom line, output as
+  # without it
+  for comp in ('07O', 'TSY', '0G6'):
     pdb_str = geostd_peptide(comp)
     if pdb_str is None:
       print('Skipping test_supplied_computed_name: chem_data not available')
@@ -763,6 +783,24 @@ def test_supplied_nh3_in_one_conformer():
   else:
     raise AssertionError('no stop')
 
+def test_restraint_file_not_kept():
+  # the same input, supplied D not kept: they are not interpreted; remove
+  # removes them and nothing else, add rebuilds the terminus. run() gives
+  # the 0A0 dictionary as a restraint file
+  pdb_str, _ = supplied_layout(('', 'A', 'B'), 'D')
+  assert tml.old_residue_names(pdb_str) == ['0A0']
+  h, _, _ = run('0A0_layout_D_nh3_one_conformer_remove', pdb_str,
+    'approach=remove')
+  supplied = iotbx.pdb.input(source_info=None,
+    lines=pdb_str).construct_hierarchy()
+  assert sorted(a.id_str() for a in h.atoms()) == sorted(a.id_str()
+    for a in supplied.atoms() if not is_hd(a)), [a.id_str()
+    for a in h.atoms()]
+  h, _, out = run('0A0_layout_D_nh3_one_conformer_rebuilt', pdb_str,
+    'approach=add', 'keep_existing_H=False')
+  assert h_on_n(h) == ['HN1', 'HN2', 'HN3'], h_on_n(h)
+  check_reread('0A0_layout_D_nh3_one_conformer_rebuilt', out, '0A0')
+
 def test_other_stop_unchanged():
   # the same layout with a duplicated GLY CA (the reviewer's case): the
   # duplicate-atom stop comes first and is passed on unchanged
@@ -793,6 +831,35 @@ def test_other_stop_unchanged():
   else:
     raise AssertionError('no stop')
 
+def test_old_reduce_input():
+  # NPH-VAL as ready_set (old reduce) writes it, H and H2 on N (NPH's H3 is
+  # on C3): add rebuilds the terminus as H, H2, HN3; optimize with
+  # keep_existing_H keeps the supplied H and H2 (old reduce's planar sites),
+  # the terminus's own names (no unknown-atom line); both read again with
+  # NH3-NPH and every H restrained
+  supplied = iotbx.pdb.input(source_info=None,
+    lines=tml.pdb_nph_old_reduce).construct_hierarchy()
+  sites = dict((a.name.strip(), a.xyz) for a in first_rg(supplied).atoms())
+  for label, args, names in (
+      ('add', (), ['H', 'H2', 'HN3']),
+      ('optimize', ('approach=optimize', 'keep_existing_H=True'),
+        ['H', 'H2'])):
+    h, description, out = run('NPH_old_reduce_' + label,
+      tml.pdb_nph_old_reduce, *args)
+    assert h_on_n(h) == names, (label, h_on_n(h))
+    assert 'listed as unknown atoms' not in description, description
+    assert 'name collision unresolved' not in description, description
+    ag = first_rg(h).atom_groups()[0]
+    assert ag.get_atom('H3').distance(ag.get_atom('C3')) < 1.2, label
+    if label == 'add':
+      check_reread('NPH_old_reduce_add', out, 'NPH')
+      continue
+    for x in names:
+      assert ag.get_atom(x).xyz == sites[x], (x, ag.get_atom(x).xyz)
+    m, residue_names = reread(out)
+    assert 'NPH%NH3-NPH' in residue_names, residue_names
+    assert unrestrained_h(m) == [], unrestrained_h(m)
+
 if __name__ == '__main__':
   test_converted_termini()
   test_standard_terminus()
@@ -810,5 +877,7 @@ if __name__ == '__main__':
   test_mixed_imine()
   test_blank_n_ca_supplied_split()
   test_supplied_nh3_in_one_conformer()
+  test_restraint_file_not_kept()
   test_other_stop_unchanged()
+  test_old_reduce_input()
   print('OK')

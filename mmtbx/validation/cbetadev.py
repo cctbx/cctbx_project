@@ -345,10 +345,15 @@ class cbetadev(validation):
             result.deviation, result.dihedral, dev, dihedralNABB)
           start = (result.deviation >= 0.25)
           finish = (dev >= 0.25)
+          # one entry per conformer, as in the number of outliers, so the
+          # altloc tells conformers of the same residue apart
+          conformer_id = r.rg.id_str()
+          if altchar.strip():
+            conformer_id = '%s %s' % (conformer_id.rstrip(), altchar)
           if start and not finish:
-            outliers_removed.append([r.rg.id_str(), r.phi_psi])
+            outliers_removed.append([conformer_id, r.phi_psi])
           elif not start and finish:
-            new_outliers.append([r.rg.id_str(), r.phi_psi])
+            new_outliers.append([conformer_id, r.phi_psi])
           if display_phi_psi_correction and (start or finish):
             c = r.correction
             cbd_utils.show_phi_psi_correction(residue, r.phi_psi,

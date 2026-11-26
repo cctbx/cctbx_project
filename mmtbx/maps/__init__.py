@@ -198,6 +198,14 @@ maps {
       will only affect the LLG map from Phaser.
   bulk_solvent_correction = True
     .type = bool
+  squeeze = False
+    .type = bool
+    .short_caption = Squeeze (final model only)
+    .help = Add positive mFo-DFc density in the solvent region that cannot \
+      be modelled with atoms to F_model, with a fitted scale and B (as \
+      PLATON SQUEEZE does). Maps are cleaner elsewhere. Only for a \
+      complete, final model: it hides what is not built yet in the solvent \
+      region. Used only if the data resolution is 1.1 A or better.
   anisotropic_scaling = True
     .type = bool
   skip_twin_detection = False

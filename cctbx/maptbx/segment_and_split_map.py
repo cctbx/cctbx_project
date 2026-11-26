@@ -3473,7 +3473,7 @@ def optimize_center_position(map_data, sites_orth, crystal_symmetry,
           identify_ncs_id = identify_ncs_id,
           ncs_in_cell_only = ncs_in_cell_only,
           sites_orth = sites_orth, crystal_symmetry = crystal_symmetry, out = out)
-        if cc_avg < min_ncs_cc:
+        if cc_avg is None or cc_avg < min_ncs_cc:
           score = 0. # Do not allow low CC values to be used
       else:
         ncs_obj = None
@@ -4733,7 +4733,7 @@ def get_ncs_closest_sites(
 
   """Try to find NCS ops mapping sites_cart close to closest_sites"""
 
-  best_id = None
+  best_ncs_id = None
   best_rms = None
   best_sites = closest_sites.deep_copy()
   for ncs_id in range(box_ncs_object.max_operators()):
@@ -4750,7 +4750,8 @@ def get_ncs_closest_sites(
       best_rms = rms
       best_ncs_id = ncs_id
       best_sites = test_sites.deep_copy()
-  used_ncs_id_list.append(best_ncs_id)
+  if best_ncs_id is not None: # None if all operators are already used
+    used_ncs_id_list.append(best_ncs_id)
   return best_sites, used_ncs_id_list
 
 def get_closest_sites(
@@ -4931,6 +4932,7 @@ def get_bounds_for_au_box(params,
     sites_orig = closest_sites.deep_copy()
     used_ncs_id_list = [box_ncs_object.ncs_groups()[0].identity_op_id()]
     for i in range(params.segmentation.n_au_box-1):
+      n_used = len(used_ncs_id_list)
       closest_sites, used_ncs_id_list = get_ncs_closest_sites(
         used_ncs_id_list = used_ncs_id_list,
         closest_sites = closest_sites,
@@ -4938,8 +4940,11 @@ def get_bounds_for_au_box(params,
         box_ncs_object = box_ncs_object,
         box_crystal_symmetry = box_crystal_symmetry,
         out = out)
+      if len(used_ncs_id_list) == n_used:
+        break # all operators used: fewer than n_au_box are available
     print("\nNew total of %d sites representing %d au found" %(
-      closest_sites.size(), params.segmentation.n_au_box), file = out)
+      closest_sites.size(), closest_sites.size()//sites_orig.size()),
+      file = out)
     print("New rmsd: %7.1f A " %(
        radius_of_gyration_of_vector(closest_sites)), file = out)
 
@@ -8200,16 +8205,24 @@ def write_output_files(params,
      params.output_files.shifted_map_file)), file = out)
 
 
-   print("\nThe standard maps (%s, %s) have the \noriginal cell dimensions." %(
-   os.path.join(tracking_data.params.output_files.output_directory, au_mask_output_file),
-   os.path.join(tracking_data.params.output_files.output_directory, au_map_output_file))+\
-   "\nThese maps show only the unique (NCS AU) part of the map.", file = out)
+   # Any of these files can be turned off (name is None): list those written
+   box_file_names = []
+   for file_name in (params.output_files.box_mask_file,
+       params.output_files.box_map_file):
+     if file_name:
+       box_file_names.append(os.path.join(
+         tracking_data.params.output_files.output_directory, file_name))
 
-   print("\nThe cut out box_maps (%s, %s) have \nsmaller cell dimensions." %(
-      os.path.join(tracking_data.params.output_files.output_directory, params.output_files.box_mask_file),
-      os.path.join(tracking_data.params.output_files.output_directory, params.output_files.box_map_file), ) +\
-   "\nThese maps also show only the unique part of the map and have this"+\
-   "\nunique part cut out.\n", file = out)
+   if au_mask_output_file and au_map_output_file:
+     print("\nThe standard maps (%s, %s) have the \noriginal cell dimensions." %(
+     au_mask_output_file, au_map_output_file)+\
+     "\nThese maps show only the unique (NCS AU) part of the map.", file = out)
+
+   if box_file_names:
+     print("\nThe cut out box_maps (%s) have \nsmaller cell dimensions." %(
+      ", ".join(box_file_names)) +\
+     "\nThese maps also show only the unique part of the map and have this"+\
+     "\nunique part cut out.\n", file = out)
 
 
   # Write out NCS AU with shifted origin but initial crystal_symmetry
@@ -8350,11 +8363,15 @@ def write_output_files(params,
 
   # Write out all the selected regions
   if params.output_files.write_output_maps:
+    box_file_names = []
+    for file_name in (params.output_files.box_map_file,
+        params.output_files.box_mask_file):
+      if file_name:
+        box_file_names.append(os.path.join(
+          tracking_data.params.output_files.output_directory, file_name))
     print("\nWriting out region maps. "+\
       "These superimpose on the NCS AU map \nand "+\
-      "mask %s, %s\n" %(
-        os.path.join(tracking_data.params.output_files.output_directory, params.output_files.box_map_file),
-        os.path.join(tracking_data.params.output_files.output_directory, params.output_files.box_mask_file), ), file = out)
+      "mask %s\n" %(", ".join(box_file_names)), file = out)
 
     map_files_written, remainder_regions_written = write_region_maps(params,
       map_data = map_data,
@@ -9859,6 +9876,8 @@ def select_box_map_data(si = None,
       assert si.density_select_in_auto_sharpen
       max_box_fraction = si.density_select_max_box_fraction
 
+    hierarchy = pdb_hierarchy # trimmed below if box_center is set
+
     #----------------------trimming model-------------------------------
     if si.box_center:  # Have model but center at box_center and trim hierarchy
       lower_bounds, upper_bounds = box_from_center(si = si,
@@ -9925,8 +9944,8 @@ def select_box_map_data(si = None,
       args.append('restrict_map_size = True')
     print("Getting map as box now", file = out)
     local_hierarchy = None
-    if pdb_hierarchy:
-       local_hierarchy = pdb_hierarchy.deep_copy()
+    if hierarchy:
+       local_hierarchy = hierarchy.deep_copy()
        # run_map_box modifies its argument
     assert isinstance(si.wrapping, bool) # wrapping must be defined
     box = run_map_box(args,
@@ -9947,8 +9966,8 @@ def select_box_map_data(si = None,
       box_pdb_hierarchy = None
     if first_half_map_data:
       print("Getting first map as box", file = out)
-      if pdb_hierarchy:
-        local_hierarchy = pdb_hierarchy.deep_copy() # required
+      if hierarchy:
+        local_hierarchy = hierarchy.deep_copy() # required
       box_first = run_map_box(args,
         map_data = first_half_map_data, pdb_hierarchy = local_hierarchy,
        write_output_files = False,
@@ -9963,8 +9982,8 @@ def select_box_map_data(si = None,
 
     if second_half_map_data:
       print("Getting second map as box", file = out)
-      if pdb_hierarchy:
-        local_hierarchy = pdb_hierarchy.deep_copy() # required
+      if hierarchy:
+        local_hierarchy = hierarchy.deep_copy() # required
       box_second = run_map_box(args,
         map_data = second_half_map_data, pdb_hierarchy = local_hierarchy,
        write_output_files = False,
@@ -10517,6 +10536,14 @@ def run_local_sharpening(si = None,
   Run on au of NCS and apply NCS to get remaining positions
   """
 
+  if pdb_hierarchy:
+    # Boxes from map_box with a model come back without their position in
+    #  the full map, so the local maps cannot be put back in place.
+    raise Sorry("Local sharpening with a model is not available in this "+
+      "version because the local boxes are not placed correctly.\n"+
+      "Please use model-based sharpening without local_sharpening, or "+
+      "local sharpening without a model.")
+
   print(80*"-", file = out)
   print("Running local sharpening", file = out)
   print(80*"-", file = out)
@@ -10571,10 +10598,21 @@ def run_local_sharpening(si = None,
     si.smoothing_radius = float("%.0f" %(dist*2/3)) # 10A from nearest neighbor
     print("Using %s A for smoothing radius" %(si.smoothing_radius), file = out)
 
+  # Specified sharpening (the "Using specified sharpening" case in
+  #  run_auto_sharpen) is not optimized locally.  If it was already applied
+  #  to the whole map above, do not apply it again in the local maps.
+  skip_local_maps = si.overall_before_local and si.sharpening_is_defined()
+  if skip_local_maps:
+    print("\nSpecified sharpening was applied to the whole map. It is not "+\
+      "applied again\nin local maps...skipping local maps",
+      file = out)
+
   i = -1
   for ub, lb, centers_ncs_cart, center_cart in zip(
     upper_bounds_list, lower_bounds_list, centers_cart_ncs_list, centers_cart):
     i+= 1
+    if skip_local_maps:
+      break
     if si.select_sharpened_map is not None and i !=  si.select_sharpened_map:
       continue
     map_file_name = 'sharpened_map_%s.ccp4' %(i)
@@ -10596,6 +10634,10 @@ def run_local_sharpening(si = None,
       local_si.max_box_fraction = 999 # just bigger than 1
       local_si.density_select_max_box_fraction = 999
       local_si.nproc = 1
+      if local_si.sharpening_is_defined():
+        # auto_sharpen is turned off if sharpening is specified, but it is
+        #  required to get the box.  No search is done in this case
+        local_si.auto_sharpen = True
       print(80*"+", file = out)
       print("Getting local sharpening for box %s" %(i), file = out)
       print(80*"+", file = out)
@@ -11496,6 +11538,14 @@ def run_auto_sharpen(
     best_si.sharpen_and_score_map(map_data = map_data,
           out = out).show_score(out = out)
     best_si.show_summary(out = out)
+    if return_bsi and box_sharpening_info_obj:
+      # save the sharpened map, it is the result
+      final_b_iso = best_si.b_iso
+      if final_b_iso is None:
+        final_b_iso = original_b_iso - (best_si.b_sharpen or 0.)
+      best_map_and_b = map_and_b_object(map_data = best_si.map_data,
+        starting_b_iso = original_b_iso,
+        final_b_iso = final_b_iso)
 
   else:
     if best_si.is_model_sharpening():
@@ -12211,7 +12261,7 @@ def run(args,
           params.output_files.shifted_ncs_file)
     else:
       shifted_ncs_file = None
-    if params.output_files.shifted_ncs_file:
+    if params.output_files.shifted_pdb_file:
         shifted_pdb_file = os.path.join(
           tracking_data.params.output_files.output_directory,
           params.output_files.shifted_pdb_file)

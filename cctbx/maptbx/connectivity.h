@@ -788,110 +788,76 @@ public:
     }
   }
 
-  void merge_symmetry_related_regions(cctbx::sgtbx::space_group &space_group)
+  /*
+  Regions related by space group symmetry get the same number. The map must
+  be the whole unit cell. New numbers are 1..M, in the order of the smallest
+  old number of each set of related regions; 0 (below threshold) stays 0.
+  Volumes are recomputed; maximum values and their coordinates are cleared.
+
+  A symmetry operation maps a region onto a region, so it is enough to look
+  where one point of each region goes. Sets of related regions are found
+  with union-find, so the result does not depend on the order in which
+  regions and operations are visited.
+  */
+  void merge_symmetry_related_regions(
+    cctbx::sgtbx::space_group const& space_group)
   {
-    // copy-paste from asymmetric_map.cpp asymmetric_map::grid_symops()
-    // sgtbx::space_group group = this->space_group();
-    unsigned short order = space_group.order_z();
-    CCTBX_ASSERT( order>0 );
     const int3 n = map_dimensions;
-    CCTBX_ASSERT( n[0]>0 && n[1]>0 && n[2] >0 );
-    std::vector<cctbx::sgtbx::grid_symop> symops;
-    symops.reserve(order);
-    for(size_t i=0; i<order; ++i)
-    {
-      sgtbx::grid_symop grsym( space_group(i), n );
-      symops.push_back(grsym);
+    CCTBX_ASSERT(n[0]>0 && n[1]>0 && n[2]>0);
+    CCTBX_ASSERT(space_group.order_z()>0);
+    int n_regions = static_cast<int>(region_vols.size());
+    std::size_t size = map_new.size();
+    std::size_t nz = static_cast<std::size_t>(n[2]);
+    std::size_t ny = static_cast<std::size_t>(n[1]);
+    int* labels = map_new.begin();
+    // one point of each region
+    std::vector<long> first(n_regions, -1);
+    for(std::size_t i = 0; i < size; i++) {
+      int l = labels[i];
+      CCTBX_ASSERT(l >= 0 && l < n_regions);
+      if(first[l] < 0) first[l] = static_cast<long>(i);
     }
-    CCTBX_ASSERT( symops.size() == order );
-    // return symops;
-    // end of copy-paste
-    int n_regions = region_vols.size();
-    af::shared<int> remap_list(n_regions);
-    for (int i = 0; i < n_regions; i++) remap_list[i] = -1;
-    remap_list[0] = 0;
-    int cur_region_to_fill = 0;
-    for (int i = 1; i < n_regions; i++)
-    {
-      // std::cout << "loop # " << i <<"\n";
-      // for (int j = 0; j < n_regions; j++) std::cout << remap_list[j] <<", ";
-      // std::cout << "\n";
-      if (remap_list[i]<0) // not assigned yet
-      {
-        cur_region_to_fill += 1;
-        remap_list[i] = cur_region_to_fill;
-        // now remap all symmetry-related regions
-        int3 cur_coords = region_maximum_coors[i];
-        // cur_coords[2] = 17;
-        // std::cout << "  cur_coords " << cur_coords << "\n";
-        // If 0th symop is always self, we can start from 1...
-        for(size_t symop=0; symop<symops.size(); symop++)
-        {
-          bool mapped_with_self=false;
-          int3 sym_pos = symops[symop].apply_to(cur_coords);
-          scitbx::int3 pos_in_cell(sym_pos);
-          translate_into_cell(pos_in_cell, n);
-          int reg_on_map = map_new(pos_in_cell);
-          // std::cout << "    sym: " << sym_pos << " -> " << pos_in_cell
-          //           << " region " << reg_on_map << "\n";
-          // safeguarding a little
-          if (remap_list[reg_on_map] < 0 ) {
-            mapped_with_self = true;
-            remap_list[reg_on_map] = cur_region_to_fill;
-          }
-          else {
-            if (reg_on_map < i)
-            {
-              if (mapped_with_self) {
-                // This branch is not tested and not clear if needed at all,
-                // i.e. if there are such cases.
-                CCTBX_ASSERT(false);
-                int rl_value = cur_region_to_fill;
-                for (int j=0; j < n_regions; j++)
-                  if (remap_list[j] == rl_value) {
-                    remap_list[j] = reg_on_map;
-                  }
-              }
-              else {
-                remap_list[i] = reg_on_map;
-              }
-            }
-            else if (reg_on_map > i)
-            {
-              mapped_with_self = true;
-              remap_list[reg_on_map] = cur_region_to_fill;
-            }
-          }
-        }
+    // sets of regions related by symmetry
+    std::vector<int> parent(n_regions);
+    for(int l = 0; l < n_regions; l++) parent[l] = l;
+    for(std::size_t k = 1; k < space_group.order_z(); k++) {
+      sgtbx::grid_symop op(space_group(k), n);
+      for(int l = 1; l < n_regions; l++) {
+        if(first[l] < 0) continue;
+        std::size_t p = static_cast<std::size_t>(first[l]);
+        int3 j(static_cast<int>(p / (ny*nz)),
+               static_cast<int>((p / nz) % ny),
+               static_cast<int>(p % nz));
+        scitbx::int3 q(op.apply_to(j));
+        translate_into_cell(q, n);
+        int l2 = map_new(q[0], q[1], q[2]);
+        if(l2 <= 0) continue; // the map does not obey the symmetry here
+        int r1 = l, r2 = l2;
+        while(parent[r1] != r1) r1 = parent[r1];
+        while(parent[r2] != r2) r2 = parent[r2];
+        if(r1 == r2) continue;
+        if(r1 < r2) parent[r2] = r1;
+        else        parent[r1] = r2;
       }
     }
-    // Here we are done with remap_list, sanity check:
-    // std::cout << "remap_list\n";
-    for (int i = 0; i < n_regions; i++)
-    {
-      // std::cout << remap_list[i] << ", ";
-      CCTBX_ASSERT(remap_list[i] >=0);
+    // new numbers
+    std::vector<int> new_label(n_regions, 0);
+    int n_new = 0;
+    for(int l = 1; l < n_regions; l++) {
+      if(first[l] < 0) continue;
+      int r = l;
+      while(parent[r] != r) r = parent[r];
+      if(new_label[r] == 0) new_label[r] = ++n_new; // r <= l: seen first
+      new_label[l] = new_label[r];
     }
-    // std::cout << "\n";
-    // std::cout << "Correcting other info\n";
-    // Need to refill map_new, cut and adjust region_vols,
-    // cut region_maximum_values, region_maximum_coors
-    int new_n_regions = -1;
-    for (int i = 0; i < n_regions; i++)
-      if (remap_list[i]> new_n_regions) {
-        new_n_regions = remap_list[i];}
-    new_n_regions += 1;
-    region_vols.resize(new_n_regions);
+    region_vols.resize(n_new+1);
     region_maximum_values.resize(0);
     region_maximum_coors.resize(0);
-    for (int i=0; i<new_n_regions; i++) region_vols[i] = 0;
-    for (int i = 0; i < map_dimensions[0]; i++) {
-      for (int j = 0; j < map_dimensions[1]; j++) {
-        for (int k = 0; k < map_dimensions[2]; k++) {
-          map_new(i,j,k) = remap_list[map_new(i,j,k)];
-          region_vols[map_new(i,j,k)] += 1;
-        }
-      }
+    for(int i = 0; i <= n_new; i++) region_vols[i] = 0;
+    for(std::size_t i = 0; i < size; i++) {
+      int l = new_label[labels[i]];
+      labels[i] = l;
+      region_vols[l] += 1;
     }
   }
 

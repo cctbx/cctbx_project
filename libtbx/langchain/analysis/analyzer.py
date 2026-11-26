@@ -18,7 +18,6 @@ from __future__ import absolute_import, division, print_function
 from concurrent.futures import TimeoutError
 
 from langchain_core.prompts import PromptTemplate
-from google.api_core import exceptions as google_exceptions
 
 from libtbx import group_args
 # v118.G2: retriever functions moved to function-body scope below.
@@ -190,48 +189,33 @@ async def analyze_log_summary(log_info, llm, embeddings,
     )
 
   # --- EXCEPTION HANDLERS ---
-  except (TimeoutError, google_exceptions.DeadlineExceeded) as e:
-    error_message = (
-      "Network timeout with Google. "
-      "You might try increasing the timeout in Preferences or in "
-      f"AnalyzeLog (currently {timeout} sec)."
-    )
-    print(error_message)
-    return group_args(
-      group_args_type='answer',
-      analysis=None,
-      error=error_message
-    )
-
-  except google_exceptions.ResourceExhausted as e:
-    # Log full details for debugging, return clean user message.
-    # No period before the action text — contains_sorry() in rest/__init__.py
-    # truncates at the first '.' or '\n' and appends "Please wait a minute"
-    # unless "please" already appears in the first chunk.
-    print(f"Google API quota exceeded. Full error: {e}")
-    error_message = (
-      "Google API quota exceeded, please try another provider "
-      "(eg provider=openai) or wait for quota reset"
-    )
-    print(error_message)
-    return group_args(
-      group_args_type='answer',
-      analysis=None,
-      error=error_message
-    )
-
   except Exception as e:
+    import httpx  # a langchain_core dependency
     e_str = str(e)
     e_lower = e_str.lower()
+    # A Google request that overruns the timeout fails in httpx on the
+    # client, or with DEADLINE_EXCEEDED if the server's copy of the
+    # timeout expires first
+    _is_timeout = (isinstance(e, (TimeoutError, httpx.TimeoutException)) or
+                   getattr(e, 'status', None) == "DEADLINE_EXCEEDED")
     # Langchain wraps google quota errors as generic exceptions with
-    # "RESOURCE_EXHAUSTED" in the message — the ResourceExhausted branch
-    # above only catches the raw google exception.
+    # "RESOURCE_EXHAUSTED" in the message.
     _is_quota = (
       "resource_exhausted" in e_lower or
       ("quota" in e_lower and "exceeded" in e_lower)
     )
-    if _is_quota:
+    if _is_timeout:
+      error_message = (
+        "Network timeout with Google. "
+        "You might try increasing the timeout in Preferences or in "
+        f"AnalyzeLog (currently {timeout} sec)."
+      )
+    elif _is_quota:
       # Log full details for debugging, return clean user message.
+      # No period before the action text — contains_sorry() in
+      # rest/__init__.py truncates at the first '.' or '\n' and appends
+      # "Please wait a minute" unless "please" already appears in the
+      # first chunk.
       print(f"Google API quota exceeded. Full error: {e_str}")
       error_message = (
         "Google API quota exceeded, please try another provider "

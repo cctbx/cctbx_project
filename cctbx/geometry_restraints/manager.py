@@ -1295,11 +1295,18 @@ class manager(Base_geometry):
     t6 = time.time()
     # print('n_added_proxies', n_added_proxies)
     # update self.shell_sym_tables with new bonds
-    shell_asu_tables = crystal.coordination_sequences.shell_asu_tables(
-      pair_asu_table=all_bonds_asu_table,
+    # 1-3 and 1-4 pairs are derived from symmetry operations of the bonds
+    # and not from the asu mappings: the buffer covers bonded mates only,
+    # and a new bond makes 1-3 and 1-4 pairs that reach beyond it (1g6x:
+    # one of two copies of H of water bonded to water on 2-fold axis).
+    shell_sym_tables = crystal.coordination_sequences.shell_sym_tables(
+      full_pair_sym_table=all_bonds_asu_table.extract_pair_sym_table() \
+        .full_connectivity(site_symmetry_table=self.site_symmetry_table),
+      site_symmetry_table=self.site_symmetry_table,
       max_shell=3)
-    self.shell_sym_tables = [shell_asu_table.extract_pair_sym_table()
-      for shell_asu_table in shell_asu_tables]
+    self.shell_sym_tables = [
+      shell_sym_table.tidy(site_symmetry_table=self.site_symmetry_table)
+      for shell_sym_table in shell_sym_tables]
     self.reset_internals()
     # Run this function so that new pair_proxies are ready to go
     t61 = time.time()

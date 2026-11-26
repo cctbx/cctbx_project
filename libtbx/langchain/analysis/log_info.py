@@ -10,7 +10,6 @@ import os
 import asyncio
 
 import openai
-from google.api_core import exceptions as google_exceptions
 
 from libtbx import group_args
 from libtbx.langchain.analysis.summarizer import summarize_log_text
@@ -95,20 +94,24 @@ async def get_log_info(text, llm, embeddings, timeout: int = 120,
   except Exception as e:
     # Inspect the exception's original cause to find the specific error
     original_cause = getattr(e, '__cause__', None)
+    # langchain-google-genai chains the google-genai error, which names
+    # the API status in its status attribute
+    google_status = getattr(original_cause, 'status', None)
+    msg = str(e)
 
-    if isinstance(original_cause, google_exceptions.PermissionDenied):
+    # A zero quota is also RESOURCE_EXHAUSTED, so test for it first
+    if "free_tier_requests, limit: 0" in msg:
+      error_message = "Google API key is not activated"
+    elif "limit: 0" in msg:
+      error_message = "Google AI API key has a zero quota"
+    elif google_status == "PERMISSION_DENIED":
       error_message = "Google AI API key is invalid"
-    elif isinstance(original_cause, google_exceptions.ResourceExhausted):
+    elif google_status == "RESOURCE_EXHAUSTED":
       error_message = "Google AI API quota exceeded"
     else:
       # Handle any other general exception
-      msg = str(e)
       if "API_KEY_INVALID" in msg or "API_KEY_IP_ADDRESS_BLOCKED" in msg:
         error_message = "Google API key is invalid"
-      elif "free_tier_requests, limit: 0" in msg:
-        error_message = "Google API key is not activated"
-      elif "limit: 0" in msg:
-        error_message = "Google AI API key has a zero quota"
       elif "request timed out" in msg:
         error_message = "Summarizing timed out."
       else:

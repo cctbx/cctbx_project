@@ -159,12 +159,23 @@ jobs:
           libtbx.scons -j 4
           libtbx.scons -j 4
 
+      # run times of the tests from the latest run on master, so that the
+      # longest tests start first; only runs on master save them
+      - name: Restore test timings
+        uses: actions/cache/restore@v5
+        with:
+          path: ./timings
+          key: test-timings-${{ runner.os }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            test-timings-${{ runner.os }}-
+
       - name: Run tests
         id: run_tests
         run: |
           set -xe
           pwd
           source ./build/setpaths.sh
+          mkdir -p timings
           rm -fr tests
           mkdir tests
           cd tests
@@ -188,7 +199,15 @@ jobs:
             module=spotfinder \
             module=xcif \
             max_retries=2 \
-            nproc=4
+            nproc=4 \
+            timings=../timings/timings.csv
+
+      - name: Save test timings
+        if: ${{ !cancelled() && github.ref == 'refs/heads/master' && steps.run_tests.outcome != 'skipped' }}
+        uses: actions/cache/save@v5
+        with:
+          path: ./timings
+          key: test-timings-${{ runner.os }}-${{ github.run_id }}-${{ github.run_attempt }}
 
       - name: Save test directory
         if: ${{ failure() && steps.run_tests.outcome == 'failure' }}
@@ -345,6 +364,16 @@ jobs:
           call libtbx.scons -j 4
           if %errorlevel% neq 0 exit /b %errorlevel%
 
+      # run times of the tests from the latest run on master, so that the
+      # longest tests start first; only runs on master save them
+      - name: Restore test timings
+        uses: actions/cache/restore@v5
+        with:
+          path: ./timings
+          key: test-timings-${{ runner.os }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            test-timings-${{ runner.os }}-
+
       - name: Run tests
         id: run_tests
         shell: cmd
@@ -356,6 +385,7 @@ jobs:
             call "C:\Program Files\Microsoft Visual Studio\18\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
           )
           call .\build\setpaths.bat
+          if not exist timings mkdir timings
           rmdir /S /Q tests
           mkdir tests
           cd tests
@@ -379,8 +409,16 @@ jobs:
             module=spotfinder ^
             module=xcif ^
             max_retries=2 ^
-            nproc=4
+            nproc=4 ^
+            timings=..\timings\timings.csv
           if %errorlevel% neq 0 exit /b %errorlevel%
+
+      - name: Save test timings
+        if: ${{ !cancelled() && github.ref == 'refs/heads/master' && steps.run_tests.outcome != 'skipped' }}
+        uses: actions/cache/save@v5
+        with:
+          path: ./timings
+          key: test-timings-${{ runner.os }}-${{ github.run_id }}-${{ github.run_attempt }}
 
       - name: Save test directory
         if: ${{ failure() && steps.run_tests.outcome == 'failure' }}

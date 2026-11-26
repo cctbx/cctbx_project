@@ -127,10 +127,14 @@ def exercise():
   mas = iotbx.mtz.object(file_name="tst_diffuse.mtz").as_miller_arrays()
   assert len(mas) == 1
   ma = mas[0]
-  assert ma.data().size() == 937, ma.data().size()
+  # Intensities are truncated to integers and zeros are not written: the
+  # number of reflections depends on tiny changes of structure factors
+  # (it was 937 before the table of exponents got interpolated: (2,10,0)
+  # with intensity 1 is gone).
+  assert ma.data().size() == 936, ma.data().size()
   assert approx_equal(ma.d_max_min(), (32.728, 4.0), 1.e-3)
   assert approx_equal((ma.data()/1000.).min_max_mean().as_tuple(),
-    (0.001, 6.116, 0.35454), 1.e-3)
+    (0.001, 6.123, 0.354912), 1.e-3)
   assert ma.info().labels == ['I', 'SIGI']
   assert approx_equal(ma.unit_cell().parameters(),
     (50.84,42.77,28.95,90.0,90.0,90.0), 1.e-2)

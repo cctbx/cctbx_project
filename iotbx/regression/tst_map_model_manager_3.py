@@ -470,14 +470,14 @@ def exercise(file_name, out = sys.stdout):
   dc.duplicate_map_manager(map_id='map_manager',new_map_id='filtered')
   dc.resolution_filter(d_min=3.5, d_max=6, map_id='filtered')
   cc=dc.map_map_cc('map_manager','filtered')
-  assert approx_equal(cc , 0.6504435255003295)
+  assert approx_equal(cc , 0.6504609573362932)
 
   # Get map-map CC with mask
   dc=mam_dc.deep_copy()
   dc.duplicate_map_manager(map_id='map_manager',new_map_id='filtered')
   dc.create_mask_around_density(mask_id='filtered')
   cc=dc.map_map_cc('map_manager','filtered',mask_id='mask')
-  assert approx_equal(cc , 0.4515628372038732)
+  assert approx_equal(cc , 0.4515812627082132)
 
   # box around model
   mam=mam_dc.deep_copy()
@@ -624,14 +624,14 @@ def exercise(file_name, out = sys.stdout):
       selection_string="(name ca or name cb or name c or name o) "+
         "and resseq 221:221", box_cushion=0)
   cc=dc.map_model_cc(resolution=3)
-  assert approx_equal (cc, 0.817089390421)
+  assert approx_equal (cc, 0.817359772712)
 
   # Get map-model density
   dc=mam_dc.extract_all_maps_around_model(
       selection_string="(name ca or name cb or name c or name o) "+
         "and resseq 221:221", box_cushion=0)
   density=dc.density_at_model_sites(selection_string = 'name ca')
-  assert approx_equal (density.min_max_mean().mean, 0.841152333991)
+  assert approx_equal (density.min_max_mean().mean, 0.841406867401)
 
 
   # Remove model outside map
