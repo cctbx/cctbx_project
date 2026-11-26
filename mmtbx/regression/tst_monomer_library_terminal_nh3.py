@@ -1839,9 +1839,11 @@ def test_2kz_carbon_h():
   assert 'H1' not in bonded and 'H3' not in bonded, bonded
 
 def test_scy():
-  # H2 on N in the dictionary: mod_NH3 still applies and replaces it
+  # H2 on N in the dictionary: mod_NH3 still applies and replaces it. Without
+  # OXT in GeoStd's SCY (phenix-project/geostd#1) the model's OXT also takes
+  # mod_COO, as for a standard residue
   names, bonded, h, _ = interpret(pdb_scy)
-  assert 'SCY%NH3' in names, names
+  assert 'SCY%NH3' in names or 'SCY%COO%NH3' in names, names
   for x in ('H1', 'H2', 'H3'):
     assert bonded.get(x) == ['N'], (x, bonded.get(x))
 
