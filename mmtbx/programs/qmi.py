@@ -124,22 +124,6 @@ best pass is always kept."
 still-clashing waters and keep the best result (0 = off). Deterministic; helps \
 only where a better orientation exists."
     }
-    lone_pair = False
-      .type = bool
-      .expert_level = 2
-      .help = "Aim each O-H at an acceptor's lone pair rather than at the \
-acceptor atom, for better hydrogen-bond angles."
-    joint = False
-      .type = bool
-      .expert_level = 2
-      .help = "Optimize both O-H of a water together instead of one after the \
-other, for a better fit to two acceptors at once. Slower; falls back to the \
-simpler method in crowded pockets."
-    stats = False
-      .type = bool
-      .expert_level = 2
-      .help = "After placement, print the per-pass water-H clash summary and \
-list the residual inter-water H-H contacts (grouped by 1.5/1.8/2.0 A)."
   }
 }
 qm
@@ -409,14 +393,9 @@ Requires xtb.
       scope = set(qmi_metals.METALS)
       if element_filter:
         scope &= {e.strip().capitalize() for e in element_filter}
-      wp = self.params.protonation.water
       model = protonation.prepare_model(
-        model, metals=scope, coord_cutoff=coord_cutoff, log=self.logger,
-        water_kwargs=dict(
-          n_refine=wp.refine.max_sweeps, refine_tol=wp.refine.tolerance,
-          n_basin=wp.basin.rounds, lone_pair_directed=wp.lone_pair,
-          joint=wp.joint,
-          report_stats=wp.stats))
+        model, metals=scope, water=self.params.protonation.water,
+        coord_cutoff=coord_cutoff, log=self.logger)
 
     self._builder = QMRestraintsBuilder(
       metal_element=element_filter or None,
@@ -467,7 +446,7 @@ Requires xtb.
     tool/method, xtb + cctbx versions, model, protonation source/opt-out, then
     the effective region/freeze partition and per-engine optimisation knobs."""
     from mmtbx.geometry_restraints.qmi import provenance, qm
-    proto = ("reduce2 + naiad water-H + metal-donor deprotonation"
+    proto = ("reduce2 + qmi metal-donor deprotonation"
              if self.params.protonation.enable
              else "user-supplied (protonation off)")
     if self.params.qm.engine == 'orca':

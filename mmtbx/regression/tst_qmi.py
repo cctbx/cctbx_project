@@ -878,17 +878,13 @@ def exercise_deprotonation_donor_families():
 
 
 def exercise_water_protonation():
-  hier = _model(_WATER_METAL_PDB).get_hierarchy()
-  assert protonation.protonate_waters(hier, log=null_out()) == 2
-  assert protonation.protonate_waters(hier, log=null_out()) == 0   # idempotent
-  atoms = list(hier.atoms())
-  o = next(a for a in atoms if a.name.strip() == "O")
-  zn = next(a for a in atoms if a.element.strip().capitalize() == "Zn")
-  ov = (matrix.col(zn.xyz) - matrix.col(o.xyz)).normalize()
-  # cation-aware: both H sit in the hemisphere away from the metal.
-  for hh in [a for a in atoms if a.element.strip().upper() == "H"]:
-    hv = (matrix.col(hh.xyz) - matrix.col(o.xyz)).normalize()
-    assert hv.dot(ov) <= 0.0, hv.dot(ov)
+  """reduce2 adds the water H for qmi: a metal-coordinating water comes back
+  as H2O."""
+  model = protonation.add_hydrogens(_model(_WATER_METAL_PDB))
+  water = [a for a in model.get_hierarchy().atoms()
+           if a.parent().resname.strip() == "HOH"]
+  assert sorted(a.element.strip() for a in water) == ["H", "H", "O"], (
+    [a.name for a in water])
 
 
 # ---------------------------------------------------------------------------

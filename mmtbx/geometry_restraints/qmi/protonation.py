@@ -15,20 +15,11 @@ protonation prep from the calibration ``prepare_qm_calcs.py``:
   -NH2. The RULES for all of this are
   :mod:`mmtbx.geometry_restraints.qmi.metal_protonation`; what stays here is
   qmi's policy (which metals are in scope, which cutoff) and its reporting.
-- ``protonate_waters``: place H on bare waters (H-bond and cation aware) via
-  the naiad placer, so a coordinating water is neutral H2O with its H kept off
-  the metal.
-- ``prepare_model``: the single entry point the Program calls (reduce2 +
-  water H + metal-donor deprotonation), returning a fresh model.
+- ``prepare_model``: ``add_hydrogens``, then ``deprotonate_metal_donors``,
+  returning a fresh protonated model.
 
 The Program's validate() guard uses ``mmtbx.model.manager.has_hd()`` to decide
 whether the model is already protonated.
-
-INTERIM: water H come from the qmi-local ``naiad`` copy of
-``place_water_hydrogens``; that placer is being reworked into reduce2. Once
-reduce2 places good water H, request it inside ``add_hydrogens`` and delete the
-marked ``protonate_waters`` call in ``prepare_model`` (and the ``qmi/naiad``
-copy). No other qmi code, and no caller, changes.
 """
 
 from libtbx.utils import null_out
@@ -49,13 +40,11 @@ from mmtbx.geometry_restraints.qmi import util
 # caller depends on.
 
 
-def add_hydrogens(model, use_neutron_distances=True, log=None):
+def add_hydrogens(model, water=None, use_neutron_distances=True, log=None):
   """Add hydrogens to *model* with reduce2 and return the H-completed
-  ``mmtbx.model.manager``; *model* itself is left as it was.
-
-  Neutron X-H distances by default (closer to the QM-optimal positions the
-  downstream optimisation relaxes to). reduce2 runs in process on the model in
-  memory and writes no files.
+  ``mmtbx.model.manager``; *model* itself is left as it was. Neutron X-H
+  distances by default; *water* sets reduce2's water H placement (None: its
+  defaults).
   """
   from iotbx.cli_parser import CCTBXParser
   from mmtbx.programs import reduce2
@@ -64,83 +53,19 @@ def add_hydrogens(model, use_neutron_distances=True, log=None):
   print(f"  adding hydrogens: reduce2 {reduce2.version}, "
         f"use_neutron_distances={use_neutron_distances}", file=log)
   parser = CCTBXParser(program_class=reduce2.Program, logger=null_out())
-  parser.parse_args([f"use_neutron_distances={use_neutron_distances}",
-                     "output.write_files=False"])
+  args = [f"use_neutron_distances={use_neutron_distances}",
+          "add_h_to_water=True", "output.write_files=False"]
+  if water is not None:
+    args += [f"water_hydrogens.refine.max_sweeps={water.refine.max_sweeps}",
+             f"water_hydrogens.refine.tolerance={water.refine.tolerance}",
+             f"water_hydrogens.basin.rounds={water.basin.rounds}"]
+  parser.parse_args(args)
   parser.data_manager.add_model("qmi", model)
   program = reduce2.Program(
     parser.data_manager, parser.working_phil.extract(), logger=null_out())
   program.validate()
   program.run()
   return program.get_results().model
-
-
-# ---------------------------------------------------------------------------
-# water protonation (naiad)
-# ---------------------------------------------------------------------------
-def _count_water_h(hier):
-  n = 0
-  for ag in hier.atom_groups():
-    if common_residue_names_get_class(ag.resname) != "common_water":
-      continue
-    for a in ag.atoms():
-      if a.element_is_hydrogen():
-        n += 1
-  return n
-
-
-def protonate_waters(hier, n_refine=5, refine_tol=1, n_basin=0,
-                     lone_pair_directed=False, joint=False,
-                     report_stats=False, log=None):
-  """Place the two H on every bare water IN PLACE, H-bond-aware and cation-aware
-  (the H are kept off coordinating metals), via the naiad placer.
-
-  reduce2 leaves waters bare, so a metal-coordinating water would otherwise be
-  read as an oxide/hydroxide by the charge accounting; protonating it to a
-  neutral H2O with its H directed away from the metal fixes the cluster charge.
-  Idempotent (waters already carrying H are untouched). Returns the number of
-  water H atoms added.
-
-  *n_refine* / *refine_tol* / *n_basin* / *lone_pair_directed* / *joint* are the
-  placement-quality knobs forwarded to
-  :func:`...naiad.water_protonation.place_water_hydrogens` (defaults match it).
-  With *report_stats*, the per-sweep water-H clash table is streamed and the
-  residual inter-water H-H contacts are listed afterwards (grouped by
-  1.5/1.8/2.0 A), mirroring the naiad water_protonation Program.
-  """
-  if log is None:
-    log = null_out()
-  from mmtbx.geometry_restraints.qmi.naiad import water_protonation
-  before = _count_water_h(hier)
-
-  on_state = None
-  if report_stats:
-    header = {"printed": False}
-    def on_state(label, stats):
-      if not header["printed"]:
-        print(f"  water H clash report ({stats[0]} placed; H-H between "
-              f"different waters):", file=log)
-        header["printed"] = True
-      water_protonation._clash_row(label, stats, log)
-
-  water_protonation.place_water_hydrogens(
-    hier, n_refine=n_refine, refine_tol=refine_tol, n_basin=n_basin,
-    lone_pair_directed=lone_pair_directed, joint=joint, on_state=on_state)
-  added = _count_water_h(hier) - before
-  print(f"  placed {added} water hydrogen(s)", file=log)
-  if report_stats:
-    contacts = water_protonation._worst_water_clashes(hier)
-    if not contacts:
-      print("  no water-H contacts < 2.0 A", file=log)
-    else:
-      print("  residual water-H contacts:", file=log)
-      for label, lo, hi in (("< 1.5 A", 0.0, 1.5),
-                            ("1.5-1.8 A", 1.5, 1.8),
-                            ("1.8-2.0 A", 1.8, 2.0)):
-        band = [c for c in contacts if lo <= c[0] < hi]
-        print(f"    {label} ({len(band)}):", file=log)
-        for d, id_a, id_b in band:
-          print(f"      {d:.2f} A  {id_a}  <->  {id_b}", file=log)
-  return added
 
 
 # ---------------------------------------------------------------------------
@@ -224,30 +149,19 @@ def deprotonate_metal_donors(hier, metals=None,
   return len(donors_fixed), len(his)
 
 
-def prepare_model(model, metals=None, water_kwargs=None, coord_cutoff=None,
+def prepare_model(model, metals=None, water=None, coord_cutoff=None,
                   log=None):
-  """Protonate a raw model for qmi and fix metal-donor protonation.
+  """Protonate a raw model for qmi and fix metal-donor protonation, returning a
+  fresh protonated model ready for cluster extraction.
 
-  Runs reduce2 (protein H), places water H, and deprotonates metal-coordinating
-  donors, returning a fresh model ready for cluster extraction. This is the one
-  entry point the Program calls, so the reduce2-vs-naiad split is hidden from
-  the caller: switching water H to reduce2 later touches only this function.
-
-  *metals* scopes the deprotonation (see :func:`deprotonate_metal_donors`);
-  *water_kwargs* is a dict forwarded to :func:`protonate_waters` (None uses its
-  defaults); *coord_cutoff* is the shared metal-donor cutoff callable (None uses
-  the fixed default).
+  *metals* and *coord_cutoff* scope the deprotonation (see
+  :func:`deprotonate_metal_donors`); *water* goes to :func:`add_hydrogens`.
   """
   import mmtbx.model
   if log is None:
     log = null_out()
-  model = add_hydrogens(model, log=log)
+  model = add_hydrogens(model, water=water, log=log)
   hier = model.get_hierarchy()
-  # --- INTERIM: qmi-local naiad water protonation. When reduce2 places good
-  #     water H, request it in add_hydrogens (so it returns a model with waters
-  #     already protonated) and delete the next call; nothing else changes. ---
-  protonate_waters(hier, log=log, **(water_kwargs or {}))
-  # -------------------------------------------------------------------------
   deprotonate_metal_donors(hier, metals=metals, coord_cutoff=coord_cutoff,
                            log=log)
   return mmtbx.model.manager(

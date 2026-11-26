@@ -32,9 +32,8 @@ Two design choices specific to qmi:
   long contact), while ``raw_cn`` (every shell donor) is the emitted M-L bond
   count. The QM charge/cluster still sees both O.
 
-Coordinate math uses scitbx flex arrays plus numpy (both ship with cctbx and are
-used by endo_exo and naiad). The N! permutation search is vectorised with a
-single batched numpy SVD rather than a per-permutation Python loop.
+Coordinate math uses scitbx flex arrays plus numpy (both ship with cctbx). The
+N! permutation search is vectorised with a single batched numpy SVD.
 """
 
 from math import sqrt, cos, sin, pi
