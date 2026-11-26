@@ -738,7 +738,13 @@ def fmodel_simple(f_obs,
                   bulk_solvent_correction  = True,
                   anisotropic_scaling      = True,
                   log                      = None,
-                  mosaic                   = False):
+                  mosaic                   = False,
+                  squeeze                  = False,
+                  water_selection          = None):
+  """
+  squeeze, water_selection: see mmtbx.f_model.manager.update_all_scales. Used
+  for one model without twinning only.
+  """
   if(r_free_flags is None):
     r_free_flags = f_obs.customized_copy(
       data = flex.bool(f_obs.data().size(), False))
@@ -766,7 +772,7 @@ def fmodel_simple(f_obs,
       twin_law       = None)
     fmodel.update_all_scales(params = bss_params, log = log,
         optimize_mask=optimize_mask, remove_outliers=outliers_rejection,
-        mosaic=mosaic)
+        mosaic=mosaic, squeeze=squeeze, water_selection=water_selection)
     r_work = fmodel.r_work()
     for twin_law in twin_laws:
       if(twin_law is not None):

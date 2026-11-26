@@ -387,6 +387,11 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
     self.mosaic_correction = None
     self.mosaic_correction_signature = None
     self._mosaic_result = None
+    # Squeeze: unmodelled solvent density as a contribution to F_model
+    # (mmtbx.bulk_solvent.squeeze); see update_all_scales(squeeze=True)
+    self.squeeze_correction = None
+    self.squeeze_signature = None
+    self._squeeze_result = None
     self.twin_law = twin_law
     self.twin_law_str = twin_law
     self.twin_fraction = twin_fraction
@@ -499,7 +504,8 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
     assert len(state) == 1
     # objects saved before these attributes existed
     for name in ["mosaic_correction", "mosaic_correction_signature",
-                 "_mosaic_result"]:
+                 "_mosaic_result", "squeeze_correction",
+                 "squeeze_signature", "_squeeze_result"]:
       self.__dict__[name] = None
     self.__dict__.update(state[0])
 
@@ -771,6 +777,13 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
         correction = self.mosaic_correction.select(selection),
         signature  = signature,
         result     = self._mosaic_result)
+    if(self._squeeze_result is not None):
+      signature = self.squeeze_signature
+      if(self.squeeze_is_current()):
+        signature = result.mosaic_signature()
+      result._set_squeeze(
+        result    = self._squeeze_result.select(selection),
+        signature = signature)
     if(in_place): # XXX USE THIS INSTEAD OF ABOVE
       # TODO: six.moves.zip this file
       for k, v in six.iteritems(self.__dict__):
@@ -1390,9 +1403,28 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
         show = False,
         verbose=None,
         log = None,
-        mosaic = False):
+        mosaic = False,
+        squeeze = False,
+        water_selection = None):
     """
     Overall and bulk-solvent scales.
+
+    squeeze : bool
+        True: positive mFo-DFc density in the solvent region is added to
+        F_model with a fitted scale and B (mmtbx.bulk_solvent.squeeze). It
+        is determined now, after bulk-solvent (flat or mosaic) and overall
+        scaling, and stored in this object (see f_squeeze, squeeze_result);
+        scales are optimized with it. Settings are taken from
+        params.squeeze. Skipped with a message in log if not applicable
+        (twinned or neutron data, data resolution).
+        False (default): nothing is determined. A stored contribution stays
+        part of F_model, as the mosaic correction does, until the mask is
+        computed again or the number of atoms changes. Use remove_squeeze()
+        to go back.
+    water_selection : flex.bool, optional
+        Water atoms of xray_structure; used by squeeze=True to compute its
+        solvent mask without water. None: the mask is computed from all
+        atoms.
 
     mosaic : bool
         True: use the mosaic bulk-solvent model
@@ -1431,12 +1463,15 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
       self.apply_scale_k1_to_f_obs()
     from mmtbx.bulk_solvent import f_model_all_scales
     mosaic_requested = mosaic
+    squeeze_requested = squeeze
     if(optimize_mask):
       # The mask is going to change: a stored mosaic correction belongs to
       # the regions of the current mask, and new regions are determined
-      # after the mask is final.
+      # after the mask is final. Same for squeeze.
       self.remove_mosaic()
+      self.remove_squeeze()
       mosaic = False
+      squeeze = False
     o = f_model_all_scales.run(
       fmodel               = self,
       apply_back_trace     = apply_back_trace,
@@ -1445,12 +1480,15 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
       params               = params,
       log                  = log,
       refine_hd_scattering = refine_hd_scattering,
-      mosaic               = mosaic)
+      mosaic               = mosaic,
+      squeeze              = squeeze,
+      water_selection      = water_selection)
     if(optimize_mask):
       self.optimize_mask(params=params, out=log, nproc=nproc, fast=fast,
         refine_hd_scattering=refine_hd_scattering)
       mosaic = mosaic_requested
-      if(mosaic):
+      squeeze = squeeze_requested
+      if(mosaic or squeeze):
         o = f_model_all_scales.run(
           fmodel               = self,
           apply_back_trace     = False,
@@ -1459,7 +1497,9 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
           params               = params,
           log                  = log,
           refine_hd_scattering = refine_hd_scattering,
-          mosaic               = True)
+          mosaic               = mosaic,
+          squeeze              = squeeze,
+          water_selection      = water_selection)
     if(remove_outliers and self.twin_law is None):
       for i in [1,2,3,4,5]:
         if(self.r_work_low()>0.7 and len(self.bin_selections)>1):
@@ -1471,6 +1511,12 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
             abcd = self.hl_coeffs().common_set(f_obs)
           mosaic_state = self._get_mosaic_arrays()
           mosaic_current = self.mosaic_correction_is_current()
+          squeeze_result = self._squeeze_result
+          squeeze_current = self.squeeze_is_current()
+          squeeze_signature = self.squeeze_signature
+          if(squeeze_result is not None):
+            squeeze_result = squeeze_result.select(
+              self.f_obs().resolution_filter_selection(d_max=ds_low))
           self.__init__(
              f_obs                        = f_obs,
              r_free_flags                 = self.r_free_flags().common_set(f_obs),
@@ -1500,11 +1546,18 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
               correction = c.common_set(f_obs),
               signature  = signature,
               result     = result)
+          if(squeeze_result is not None):
+            # squeeze=True below computes it again; else keep what was stored
+            if(squeeze_current): squeeze_signature = self.mosaic_signature()
+            self._set_squeeze(
+              result    = squeeze_result,
+              signature = squeeze_signature)
           o = f_model_all_scales.run(
             fmodel=self, apply_back_trace = apply_back_trace,
             remove_outliers = remove_outliers, fast = fast,
             params = params, log = log, refine_hd_scattering=refine_hd_scattering,
-            mosaic = mosaic)
+            mosaic = mosaic, squeeze = squeeze,
+            water_selection = water_selection)
     self.russ = o.russ
     return o.russ
 
@@ -1524,6 +1577,72 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
     self.mosaic_correction = None
     self.mosaic_correction_signature = None
     self._mosaic_result = None
+
+  def f_mosaic(self):
+    """
+    Correction of the mosaic bulk-solvent model to F_model, without the
+    overall scales: k_mask*sum_n (q_n-1) F_n (cctbx.miller.array, zero if
+    the mosaic model is not in use). It is part of f_bulk().
+    """
+    f_obs = self.f_obs()
+    if(self.mosaic_correction is None):
+      return f_obs.array(data = flex.complex_double(f_obs.data().size(), 0))
+    return f_obs.array(
+      data = self.k_masks()[0]*self.mosaic_correction.data())
+
+  def f_squeeze(self):
+    """
+    Squeeze contribution to F_model, without the overall scales:
+    k*exp(-B*s^2/4)*FT[unmodelled density in the solvent region]
+    (cctbx.miller.array, zero if squeeze is not in use). So that
+
+      F_model = k_total * (F_calc + F_bulk + F_squeeze [+ F_H]),
+
+    with f_bulk() being the bulk solvent, mosaic correction included.
+    """
+    f_obs = self.f_obs()
+    if(self.squeeze_correction is None):
+      return f_obs.array(data = flex.complex_double(f_obs.data().size(), 0))
+    return self.squeeze_correction
+
+  def squeeze_result(self):
+    """
+    mmtbx.bulk_solvent.squeeze.result of the last
+    update_all_scales(squeeze=True), or None if squeeze is not in use.
+    """
+    return self._squeeze_result
+
+  def remove_squeeze(self):
+    """
+    Forget the stored squeeze contribution. F_model is without it after the
+    next update_all_scales().
+    """
+    self.squeeze_correction = None
+    self.squeeze_signature = None
+    self._squeeze_result = None
+
+  def _set_squeeze(self, result, signature):
+    """
+    result: mmtbx.bulk_solvent.squeeze.result for the reflections of
+    f_obs(). signature: mosaic_signature() of the fmodel it was computed
+    for.
+    """
+    f_obs = self.f_obs()
+    assert result.f.size() == f_obs.data().size()
+    self._squeeze_result = result
+    self.squeeze_signature = signature
+    self.squeeze_correction = f_obs.array(data = result.scaled(ss = self.ss))
+
+  def squeeze_is_current(self):
+    """
+    True if a squeeze contribution is stored and it belongs to the current
+    model and mask (same rule as for the mosaic correction, see
+    mosaic_signature).
+    """
+    if(self._squeeze_result is None or self.xray_structure is None):
+      return False
+    return (self.squeeze_signature == self.mosaic_signature()) and \
+           (self._squeeze_result.f.size() == self.f_obs().data().size())
 
   def _get_mosaic_arrays(self):
     if(self.mosaic_correction is None): return None
@@ -1764,11 +1883,12 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
     """
     Bulk-solvent contribution, without the overall scales: k_mask*F_mask
     plus, for the mosaic bulk-solvent model, its correction
-    k_mask*sum_n (q_n-1) F_n (which is kept as f_part1).
+    k_mask*sum_n (q_n-1) F_n (see f_mosaic). The squeeze contribution
+    (f_squeeze) is not part of it.
     """
     data = self.arrays.core.data.f_bulk
     if(self.mosaic_correction is not None):
-      data = data + self.f_part1().data()
+      data = data + self.f_mosaic().data()
     return miller.array(miller_set = self.f_obs(), data = data)
 
   def f_bulk_w(self):
@@ -1823,7 +1943,8 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
 
   def f_model_no_scales(self):
     # f_calc + flat bulk solvent. The correction of the mosaic bulk-solvent
-    # model is not in it: it is f_part1().
+    # model and the squeeze contribution are not in it: their sum is
+    # f_part1(), see f_mosaic() and f_squeeze().
     f_masks = self.f_masks()
     k_masks = self.k_masks()
     assert len(f_masks)==1

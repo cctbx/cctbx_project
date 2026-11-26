@@ -256,6 +256,7 @@ general_tests = [
   "$D/bulk_solvent/tst_aniso_scaler.py",
   "$D/bulk_solvent/tst_kb_sol_u_star_fd.py",
   "$D/bulk_solvent/tst_mosaic.py",
+  "$D/bulk_solvent/tst_squeeze.py",
   #
   "$D/invariant_domain.py",
   # restraints
@@ -468,6 +469,8 @@ general_tests = [
   "$D/regression/tst_reduce_cryoem_resolution.py", # TODO move to maptbx?
   "$D/regression/tst_fmodel_2.py",
   "$D/regression/tst_fmodel_mosaic.py",
+  "$D/regression/tst_fmodel_squeeze.py",
+  "$D/regression/tst_squeeze_programs.py",
   "$D/regression/tst_mosaic_programs.py",
   "$D/regression/tst_rigid_bond_test.py",
   "$D/validation/regression/tst_cablam.py",

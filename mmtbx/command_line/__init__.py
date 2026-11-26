@@ -228,6 +228,8 @@ class load_model_and_data(object):
     used when process_pdb_file=False)
   mosaic: use the mosaic bulk-solvent model for the fmodel (see \
     mmtbx.f_model.manager.update_all_scales)
+  squeeze: add unmodelled solvent density to the fmodel (see \
+    mmtbx.f_model.manager.update_all_scales)
   generate_input_phil: specifies that the master_phil object is a string \
     containing onky the app-specific options, and automatically add the \
     standard input parameters
@@ -291,7 +293,8 @@ class load_model_and_data(object):
       create_log_buffer=False,
       remove_unknown_scatterers=False,
       generate_input_phil=False,
-      mosaic=False):
+      mosaic=False,
+      squeeze=False):
     import mmtbx.monomer_library.pdb_interpretation
     import mmtbx.monomer_library.server
     import mmtbx.utils
@@ -542,6 +545,8 @@ class load_model_and_data(object):
       make_sub_header("F(model) initialization", out=self.log)
       skip_twin_detection = getattr(params.input, "skip_twin_detection", True)
       twin_law = getattr(params.input, "twin_law", None)
+      water_selection = None
+      if(squeeze): water_selection = self.model.solvent_selection()
       if (twin_law is Auto):
         if (self.hl_coeffs is not None):
           raise Sorry("Automatic twin law determination not supported when "+
@@ -558,7 +563,9 @@ class load_model_and_data(object):
           skip_twin_detection=skip_twin_detection,
           target_name=target_name,
           log=self.log,
-          mosaic=mosaic)
+          mosaic=mosaic,
+          squeeze=squeeze,
+          water_selection=water_selection)
       else :
         if ((twin_law is not None) and (self.hl_coeffs is not None)):
           raise Sorry("Automatic twin law determination not supported when "+
@@ -575,7 +582,9 @@ class load_model_and_data(object):
           log=self.log,
           optimize_mask=True,
           show=True,
-          mosaic=mosaic)
+          mosaic=mosaic,
+          squeeze=squeeze,
+          water_selection=water_selection)
       self.fmodel.info().show_rfactors_targets_scales_overall(out=self.log)
     # SEQUENCE
     if (params.input.sequence is not None):

@@ -31,6 +31,72 @@ mosaic_params_str = """\
               between 0 and 1.
 """
 
+# Settings of the squeeze contribution (mmtbx.bulk_solvent.squeeze).
+squeeze_params_str = """\
+    threshold = 2.5
+      .type = float
+      .help = Density of the mFo-DFc map in the solvent mask that is at or \
+              above this value (in sigma of the whole map) is used. Lower \
+              values take more noise: R-work keeps going down and R-free \
+              goes up (below about 2 sigma).
+    exclude_water_from_mask = True
+      .type = bool
+      .help = Compute the solvent mask that defines the search region \
+              without water. Unmodelled density is often next to modelled \
+              water, and a mask computed with water does not contain it.
+    solvent_radius = None
+      .type = float
+      .help = Solvent radius of the mask that defines the search region. \
+              None: as for the bulk-solvent mask.
+    shrink_truncation_radius = None
+      .type = float
+      .help = Shrink truncation radius of the mask that defines the search \
+              region. None: as for the bulk-solvent mask.
+    ignore_hydrogens = False
+      .type = bool
+      .expert_level = 2
+      .help = Hydrogens do not define the search region.
+    ignore_zero_occupancy_atoms = False
+      .type = bool
+      .expert_level = 2
+      .help = Atoms with zero occupancy do not define the search region.
+    grid_step_factor = 4
+      .type = float
+      .expert_level = 2
+      .help = Grid step of the map is the data resolution divided by this \
+              number, but not larger than grid_step_max.
+    grid_step_max = 0.2
+      .type = float
+      .expert_level = 2
+      .help = Largest grid step of the map (A).
+    number_of_cycles = 2
+      .type = int
+      .expert_level = 2
+      .help = Number of rounds of fitting the scale and B of the \
+              contribution followed by bulk-solvent and overall scaling.
+    b_start = 20
+      .type = float
+      .expert_level = 3
+      .help = Start value of B of the contribution.
+    b_min = -30
+      .type = float
+      .expert_level = 3
+      .help = Smallest B of the contribution.
+    b_max = 500
+      .type = float
+      .expert_level = 3
+      .help = Largest B of the contribution.
+    k_max = 50
+      .type = float
+      .expert_level = 3
+      .help = Largest scale of the contribution.
+    d_min_max = 1.1
+      .type = float
+      .help = Squeeze is used only if the data resolution is this or \
+              better (A). It is skipped with a message otherwise. None: no \
+              limit (not tested at lower resolution).
+"""
+
 master_params = iotbx.phil.parse("""\
   mode = slow *fast
     .type = choice(multi=False)
@@ -158,6 +224,16 @@ master_params = iotbx.phil.parse("""\
             main.mosaic in phenix.refine. X-ray data, one mask, not twinned.
   {
 """ + mosaic_params_str + """  }
+  squeeze
+    .help = Settings of squeeze: positive mFo-DFc density in the solvent \
+            region that cannot be modelled with atoms is Fourier \
+            transformed and added to F_model with a fitted scale and B \
+            (as PLATON SQUEEZE does). These are settings only. Whether it \
+            is used is decided by the program, for example main.squeeze in \
+            phenix.refine. Meant for the final refinement of a complete \
+            model at high resolution. X-ray data, not twinned.
+  {
+""" + squeeze_params_str + """  }
 """)
 
 _fix_b_cart_names = ["b11", "b22", "b33", "b12", "b13", "b23"]

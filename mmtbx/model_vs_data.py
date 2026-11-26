@@ -59,6 +59,11 @@ twin_law = None
   .type = str
 n_bins = 20
   .type = int
+squeeze = False
+  .type = bool
+  .help = Add positive mFo-DFc density in the solvent region that cannot be \
+          modelled with atoms to F_model (see mmtbx.bulk_solvent.squeeze). \
+          Final, complete models at 1.1 A or better only.
 """
 
 def defaults(log, silent):
@@ -152,8 +157,11 @@ def run(args,
     f_obs          = f_obs,
     r_free_flags   = r_free_flags,
     twin_law       = params.twin_law)
-  fmodel.update_all_scales(update_f_part1=True, mosaic=True)
+  fmodel.update_all_scales(update_f_part1=True, mosaic=True,
+    squeeze=params.squeeze, water_selection=model.solvent_selection())
   fmodel.show(log=log, show_header=False, show_approx=False)
+  if(fmodel.squeeze_result() is not None):
+    fmodel.squeeze_result().show(log=log, prefix="  ")
   print("  r_work: %6.4f"%fmodel.r_work(), file=log)
   if(test_flag_value is not None):
     print("  r_free: %6.4f"%fmodel.r_free(), file=log)
@@ -213,7 +221,8 @@ def run(args,
       f_obs          = fmodel.f_obs().select(tmp_sel),
       r_free_flags   = fmodel.r_free_flags().select(tmp_sel),
       twin_law       = params.twin_law)
-    fmodel.update_all_scales(update_f_part1=True, mosaic=True)
+    fmodel.update_all_scales(update_f_part1=True, mosaic=True,
+      squeeze=params.squeeze, water_selection=model.solvent_selection())
     fmodel.show(log=log, show_header=False, show_approx=False)
     print("  r_work: %6.4f"%fmodel.r_work(), file=log)
     if(test_flag_value is not None):
