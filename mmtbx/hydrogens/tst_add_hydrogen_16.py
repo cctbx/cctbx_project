@@ -738,30 +738,31 @@ def test_012():
 
 def test_030():
   '''
-  9eor HT7: the CCD names the CA pair HA/HC2, GeoStd (used for placement)
-  HB1/HC2, and the model's HA sits on CB, 2.1 A from CA. The CCD group must
-  not match that HA: the CA pair gets the GeoStd reference chirality, and HA
-  on CB keeps its name.
+  9eor HT7: GeoStd (used for placement) has the CCD's names since
+  2026-11-25, HA/HC2 on CA and HB on CB (before: HB1/HC2 on CA and HA on CB,
+  2.1 A from CA, which the CCD group must not match). The CA pair gets the
+  reference chirality of the CCD and of GeoStd, which now both name it.
   '''
   pdb_inp = iotbx.pdb.input(lines=pdb_str_014_ht7.split("\n"), source_info=None)
   model = mmtbx.model.manager(model_input=pdb_inp, log=null_out())
   obj = reduce_hydrogen.place_hydrogens(model=model)
   obj.run()
   atoms = list(obj.get_model().get_hierarchy().atoms())
-  assert h_on(atoms, 'HT7', '3', 'CA') == ['HB1', 'HC2'], h_on(atoms, 'HT7', '3', 'CA')
-  assert h_on(atoms, 'HT7', '3', 'CB') == ['HA'], h_on(atoms, 'HT7', '3', 'CB')
+  assert h_on(atoms, 'HT7', '3', 'CA') == ['HA', 'HC2'], h_on(atoms, 'HT7', '3', 'CA')
+  assert h_on(atoms, 'HT7', '3', 'CB') == ['HB'], h_on(atoms, 'HT7', '3', 'CB')
   ref = [g for g in reduce_hydrogen._h_references('HT7',
            obj.query_mon_lib_srv, {}, 2, 2)
-         if g[0] == 'CA' and g[2] == ('HB1', 'HC2')]
-  assert len(ref) == 1, ref
-  p, hv, hs, sites = ref[0]
+         if g[0] == 'CA' and g[2] == ('HA', 'HC2')]
+  assert ref, ref
   ht7 = dict((a.name.strip(), a) for a in atoms
              if a.parent().resname == 'HT7')
-  names = (hv[0], hv[1], hs[0])
-  v_ideal = reduce_hydrogen._chiral_volume(sites[p], *[sites[n] for n in names])
-  v_model = reduce_hydrogen._chiral_volume(ht7[p].xyz,
-    *[ht7[n].xyz for n in names])
-  assert (v_ideal > 0) == (v_model > 0), (v_model, v_ideal)
+  for p, hv, hs, sites in ref:
+    names = (hv[0], hv[1], hs[0])
+    v_ideal = reduce_hydrogen._chiral_volume(sites[p],
+      *[sites[n] for n in names])
+    v_model = reduce_hydrogen._chiral_volume(ht7[p].xyz,
+      *[ht7[n].xyz for n in names])
+    assert (v_ideal > 0) == (v_model > 0), (v_model, v_ideal)
 
 # ------------------------------------------------------------------------------
 
