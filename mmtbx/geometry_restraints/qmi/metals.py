@@ -1,9 +1,8 @@
 """Canonical set of metal element symbols + lightweight helpers for
 finding metal atoms in a model or atoms array.
 
-Single source of truth for "what counts as a metal" across qmi and
-endo_exo. Both modules import ``METALS`` from here instead of carrying
-private copies that can drift apart.
+Single source of truth for "what counts as a metal" in qmi, also for the
+metal sites it seeds endo_exo regions at.
 
 Element symbols are in Title case (``'Mg'``, ``'Fe'``, ``'ZN'`` ->
 ``'Zn'``) to match the ``atom.element.strip().capitalize()`` lookup

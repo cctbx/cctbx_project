@@ -57,14 +57,11 @@ def _directions_span_3d(unit_dirs):
           >= _MIN_OUT_OF_PLANE_COVERAGE)
 
 
-def _endo_exo_params(metal_element=None, selection=None, radius=4.0):
-  """Build an endo_exo parameter object."""
+def _endo_exo_params(selection, radius=4.0):
+  """Build an endo_exo parameter object seeded by *selection*."""
   params = default_params()
   params.buffer.radius = radius
-  if selection:
-    params.selection = list(selection)
-  if metal_element:
-    params.element_filter = list(metal_element)
+  params.selection = list(selection)
   return params
 
 
@@ -75,9 +72,9 @@ class QMRestraintsBuilder(object):
   ----------
   metal_element : iterable of str or None
       Restrict the metal scan to these element(s); default (None) scans every
-      metal endo_exo finds, and each is handled if the electronic engine can
-      guess its state (``electronic.OXIDATION_PRIORS``) or the user overrides
-      it.
+      metal (``metals.METALS``), each seeding its own endo_exo region, and
+      each is handled if the electronic engine can guess its state
+      (``electronic.OXIDATION_PRIORS``) or the user overrides it.
   selection : iterable of str or None
       Explicit endo_exo seed selection string(s); overrides ``metal_element``.
   radius : float
@@ -227,9 +224,17 @@ class QMRestraintsBuilder(object):
     else:
       self.work_dir = None   # predict_only (or no work dir) writes no QM files
 
-    params = _endo_exo_params(
-      metal_element=self.metal_element, selection=self.selection,
-      radius=self.radius)
+    selection = self.selection
+    if selection is None:
+      metals = None
+      if self.metal_element:
+        metals = set(qmi_metals.normalize_element(e)
+                     for e in self.metal_element)
+      selection = [restraints._selection_string(a.fetch_labels())
+                   for a in qmi_metals.metal_atoms(model, metals=metals)]
+      if not selection:
+        raise Sorry("No metal atoms found in the model.")
+    params = _endo_exo_params(selection, radius=self.radius)
     region_builder = QMRegionBuilder(params, logger=self.logger)
     seed_results = region_builder.run(model)
 
