@@ -977,6 +977,11 @@ def read_chemical_component_filename(filename, xyz_label=None, verbose=False):
       print(atom, atom.GetPropsAsDict())
   return molecule
 
+# {resname: the reader's message} of the CCD entries that exist but could
+# not be read, for the callers' reports; the line is printed once per name
+# until a caller clears the dictionary (reduce2: at the start of a run)
+ccd_read_errors = {}
+
 def get_molecule_from_resname(resname):
   import os
   from mmtbx.chemical_components import get_cif_filename
@@ -985,7 +990,9 @@ def get_molecule_from_resname(resname):
   try:
     molecule = read_chemical_component_filename(filename)
   except Exception as e:
-    print('Could not read CCD entry %s: %s' % (resname, e))
+    if resname not in ccd_read_errors:
+      print('Could not read CCD entry %s: %s' % (resname, e))
+    ccd_read_errors[resname] = str(e).strip()
     return None
   return molecule
 

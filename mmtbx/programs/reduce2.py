@@ -37,7 +37,7 @@ import copy
 from iotbx.data_manager import DataManager
 import csv
 
-version = "3.25.3"
+version = "3.25.4"
 
 master_phil_str = '''
 approach = *add remove optimize place
@@ -1480,6 +1480,13 @@ NOTES:
                  reduce_add_h_obj.not_placed_text(water_rule)):
       if text:
         self._metal_thiol_note += '\n' + text + '\n'
+    # the supplied H/D that went with the residues without restraints
+    if self._unrestrained is not None and self._unrestrained.removed_hd:
+      text = '\n'.join(['Supplied H/D removed from residues without '
+        'restraints (keep_existing_H=True keeps them):'] +
+        self._unrestrained.removed_hd)
+      print(text + '\n', file=self.logger)
+      self._metal_thiol_note += '\n' + text + '\n'
     missed_residues = set(reduce_add_h_obj.no_H_placed_mlq)
     if not self.params.ignore_missing_restraints:
       if len(missed_residues) > 0:
@@ -2078,8 +2085,68 @@ NOTES:
     return '\n'.join(lines), metal
 
   def _MissingRestraintsSorry(self, resnames):
-    return Sorry("Restraints were not found for the following residues:" +
-      "".join(" " + r.strip() for r in sorted(resnames)))
+    # The first line is matched by callers and tests: unchanged. Then each
+    # residue (at most 10 per name), why per name, and what to do.
+    # Call it after mon_lib_query() on these names (the CCD reader's text).
+    lines = ["Restraints were not found for the following residues:" +
+      "".join(" " + r.strip() for r in sorted(resnames))]
+    hierarchy = self.model.get_hierarchy()
+    n_models = len(hierarchy.models())
+    labels = dict((r, []) for r in resnames)
+    for m in hierarchy.models():
+      for chain in m.chains():
+        for rg in chain.residue_groups():
+          ags = rg.atom_groups()
+          mixed = len(set(ag.resname for ag in ags)) > 1
+          for ag in ags:
+            if ag.resname not in labels: continue
+            label = '%s %s %s%s' % (ag.resname.strip(), chain.id.strip(),
+              rg.resseq.strip(), rg.icode.strip())
+            if mixed and ag.altloc.strip():
+              label += ' altloc %s' % ag.altloc
+            if n_models > 1: label += ' (model %s)' % m.id.strip()
+            if label not in labels[ag.resname]:
+              labels[ag.resname].append(label)
+    max_shown = 10
+    reasons = []
+    for r in sorted(resnames):
+      for label in labels[r][:max_shown]:
+        lines.append('  ' + label)
+      if len(labels[r]) > max_shown:
+        lines.append('  ... and %d more of %s (%d in all)' % (
+          len(labels[r]) - max_shown, r.strip(), len(labels[r])))
+      status = reduce_hydrogen.ccd_entry_status(r)
+      if r == 'UNL':
+        why = 'an unknown ligand has no dictionary'
+      elif status.has_entry:
+        why = 'the CCD entry exists but could not be used'
+        if status.error: why += ' (%s)' % status.error
+      else:
+        why = ('no entry in GeoStd, the monomer library or the CCD, and no '
+          'restraint file for it')
+      reasons.append('  %s: %s' % (r.strip(), why))
+    lines.append('Why:')
+    lines.extend(reasons)
+    lines.append('What to do:')
+    # UNL: mon_lib_query() does not look for its restraints
+    named = [r.strip() for r in sorted(resnames) if r != 'UNL']
+    if named and len(named) == len(resnames):
+      lines.append('  Supply a restraint CIF for each of these residue names.')
+    elif named:
+      lines.append('  Supply a restraint CIF for %s.' % ', '.join(named))
+    if len(named) < len(resnames):
+      lines.append('  UNL: ' + reduce_hydrogen.UNL_ADVICE[0])
+      lines.append('  ' + reduce_hydrogen.UNL_ADVICE[1])
+    if self.params.approach == 'optimize':
+      effect = ('with approach=optimize such a residue is left exactly as '
+        'in the input.')
+    else:
+      effect = ('such a residue gets no H, and its supplied H are removed '
+        'unless keep_existing_H=True.')
+    lines.append('  Or run with ignore_missing_restraints=True: ' + effect)
+    lines.append('  Its atoms then have no bonds and no hydrogen-bond types, '
+      'so contacts to it and inside it are scored as clashes.')
+    return Sorry('\n'.join(lines))
 
 # ------------------------------------------------------------------------------
 
@@ -2093,7 +2160,8 @@ NOTES:
     # ignore_missing_restraints=True; then all their atoms are left as in
     # the input.
     # :return: group_args(keys (atom keys of the residues left unchanged),
-    # labels).
+    # labels, removed_hd (a line per residue whose supplied H/D placement
+    # removes)).
     # the objects are appended to the model's list: its own copy, so that
     # the input's list stays as it is
     ro = self.model.get_restraint_objects()
@@ -2108,7 +2176,13 @@ NOTES:
     n_models = len(hierarchy.models())
     missing = set()   # (residue_group memory_id, resname)
     labels = []
-    for model_index, m in enumerate(hierarchy.models()):
+    # their H/D that placement removes (add, place without keep_existing_H)
+    removes = self.params.approach in ('add', 'place') and \
+      not self.params.keep_existing_H
+    removed_hd = []
+    # as placement finds them (the element column can be blank)
+    hd_sel = self.model.get_hd_selection() if removes else None
+    for m in hierarchy.models():
       for chain in m.chains():
         for rg in chain.residue_groups():
           for resname in sorted(set(ag.resname for ag in rg.atom_groups())
@@ -2116,14 +2190,19 @@ NOTES:
             missing.add((rg.memory_id(), resname))
             label = '%s %s %s%s' % (resname.strip(), chain.id,
               rg.resseq.strip(), rg.icode.strip())
-            if n_models > 1: label += ' (model %d)' % (model_index + 1)
+            if n_models > 1: label += ' (model %s)' % m.id.strip()
             labels.append(label)
+            if not removes: continue
+            names = [a.name.strip() for ag in rg.atom_groups()
+                     if ag.resname == resname for a in ag.atoms()
+                     if hd_sel[a.i_seq]]
+            if names: removed_hd.append('  %s: %s' % (label, ' '.join(names)))
     keys = set()
     if missing:
       for a, k in zip(hierarchy.atoms(), hd_exchange.atom_keys(hierarchy)):
         if (a.parent().parent().memory_id(), a.parent().resname) in missing:
           keys.add(k)
-    return group_args(keys=keys, labels=labels)
+    return group_args(keys=keys, labels=labels, removed_hd=removed_hd)
 
 # ------------------------------------------------------------------------------
 
@@ -3629,6 +3708,10 @@ NOTES:
       self.model.get_xray_structure(force=not (xrs_from_hierarchy and
         self._input_shift is None))
       self.model.set_refinement_flags(None)
+      # the CCD reader's messages: of this run only. No import here: a run
+      # that needs no CCD reader needs no RDKit.
+      rdkit_utils = sys.modules.get('mmtbx.ligands.rdkit_utils')
+      if rdkit_utils is not None: rdkit_utils.ccd_read_errors.clear()
       self._unrestrained = self._PrepareRestraints()
 
     # Input with D that the run keeps (never for remove; keep_existing_H is

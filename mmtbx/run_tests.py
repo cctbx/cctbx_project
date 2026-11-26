@@ -541,6 +541,7 @@ molprobity_tests = [
   "$D/regression/tst_reduce2_blank_chain.py",
   "$D/regression/tst_reduce2_his_no_h.py",
   "$D/regression/tst_reduce2_near_acceptor.py",
+  "$D/regression/tst_reduce2_missing_restraints.py",
   "$D/regression/tst_reduce2_model_id.py",
   "$D/regression/tst_reduce2_peak_memory.py",
   "$D/regression/tst_reduce2_place.py",

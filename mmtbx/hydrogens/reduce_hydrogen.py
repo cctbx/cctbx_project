@@ -950,6 +950,36 @@ def _dictionary_h_on_n(ag, mon_lib_srv):
       return 'N' in (b.atom_id_1, b.atom_id_2)
   return True
 
+def ccd_entry_status(resname):
+  '''
+  For a residue name that mon_lib_query() found no restraints for: what the
+  CCD has. Call it after mon_lib_query(), which fills the reader's message.
+  :return: group_args(has_entry, n_h (H/D in the entry's atom list; None
+  without an entry, or if the list cannot be counted or has an atom of
+  unknown element), error (the CCD reader's message, or None)).
+  '''
+  import os
+  from mmtbx.chemical_components import get_cif_filename, get_cif_dictionary
+  # not imported here: without RDKit there is no reader and no message
+  rdkit_utils = sys.modules.get('mmtbx.ligands.rdkit_utils')
+  filename = get_cif_filename(resname)
+  if not filename or not os.path.isfile(filename):
+    return group_args(has_entry=False, n_h=None, error=None)
+  try:
+    atoms = get_cif_dictionary(resname)['_chem_comp_atom']
+    n_h = len([a for a in atoms if a.type_symbol.upper() in ('H', 'D')])
+    if not atoms or [a for a in atoms if a.type_symbol in ('?', '.')]:
+      n_h = None
+  except Exception: n_h = None
+  return group_args(has_entry=True, n_h=n_h, error=None if rdkit_utils is None
+    else rdkit_utils.ccd_read_errors.get(resname))
+
+def ccd_not_usable_text(status):
+  '''"the CCD entry could not be used[: reader's message]"'''
+  text = 'the CCD entry could not be used'
+  if status.error: text += ': ' + status.error
+  return text
+
 def mon_lib_query(residue, mon_lib_srv, construct_h_restraints=True, raise_sorry=True):
   # if get_class(residue.resname) in ['common_rna_dna']:
   #   md = get_h_restraints(residue.resname)
@@ -2229,8 +2259,9 @@ def metal_amine_text(converted=(), unresolved=(), supplied=(),
 # cause (a key of NOT_PLACED_CAUSES) and detail (the link type, a metal
 # contact, ...). Every H placement adds and then removes has exactly one.
 # Two causes are records but not counted in the total of H not placed:
-#  - no_dictionary: one record per residue and conformer, h_name '', counted
-#    as residues not assessed;
+#  - no_dictionary, ccd_not_usable: one record per residue and conformer,
+#    h_name '', counted as residues not assessed; what: the text that stands
+#    for the H ('all H' if None);
 #  - letters_differ: the H is placed, once instead of once per conformer of
 #    its covalent partner; listed under its own heading.
 # Not records: the rules (place_hydrogens.not_placed_rules), stated with a
@@ -2277,12 +2308,17 @@ def na_gap_title(n):
 # assessed: False for residues without a dictionary
 NOT_PLACED_CAUSES = [group_args(key=k, short=s, title=t, hint=h, listed_in=l,
                                 placed=(k in ('letters_differ', 'lone_parent')),
-                                assessed=(k != 'no_dictionary'))
+                                assessed=(k not in ('no_dictionary',
+                                                    'ccd_not_usable')))
   for k, s, t, h, l in (
   ('no_dictionary', 'no dictionary, not assessed',
    'No dictionary for the residue (library, CCD or restraint files): not '
    'assessed, no H placed on it', 'Supply a restraint CIF for the residue.',
    None),
+  ('ccd_not_usable', 'CCD entry could not be used, not assessed',
+   'The CCD entry of the residue could not be used, and the library and the '
+   'restraint files have none: not assessed, no H placed on it',
+   'Supply a restraint CIF for the residue.', None),
   ('no_restraints', 'no restraints in the processed model',
    'The residue has no bonds in the processed model',
    'Check that its restraints apply to its atom names.', None),
@@ -2342,10 +2378,17 @@ NOT_PLACED_CAUSES = [group_args(key=k, short=s, title=t, hint=h, listed_in=l,
    "covalent partner's", None, None),
   )]
 
-def not_placed_record(atom, cause, parent='', detail='', h_name=None):
+# UNL: mon_lib_query() does not look for its restraints (two lines of
+# reduce2's stop; joined in the description)
+UNL_ADVICE = ('a restraint CIF for UNL is not used. Identify the component '
+  'and give it its', 'component ID in the model and in the restraint file.')
+
+def not_placed_record(atom, cause, parent='', detail='', h_name=None,
+                      what=None):
   '''
   One record of not_placed (the fields: see NOT_PLACED_CAUSES). atom: the H;
-  with h_name, an atom of the H's residue and conformer.
+  with h_name, an atom of the H's residue and conformer. what: for a record
+  without h_name, the text that stands for the H.
   '''
   ag = atom.parent()
   rg = ag.parent()
@@ -2355,7 +2398,7 @@ def not_placed_record(atom, cause, parent='', detail='', h_name=None):
     icode = rg.icode.strip(), resname = ag.resname.strip(),
     altloc = ag.altloc.strip(),
     h_name = atom.name.strip() if h_name is None else h_name,
-    parent = parent, cause = cause, detail = detail)
+    parent = parent, cause = cause, detail = detail, what = what)
 
 def not_placed_residue(r, with_model):
   '''"model 2 LYS A 35A conformer B" for record r; the model only with_model.'''
@@ -2406,8 +2449,11 @@ def _not_placed_head(records):
   parts = []
   if missing: parts.append('H atoms not placed: %s' % _not_placed_counts(
     missing))
-  if unassessed: parts.append('not assessed (no dictionary): %s' %
-    _plural(_residue_count(unassessed), 'residue'))
+  for key, why in (('no_dictionary', 'no dictionary'),
+                   ('ccd_not_usable', 'CCD entry could not be used')):
+    rs = [r for r in unassessed if r.cause == key]
+    if rs: parts.append('not assessed (%s): %s' % (why,
+      _plural(_residue_count(rs), 'residue')))
   return '; '.join(parts) or None
 
 def _not_placed_rules(rules, water_rule):
@@ -2448,7 +2494,12 @@ def not_placed_text(records, rules, with_model=False, water_rule=''):
   for cause, rs in _not_placed_by_cause(records):
     if lines: lines.append('')
     lines.append('%s: %s' % (cause.title, _not_placed_counts(rs)))
-    if cause.hint: lines.append('  What to do: ' + cause.hint)
+    hints = [cause.hint] if cause.hint else []
+    if cause.key == 'no_dictionary' and 'UNL' in [r.resname for r in rs]:
+      if not [r for r in rs if r.resname != 'UNL']: hints = []
+      hints.append('UNL: ' + ' '.join(UNL_ADVICE))
+    if hints: lines.append('  What to do: ' + hints[0])
+    lines.extend('  ' + h for h in hints[1:])
     if cause.listed_in is not None:
       lines.append("  Listed in full under '%s'." % _pointer(cause, rs))
       continue
@@ -2459,7 +2510,7 @@ def not_placed_text(records, rules, with_model=False, water_rule=''):
         if key not in groups:
           groups[key] = []
           order.append(key)
-        groups[key].append(r.h_name or 'all H')
+        groups[key].append(r.h_name or r.what or 'all H')
       parts = []
       for parent, detail in order:
         text = ' '.join(groups[(parent, detail)])
@@ -2486,6 +2537,8 @@ def not_placed_summary(records, rules, with_model=False, see=None, n_shown=3,
     for r in rs:
       label = not_placed_residue(group_args(**dict(r.__dict__, altloc='')),
         with_model)
+      # a residue not assessed: what stands for its H
+      if not cause.assessed and r.what: label += ' (%s)' % r.what
       if label not in residues: residues.append(label)
     shown = ', '.join(residues[:n_shown])
     if len(residues) > n_shown: shown += ', ...'
@@ -6392,13 +6445,22 @@ class place_hydrogens():
                 self.no_H_placed_mlq.append(ag.resname)
               self.residue_keys_no_restraints.add(
                 (m.id, chain.id, rg.resseq, rg.icode, ag.resname))
+              status = ccd_entry_status(ag.resname)
+              cause, what = 'no_dictionary', None
               detail = ('no dictionary in the library, the CCD or the '
                 'restraint files')
+              if status.has_entry and ag.resname != 'UNL':
+                cause = 'ccd_not_usable'
+                detail = ccd_not_usable_text(status)
+                if status.n_h == 0:
+                  what = 'no H in its CCD entry'
+                elif status.n_h:
+                  what = 'the %d H of its CCD entry' % status.n_h
               if [a for a in ag.atoms()
                   if a.element.strip().upper() in ('H', 'D')]:
                 detail += '; its H/D from the input are kept'
-              self._not_placed(ag.atoms()[0], 'no_dictionary', h_name='',
-                detail=detail)
+              self._not_placed(ag.atoms()[0], cause, h_name='',
+                detail=detail, what=what)
               continue
 
             if cif_object:
@@ -7038,11 +7100,12 @@ class place_hydrogens():
           result[k].append((atom.parent().altloc.strip(), key[5:], partner))
     return result
 
-  def _not_placed(self, atom, cause, parent='', detail='', h_name=None):
+  def _not_placed(self, atom, cause, parent='', detail='', h_name=None,
+                  what=None):
     # one record (not_placed_record()); parent: an atom or its name
     if not isinstance(parent, str): parent = parent.name.strip()
     self.not_placed.append(not_placed_record(atom, cause, parent, detail,
-      h_name))
+      h_name, what))
 
   def _with_model_ids(self):
     return len(self.model.get_hierarchy().models()) > 1

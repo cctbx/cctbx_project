@@ -34,7 +34,7 @@ def test_user_cif_ligand():
     run_prog("tst_r2n_ligands_zq4_nocif", heavy_pdb("04", zq4_atoms),
       neutron_option="hd_and_h")
   except Sorry as e:
-    assert str(e) == MISSING_RESTRAINTS + " 04", str(e)
+    assert str(e).splitlines()[0] == MISSING_RESTRAINTS + " 04", str(e)
   else:
     raise AssertionError("04 ran without its CIF")
 
@@ -63,7 +63,7 @@ def test_user_cif_ligand_optimize():
     run_prog("tst_r2n_ligands_zq4o_nocif", src, approach="optimize",
       neutron_option="hd_and_h")
   except Sorry as e:
-    assert str(e) == MISSING_RESTRAINTS + " 04", str(e)
+    assert str(e).splitlines()[0] == MISSING_RESTRAINTS + " 04", str(e)
   else:
     raise AssertionError("04 ran without its CIF")
 
@@ -78,7 +78,7 @@ def test_missing_restraints_optimize():
         protein_ligand_src(option), approach="optimize",
         neutron_option=option)
     except Sorry as e:
-      assert str(e) == MISSING_RESTRAINTS + " 04", str(e)
+      assert str(e).splitlines()[0] == MISSING_RESTRAINTS + " 04", str(e)
       functions = [f[2] for f in traceback.extract_tb(e.__traceback__)]
       assert "_PrepareRestraints" in functions and \
         "_NormalizeInput" not in functions, functions
