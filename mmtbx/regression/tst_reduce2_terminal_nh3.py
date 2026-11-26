@@ -511,12 +511,17 @@ def test_metal_bound_start():
 
 def geostd_peptide(comp):
   """comp's GeoStd ideal heavy atoms as residue 1 (+20 A, P1 cell of 40 A)
-  with a GLY 2 peptide-bonded to it; None without chem_data"""
+  with a GLY 2 peptide-bonded to it; None without chem_data. The old
+  dictionary where the tests supply one (tml.OLD_DICTIONARIES)"""
   path = libtbx.env.find_in_repositories(relative_path='chem_data/geostd/'
     '%s/data_%s.cif' % (comp[0].lower(), comp), test=os.path.isfile)
   if path is None: return None
-  loop = iotbx.cif.reader(file_path=path).model()['comp_' + comp].get_loop(
-    '_chem_comp_atom')
+  old = dict(tml.OLD_DICTIONARIES)
+  if comp in old:
+    cif = iotbx.cif.reader(input_string=old[comp]).model()
+  else:
+    cif = iotbx.cif.reader(file_path=path).model()
+  loop = cif['comp_' + comp].get_loop('_chem_comp_atom')
   lines = ['CRYST1   40.000   40.000   40.000  90.00  90.00  90.00 P 1']
   for i, name in enumerate(loop['_chem_comp_atom.atom_id']):
     e = loop['_chem_comp_atom.type_symbol'][i]
@@ -543,6 +548,9 @@ def test_computed_rule_names():
   # a computed name that pdb_interpretation's name rules also test (0AA,
   # CTE: HN2 -> mod_NH2) is restrained by NH3-<comp>, in every neutron
   # option, read again with the angles at N at their restraints
+  # (0AA, CTE, BB8, MH8, TY2 from the dictionaries of tml.OLD_DICTIONARIES:
+  # GeoStd's CTE has H, HN1 since 2026-11-25, BB8, MH8, TY2 H, HA2; with an
+  # atom H the entry gets mod_NH3 and H1, H2, H3)
   for comp, names in (('0AA', ['HA2', 'HN1', 'HN2']),
                       ('CTE', ['HN', 'HN1', 'HN2'])):
     pdb_str = geostd_peptide(comp)

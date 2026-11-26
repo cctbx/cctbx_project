@@ -44,11 +44,15 @@ def run():
 
 # ------------------------------------------------------------------------------
 
-def place_atoms(pdb_str, n_terminal_charge='residue_one'):
+def place_atoms(pdb_str, n_terminal_charge='residue_one', old=()):
   '''Place H (no optimization); return all atoms. Names repeat between
-  residues, so only single-residue models may be keyed by name (place()).'''
+  residues, so only single-residue models may be keyed by name (place()).
+  old: residue names that take their dictionary from OLD_CIF.'''
   pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
-  model = mmtbx.model.manager(model_input=pdb_inp, log=null_out())
+  restraint_objects = [(comp + '_old.cif', iotbx.cif.reader(
+    input_string=OLD_CIF[comp]).model()) for comp in old] or None
+  model = mmtbx.model.manager(model_input=pdb_inp,
+    restraint_objects=restraint_objects, log=null_out())
   obj = reduce_hydrogen.place_hydrogens(model=model,
     n_terminal_charge=n_terminal_charge)
   obj.run()
@@ -58,9 +62,9 @@ def place(pdb_str):
   '''Place H in a one-residue model; return the atoms by name.'''
   return {a.name.strip(): a for a in place_atoms(pdb_str)}
 
-def h_names_on(pdb_str, parent_name):
+def h_names_on(pdb_str, parent_name, old=()):
   '''Place H (no optimization); return names of the H bonded to parent_name.'''
-  atoms = place_atoms(pdb_str)
+  atoms = place_atoms(pdb_str, old=old)
   parent = [a for a in atoms if a.name.strip() == parent_name][0]
   return sorted(a.name.strip() for a in atoms
     if a.element.strip() == 'H' and a.distance(parent) < 1.2)
@@ -142,8 +146,9 @@ def test_006():
   '''
     GLZ (aminoacetaldehyde) passes test_for_peptide; its HXT is the aldehyde
     H on C (no OXT). The C-terminal HXT filter removed it by name.
+    GeoStd's GLZ names it H1 since 2026-11-25: the old dictionary (OLD_CIF).
   '''
-  names = h_names_on(pdb_str_006, 'C')
+  names = h_names_on(pdb_str_006, 'C', old=('GLZ',))
   assert names == ['HXT'], names
 
 def check_h(atoms, h, a0, a1, angle_ideal):
@@ -222,8 +227,10 @@ def test_013():
     does (the control): the three angles at N add up to 360 and it is trans to
     the preceding O. CA-N-H comes from the link as well, since the dictionary
     of the free amino acid gives N the sp3 amine value (9FZ 108.5 deg).
+    GeoStd names both amide H "H" since 2026-11-25: the old dictionaries
+    (OLD_CIF).
   '''
-  atoms = place_atoms(pdb_str_013)
+  atoms = place_atoms(pdb_str_013, old=('9FZ', '9G2'))
   for resname, resseq, h_name, prev_resname, prev_resseq in (
       ('9FZ', '4',  'H3', 'ILE', '3'),
       ('9G2', '10', 'H6', 'LEU', '9'),
@@ -256,9 +263,11 @@ def test_014():
   atoms = place_atoms(pdb_str_014)
   assert h_on(atoms, 'MEA', '1', 'CB') == ['HB1', 'HB2'], h_on(atoms, 'MEA', '1', 'CB')
   assert h_on(atoms, 'LEU', '3', 'CB') == ['HB2', 'HB3'], h_on(atoms, 'LEU', '3', 'CB')
+  # GeoStd's HT7 has the CCD's names since 2026-11-25: HA, HC2 on CA and HB
+  # on CB (before: HB1, HC2 and HA)
   atoms = place_atoms(pdb_str_014_ht7)
-  assert h_on(atoms, 'HT7', '3', 'CA') == ['HB1', 'HC2'], h_on(atoms, 'HT7', '3', 'CA')
-  assert h_on(atoms, 'HT7', '3', 'CB') == ['HA'], h_on(atoms, 'HT7', '3', 'CB')
+  assert h_on(atoms, 'HT7', '3', 'CA') == ['HA', 'HC2'], h_on(atoms, 'HT7', '3', 'CA')
+  assert h_on(atoms, 'HT7', '3', 'CB') == ['HB'], h_on(atoms, 'HT7', '3', 'CB')
 
 def test_015():
   '''
@@ -460,8 +469,10 @@ def test_023():
   ASJ has no C=O, so test_for_peptide missed it and N kept both dictionary H
   (superposed). The control, ASJ without the VAL, keeps both, also when
   treated as an N-terminus (first_in_chain, all_chain_starts).
+  GeoStd's ASJ has H on N since 2026-11-25 (the C H is H3): the old
+  dictionary (OLD_CIF).
   '''
-  atoms = place_atoms(pdb_str_023)
+  atoms = place_atoms(pdb_str_023, old=('ASJ',))
   a = dict(((x.parent().resname.strip(), x.name.strip()), x) for x in atoms)
   n, c = a[('ASJ', 'N')], a[('ASJ', 'C')]
   hs = [x for x in atoms if x.element.strip() == 'H' and x.distance(n) < 1.2]
@@ -475,7 +486,7 @@ def test_023():
     and x.distance(c) < 1.2) == ['H', 'HA']
   free = "\n".join(l for l in pdb_str_023.split("\n") if 'VAL' not in l)
   for charge in ('residue_one', 'first_in_chain', 'all_chain_starts'):
-    atoms = place_atoms(free, n_terminal_charge=charge)
+    atoms = place_atoms(free, n_terminal_charge=charge, old=('ASJ',))
     n, c = [[x for x in atoms if x.name.strip() == name][0] for name in 'NC']
     hs = [x for x in atoms if x.element.strip() == 'H' and x.distance(n) < 1.2]
     assert sorted(x.name.strip() for x in hs) == ['HN', 'HNA'], \
@@ -1730,6 +1741,693 @@ ATOM    699  NH1AARG A 228      25.036  41.018  43.424  0.71 38.22           N
 ATOM    700  NH1BARG A 228      24.697  39.952  40.254  0.29 34.47           N
 ATOM    701  NH2AARG A 228      24.669  40.567  41.213  0.71 35.40           N
 ATOM    702  NH2BARG A 228      24.587  36.280  42.025  0.29 32.49           N
+"""
+
+# GeoStd GLZ, 9FZ, 9G2 and ASJ as they were until 2026-11-25 (GeoStd
+# 55c1ed3ca3), for the tests about their old H names (test_006, test_013,
+# test_023)
+OLD_CIF = {}
+OLD_CIF['GLZ'] = """\
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+_chem_comp.initial_date
+_chem_comp.modified_date
+_chem_comp.source
+ GLZ  GLZ  'aminoacetaldehyde        '  L-peptide  9  4  .  2019-03-22  2024-04-11
+;
+Directly from eLBOW using geometry from QM method PBEh-3c with CPCM solvent model
+Validated by Mogul as PERFECT
+Removed H2 atom : 2024-04-11
+;
+
+data_comp_GLZ
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.charge
+_chem_comp_atom.partial_charge
+_chem_comp_atom.x
+_chem_comp_atom.y
+_chem_comp_atom.z
+ GLZ  N    N  NH2   0  -0.802  49.8385  44.8504  4.1722
+ GLZ  CA   C  CH2   0  -0.396  48.6014  44.3306  3.6290
+ GLZ  C    C  C1    0   0.175  48.6957  42.8406  3.4398
+ GLZ  O    O  O     0  -0.375  48.0480  42.2043  2.6481
+ GLZ  H    H  HNH2  0   0.360  49.6857  45.7681  4.5658
+ GLZ  HA1  H  HCH2  0   0.269  47.8064  44.4831  4.3684
+ GLZ  HA2  H  HCH2  0   0.237  48.2495  44.7965  2.7006
+ GLZ  HXT  H  H     0   0.180  49.4149  42.3530  4.1251
+
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.type
+_chem_comp_bond.value_dist
+_chem_comp_bond.value_dist_esd
+_chem_comp_bond.value_dist_neutron
+ GLZ  N   CA   single  1.451  0.016  1.451
+ GLZ  N   H    single  0.860  0.020  0.860
+ GLZ  CA  C    single  1.516  0.018  1.516
+ GLZ  CA  HA1  single  0.970  0.020  1.090
+ GLZ  CA  HA2  single  0.970  0.020  1.090
+ GLZ  C   O    double  1.231  0.020  1.231
+ GLZ  C   HXT  single  0.930  0.020  1.080
+
+loop_
+_chem_comp_angle.comp_id
+_chem_comp_angle.atom_id_1
+_chem_comp_angle.atom_id_2
+_chem_comp_angle.atom_id_3
+_chem_comp_angle.value_angle
+_chem_comp_angle.value_angle_esd
+ GLZ  H    N   CA   114.00  3.000
+ GLZ  HA2  CA  HA1  106.20  3.000
+ GLZ  HA2  CA  C    109.53  3.000
+ GLZ  HA1  CA  C    105.54  3.000
+ GLZ  HA2  CA  N    116.06  3.000
+ GLZ  HA1  CA  N    108.46  3.000
+ GLZ  C    CA  N    113.30  2.900
+ GLZ  HXT  C   O    121.58  3.000
+ GLZ  HXT  C   CA   113.52  3.000
+ GLZ  O    C   CA   120.80  2.100
+
+loop_
+_chem_comp_tor.comp_id
+_chem_comp_tor.id
+_chem_comp_tor.atom_id_1
+_chem_comp_tor.atom_id_2
+_chem_comp_tor.atom_id_3
+_chem_comp_tor.atom_id_4
+_chem_comp_tor.value_angle
+_chem_comp_tor.value_angle_esd
+_chem_comp_tor.period
+ GLZ  Var_01  O  C  CA  N  -154.89  30.0  3
+ GLZ  Var_02  H  N  CA  C  -162.22  30.0  3
+
+loop_
+_chem_comp_plane_atom.comp_id
+_chem_comp_plane_atom.plane_id
+_chem_comp_plane_atom.atom_id
+_chem_comp_plane_atom.dist_esd
+ GLZ  plan-1  CA   0.020
+ GLZ  plan-1  C    0.020
+ GLZ  plan-1  O    0.020
+ GLZ  plan-1  HXT  0.020
+"""
+
+OLD_CIF['9FZ'] = """\
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+_chem_comp.initial_date
+_chem_comp.modified_date
+_chem_comp.source
+ 9FZ  9FZ  '(2~{S})-2-azanyl-5-(4-methyl-1,2,3-triazol-1-yl)pentanoic acid'  ligand  27  14  .  2022-07-24  2023-10-13
+;
+Directly from eLBOW using geometry from QM method PBEh-3c with CPCM solvent model
+Validated by Mogul as OK (reasonable std)
+Added dihedrals for adding hydrogens : 2023-10-13
+;
+
+data_comp_9FZ
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.charge
+_chem_comp_atom.partial_charge
+_chem_comp_atom.x
+_chem_comp_atom.y
+_chem_comp_atom.z
+ 9FZ  C7   C  CR5    0   0.145  -4.1436   0.1650  -0.0750
+ 9FZ  C2   C  CH2    0  -0.290  -0.7942  -0.7970  -0.8711
+ 9FZ  N    N  NH2    0  -0.786   2.4177   1.7985   0.5539
+ 9FZ  CA   C  CH1    0  -0.211   2.6513   0.3634   0.5196
+ 9FZ  C    C  C      0   0.385   4.0777  -0.0751   0.0994
+ 9FZ  O    O  O      0  -0.607   4.8588   0.8052  -0.3116
+ 9FZ  CB   C  CH2    0  -0.430   1.6205  -0.3194  -0.3807
+ 9FZ  C1   C  CH2    0  -0.422   0.1802  -0.0644   0.0394
+ 9FZ  C8   C  CR15   0  -0.097  -2.9815   0.4426  -0.7502
+ 9FZ  C9   C  CH3    0  -0.728  -5.4105   0.9418  -0.0116
+ 9FZ  N4   N  NR5    0  -0.244  -2.1757  -0.5981  -0.4751
+ 9FZ  N5   N  N      0  -0.112  -2.7797  -1.4580   0.3208
+ 9FZ  N6   N  N      0  -0.327  -3.9657  -1.0123   0.5654
+ 9FZ  H1   H  HCH2   0   0.264  -0.6916  -0.4613  -1.9033
+ 9FZ  H2   H  HCH2   0   0.267  -0.6126  -1.8717  -0.8575
+ 9FZ  H6   H  HCH1   0   0.211   2.4919  -0.0138   1.5379
+ 9FZ  H8   H  HCH2   0   0.212   1.7641   0.0186  -1.4148
+ 9FZ  H9   H  HCH2   0   0.226   1.8171  -1.3935  -0.3805
+ 9FZ  H10  H  HCH2   0   0.235  -0.0321   1.0060   0.0233
+ 9FZ  H11  H  HCH2   0   0.225   0.0303  -0.4025   1.0692
+ 9FZ  H12  H  HCR5   0   0.302  -2.6837   1.2655  -1.3788
+ 9FZ  H13  H  HCH3   0   0.249  -5.7378   1.0836   1.0183
+ 9FZ  H14  H  HCH3   0   0.248  -5.2829   1.9246  -0.4619
+ 9FZ  H15  H  HCH3   0   0.249  -6.2181   0.4370  -0.5439
+ 9FZ  OXT  O  OC    -1  -0.623   4.3259  -1.2943   0.2083
+ 9FZ  H3   H  HNH2   0   0.335   3.0841   2.2169   1.1916
+ 9FZ  H4   H  HNH2   0   0.322   2.6640   2.1844  -0.3511
+
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.type
+_chem_comp_bond.value_dist
+_chem_comp_bond.value_dist_esd
+_chem_comp_bond.value_dist_neutron
+ 9FZ  C9  C7   single    1.487  0.020  1.487
+ 9FZ  C   O    deloc     1.247  0.020  1.247
+ 9FZ  C   CA   single    1.550  0.020  1.550
+ 9FZ  C7  N6   aromatic  1.352  0.020  1.352
+ 9FZ  C7  C8   aromatic  1.372  0.020  1.372
+ 9FZ  N6  N5   aromatic  1.290  0.020  1.290
+ 9FZ  C8  N4   aromatic  1.345  0.020  1.345
+ 9FZ  CA  N    single    1.454  0.020  1.454
+ 9FZ  CA  CB   single    1.530  0.020  1.530
+ 9FZ  C1  CB   single    1.522  0.020  1.522
+ 9FZ  C1  C2   single    1.522  0.020  1.522
+ 9FZ  N5  N4   aromatic  1.318  0.020  1.318
+ 9FZ  N4  C2   single    1.451  0.020  1.451
+ 9FZ  C2  H1   single    0.970  0.020  1.090
+ 9FZ  C2  H2   single    0.970  0.020  1.090
+ 9FZ  N   H3   single    0.890  0.020  1.040
+ 9FZ  N   H4   single    0.890  0.020  1.040
+ 9FZ  CA  H6   single    0.970  0.020  1.090
+ 9FZ  CB  H8   single    0.970  0.020  1.090
+ 9FZ  CB  H9   single    0.970  0.020  1.090
+ 9FZ  C1  H10  single    0.970  0.020  1.090
+ 9FZ  C1  H11  single    0.970  0.020  1.090
+ 9FZ  C8  H12  single    0.930  0.020  1.080
+ 9FZ  C9  H13  single    0.970  0.020  1.090
+ 9FZ  C9  H14  single    0.970  0.020  1.090
+ 9FZ  C9  H15  single    0.970  0.020  1.090
+ 9FZ  C   OXT  deloc     1.249  0.020  1.249
+
+loop_
+_chem_comp_angle.comp_id
+_chem_comp_angle.atom_id_1
+_chem_comp_angle.atom_id_2
+_chem_comp_angle.atom_id_3
+_chem_comp_angle.value_angle
+_chem_comp_angle.value_angle_esd
+ 9FZ  N6   C7  C9   123.14  3.000
+ 9FZ  N6   C7  C8   107.33  3.000
+ 9FZ  C9   C7  C8   129.53  3.000
+ 9FZ  H2   C2  H1   107.44  3.000
+ 9FZ  H2   C2  N4   106.88  3.000
+ 9FZ  H1   C2  N4   107.81  3.000
+ 9FZ  H2   C2  C1   111.14  3.000
+ 9FZ  H1   C2  C1   110.97  3.000
+ 9FZ  N4   C2  C1   112.36  3.000
+ 9FZ  H4   N   H3   104.17  3.000
+ 9FZ  H4   N   CA   108.38  3.000
+ 9FZ  H3   N   CA   108.47  3.000
+ 9FZ  H6   CA  CB   107.14  3.000
+ 9FZ  H6   CA  C    106.73  3.000
+ 9FZ  CB   CA  C    109.53  3.000
+ 9FZ  H6   CA  N    107.09  3.000
+ 9FZ  CB   CA  N    110.25  3.000
+ 9FZ  C    CA  N    115.68  3.000
+ 9FZ  OXT  C   O    126.41  3.000
+ 9FZ  OXT  C   CA   115.81  3.000
+ 9FZ  O    C   CA   117.78  3.000
+ 9FZ  H9   CB  H8   106.24  3.000
+ 9FZ  H9   CB  C1   109.59  3.000
+ 9FZ  H8   CB  C1   109.41  3.000
+ 9FZ  H9   CB  CA   108.52  3.000
+ 9FZ  H8   CB  CA   109.21  3.000
+ 9FZ  C1   CB  CA   113.61  3.000
+ 9FZ  H11  C1  H10  106.88  3.000
+ 9FZ  H11  C1  CB   109.74  3.000
+ 9FZ  H10  C1  CB   110.14  3.000
+ 9FZ  H11  C1  C2   109.06  3.000
+ 9FZ  H10  C1  C2   109.81  3.000
+ 9FZ  CB   C1  C2   111.11  3.000
+ 9FZ  H12  C8  N4   123.01  3.000
+ 9FZ  H12  C8  C7   132.50  3.000
+ 9FZ  N4   C8  C7   104.49  3.000
+ 9FZ  H15  C9  H14  107.62  3.000
+ 9FZ  H15  C9  H13  107.40  3.000
+ 9FZ  H14  C9  H13  107.97  3.000
+ 9FZ  H15  C9  C7   111.60  3.000
+ 9FZ  H14  C9  C7   110.73  3.000
+ 9FZ  H13  C9  C7   111.34  3.000
+ 9FZ  N5   N4  C8   110.72  3.000
+ 9FZ  N5   N4  C2   120.77  3.000
+ 9FZ  C8   N4  C2   128.38  3.000
+ 9FZ  N6   N5  N4   108.08  3.000
+ 9FZ  N5   N6  C7   109.38  3.000
+
+loop_
+_chem_comp_tor.comp_id
+_chem_comp_tor.id
+_chem_comp_tor.atom_id_1
+_chem_comp_tor.atom_id_2
+_chem_comp_tor.atom_id_3
+_chem_comp_tor.atom_id_4
+_chem_comp_tor.value_angle
+_chem_comp_tor.value_angle_esd
+_chem_comp_tor.period
+ 9FZ  CONST_01  N4   N5  N6  C7     0.00   0.0  0
+ 9FZ  CONST_02  N5   N4  C8  C7     0.00   0.0  0
+ 9FZ  CONST_03  N5   N6  C7  C8     0.00   0.0  0
+ 9FZ  CONST_04  N6   N5  N4  C8     0.00   0.0  0
+ 9FZ  CONST_05  N6   C7  C8  N4     0.00   0.0  0
+ 9FZ  CONST_06  C2   N4  C8  C7   180.00   0.0  0
+ 9FZ  CONST_07  N6   N5  N4  C2   180.00   0.0  0
+ 9FZ  CONST_08  N5   N6  C7  C9   180.00   0.0  0
+ 9FZ  CONST_09  N4   C8  C7  C9   180.00   0.0  0
+ 9FZ  CONST_10  H12  C8  N4  N5   180.00   0.0  0
+ 9FZ  Var_01    C8   N4  C2  C1    81.86  30.0  2
+ 9FZ  Var_02    H13  C9  C7  C8  -129.94  30.0  2
+ 9FZ  Var_03    N4   C2  C1  CB   178.63  30.0  3
+ 9FZ  Var_04    CA   CB  C1  C2  -178.55  30.0  3
+ 9FZ  Var_05    O    C   CA  N     -7.61  30.0  2
+ 9FZ  Var_06    OXT  C   CA  N    172.51  30.0  2
+ 9FZ  Var_07    C1   CB  CA  N    -57.45  30.0  3
+ 9FZ  Var_08    C1   CB  CA  C    174.17  30.0  3
+ 9FZ  Var_09    CB   CA  C   O    117.71  30.0  2
+ 9FZ  Var_10    OXT  C   CA  CB   -62.18  30.0  2
+ 9FZ  Var_11    H3   N   CA  C    -57.83  30.0  3
+ 9FZ  Var_12    H4   N   CA  C     54.69  30.0  3
+ 9FZ  Var_13    H6   CA  C   O   -126.62  30.0  2
+
+loop_
+_chem_comp_chir.comp_id
+_chem_comp_chir.id
+_chem_comp_chir.atom_id_centre
+_chem_comp_chir.atom_id_1
+_chem_comp_chir.atom_id_2
+_chem_comp_chir.atom_id_3
+_chem_comp_chir.volume_sign
+ 9FZ  chir_01  CA  C  N  CB  negativ
+
+loop_
+_chem_comp_plane_atom.comp_id
+_chem_comp_plane_atom.plane_id
+_chem_comp_plane_atom.atom_id
+_chem_comp_plane_atom.dist_esd
+ 9FZ  plan-1  C7   0.020
+ 9FZ  plan-1  C2   0.020
+ 9FZ  plan-1  C8   0.020
+ 9FZ  plan-1  C9   0.020
+ 9FZ  plan-1  N4   0.020
+ 9FZ  plan-1  N5   0.020
+ 9FZ  plan-1  N6   0.020
+ 9FZ  plan-1  H12  0.020
+ 9FZ  plan-2  CA   0.020
+ 9FZ  plan-2  C    0.020
+ 9FZ  plan-2  O    0.020
+ 9FZ  plan-2  OXT  0.020
+"""
+
+OLD_CIF['9G2'] = """\
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+_chem_comp.initial_date
+_chem_comp.modified_date
+_chem_comp.source
+ 9G2  9G2  '(2~{S})-2-azanyl-5-(4-ethyl-1,2,3-triazol-1-yl)pentanoic acid'  ligand  30  15  .  2022-07-24  2023-10-13
+;
+Directly from eLBOW using geometry from QM method PBEh-3c with CPCM solvent model
+Validated by Mogul as OK (reasonable std)
+Added dihedrals for adding hydrogens : 2023-10-13
+;
+
+data_comp_9G2
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.charge
+_chem_comp_atom.partial_charge
+_chem_comp_atom.x
+_chem_comp_atom.y
+_chem_comp_atom.z
+ 9G2  C2   C  CH2    0  -0.290  -0.3765   0.8416   0.7070
+ 9G2  C8   C  CR15   0  -0.098  -2.5915  -0.3452   0.5445
+ 9G2  N6   N  N      0  -0.325  -3.4543   1.0439  -0.9194
+ 9G2  N    N  NH2    0  -0.785   2.8758  -1.8894  -0.3055
+ 9G2  CA   C  CH1    0  -0.212   3.1128  -0.4593  -0.4279
+ 9G2  C    C  C      0   0.385   4.5224   0.0240   0.0002
+ 9G2  O    O  O      0  -0.607   5.2702  -0.7971   0.5661
+ 9G2  C1   C  CH2    0  -0.423   0.6257   0.0313  -0.1023
+ 9G2  C10  C  CH3    0  -0.657  -6.1195  -0.0939   0.4688
+ 9G2  C7   C  CR5    0   0.160  -3.7037  -0.0832  -0.2161
+ 9G2  N4   N  NR5    0  -0.247  -1.7404   0.6529   0.2503
+ 9G2  N5   N  N      0  -0.113  -2.2708   1.4734  -0.6355
+ 9G2  H1   H  HCH2   0   0.265  -0.3364   0.5669   1.7613
+ 9G2  H2   H  HCH2   0   0.267  -0.1653   1.9085   0.6381
+ 9G2  H3   H  HCH2   0   0.244  -4.8678  -1.8147   0.1234
+ 9G2  H4   H  HCH2   0   0.245  -5.2910  -0.9390  -1.3306
+ 9G2  H5   H  HCR5   0   0.301  -2.3582  -1.1320   1.2422
+ 9G2  H9   H  HCH1   0   0.211   2.9926  -0.1992  -1.4873
+ 9G2  H13  H  HCH2   0   0.235   0.4068  -1.0334  -0.0023
+ 9G2  H14  H  HCH2   0   0.226   0.5186   0.2823  -1.1618
+ 9G2  H15  H  HCH3   0   0.225  -5.8739   0.0132   1.5258
+ 9G2  H16  H  HCH3   0   0.226  -6.2916   0.9028   0.0620
+ 9G2  H17  H  HCH3   0   0.231  -7.0542  -0.6508   0.3972
+ 9G2  OXT  O  OC    -1  -0.624   4.7896   1.2177  -0.2545
+ 9G2  CB   C  CH2    0  -0.430   2.0501   0.3162   0.3533
+ 9G2  H6   H  HNH2   0   0.334   3.5623  -2.3787  -0.8670
+ 9G2  H11  H  HCH2   0   0.213   2.1462   0.0785   1.4203
+ 9G2  H12  H  HCH2   0   0.226   2.2543   1.3847   0.2573
+ 9G2  C9   C  CH2    0  -0.504  -5.0018  -0.8117  -0.2848
+ 9G2  H7   H  HNH2   0   0.323   3.0936  -2.1654   0.6460
+
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.type
+_chem_comp_bond.value_dist
+_chem_comp_bond.value_dist_esd
+_chem_comp_bond.value_dist_neutron
+ 9G2  O    C    deloc     1.246  0.020  1.246
+ 9G2  C    CA   single    1.550  0.020  1.550
+ 9G2  CA   N    single    1.455  0.020  1.455
+ 9G2  CA   CB   single    1.530  0.020  1.530
+ 9G2  C1   CB   single    1.522  0.020  1.522
+ 9G2  C1   C2   single    1.522  0.020  1.522
+ 9G2  C2   N4   single    1.451  0.020  1.451
+ 9G2  N4   N5   aromatic  1.319  0.020  1.319
+ 9G2  N4   C8   aromatic  1.344  0.020  1.344
+ 9G2  N5   N6   aromatic  1.291  0.020  1.291
+ 9G2  C8   C7   aromatic  1.373  0.020  1.373
+ 9G2  N6   C7   aromatic  1.352  0.020  1.352
+ 9G2  C7   C9   single    1.490  0.020  1.490
+ 9G2  C9   C10  single    1.527  0.020  1.527
+ 9G2  C2   H1   single    0.970  0.020  1.090
+ 9G2  C2   H2   single    0.970  0.020  1.090
+ 9G2  C9   H3   single    0.970  0.020  1.090
+ 9G2  C9   H4   single    0.970  0.020  1.090
+ 9G2  C8   H5   single    0.930  0.020  1.080
+ 9G2  N    H6   single    0.890  0.020  1.040
+ 9G2  N    H7   single    0.890  0.020  1.040
+ 9G2  CA   H9   single    0.970  0.020  1.090
+ 9G2  CB   H11  single    0.970  0.020  1.090
+ 9G2  CB   H12  single    0.970  0.020  1.090
+ 9G2  C1   H13  single    0.970  0.020  1.090
+ 9G2  C1   H14  single    0.970  0.020  1.090
+ 9G2  C10  H15  single    0.970  0.020  1.090
+ 9G2  C10  H16  single    0.970  0.020  1.090
+ 9G2  C10  H17  single    0.970  0.020  1.090
+ 9G2  C    OXT  deloc     1.249  0.020  1.249
+
+loop_
+_chem_comp_angle.comp_id
+_chem_comp_angle.atom_id_1
+_chem_comp_angle.atom_id_2
+_chem_comp_angle.atom_id_3
+_chem_comp_angle.value_angle
+_chem_comp_angle.value_angle_esd
+ 9G2  H2   C2   H1   107.50  3.000
+ 9G2  H2   C2   N4   106.84  3.000
+ 9G2  H1   C2   N4   107.83  3.000
+ 9G2  H2   C2   C1   111.11  3.000
+ 9G2  H1   C2   C1   110.85  3.000
+ 9G2  N4   C2   C1   112.48  3.000
+ 9G2  H5   C8   N4   123.16  3.000
+ 9G2  H5   C8   C7   132.36  3.000
+ 9G2  N4   C8   C7   104.48  3.000
+ 9G2  N5   N6   C7   109.41  3.000
+ 9G2  H7   N    H6   104.07  3.000
+ 9G2  H7   N    CA   108.15  3.000
+ 9G2  H6   N    CA   108.53  3.000
+ 9G2  H9   CA   CB   107.26  3.000
+ 9G2  H9   CA   C    106.99  3.000
+ 9G2  CB   CA   C    109.42  3.000
+ 9G2  H9   CA   N    107.24  3.000
+ 9G2  CB   CA   N    110.01  3.000
+ 9G2  C    CA   N    115.55  3.000
+ 9G2  OXT  C    O    126.41  3.000
+ 9G2  OXT  C    CA   115.85  3.000
+ 9G2  O    C    CA   117.74  3.000
+ 9G2  H14  C1   H13  107.03  3.000
+ 9G2  H14  C1   CB   109.78  3.000
+ 9G2  H13  C1   CB   110.04  3.000
+ 9G2  H14  C1   C2   109.17  3.000
+ 9G2  H13  C1   C2   109.79  3.000
+ 9G2  CB   C1   C2   110.94  3.000
+ 9G2  H17  C10  H16  107.89  3.000
+ 9G2  H17  C10  H15  107.87  3.000
+ 9G2  H16  C10  H15  107.90  3.000
+ 9G2  H17  C10  C9   110.79  3.000
+ 9G2  H16  C10  C9   111.17  3.000
+ 9G2  H15  C10  C9   111.08  3.000
+ 9G2  N6   C7   C8   107.34  3.000
+ 9G2  N6   C7   C9   122.98  3.000
+ 9G2  C8   C7   C9   129.65  3.000
+ 9G2  N5   N4   C8   110.75  3.000
+ 9G2  C8   N4   C2   128.53  3.000
+ 9G2  N5   N4   C2   120.58  3.000
+ 9G2  N4   N5   N6   108.03  3.000
+ 9G2  H12  CB   H11  106.32  3.000
+ 9G2  H12  CB   C1   109.37  3.000
+ 9G2  H11  CB   C1   109.42  3.000
+ 9G2  H12  CB   CA   108.73  3.000
+ 9G2  H11  CB   CA   109.01  3.000
+ 9G2  C1   CB   CA   113.71  3.000
+ 9G2  H4   C9   H3   106.47  3.000
+ 9G2  H4   C9   C7   109.38  3.000
+ 9G2  H3   C9   C7   108.98  3.000
+ 9G2  H4   C9   C10  109.47  3.000
+ 9G2  H3   C9   C10  109.71  3.000
+ 9G2  C7   C9   C10  112.64  3.000
+
+loop_
+_chem_comp_tor.comp_id
+_chem_comp_tor.id
+_chem_comp_tor.atom_id_1
+_chem_comp_tor.atom_id_2
+_chem_comp_tor.atom_id_3
+_chem_comp_tor.atom_id_4
+_chem_comp_tor.value_angle
+_chem_comp_tor.value_angle_esd
+_chem_comp_tor.period
+ 9G2  CONST_01  N6   N5   N4  C8      0.00   0.0  0
+ 9G2  CONST_02  N5   N6   C7  C8      0.00   0.0  0
+ 9G2  CONST_03  N4   C8   C7  N6      0.00   0.0  0
+ 9G2  CONST_04  N5   N4   C8  C7      0.00   0.0  0
+ 9G2  CONST_05  N4   N5   N6  C7      0.00   0.0  0
+ 9G2  CONST_06  N6   N5   N4  C2    180.00   0.0  0
+ 9G2  CONST_07  C7   C8   N4  C2    180.00   0.0  0
+ 9G2  CONST_08  N4   C8   C7  C9    180.00   0.0  0
+ 9G2  CONST_09  N5   N6   C7  C9    180.00   0.0  0
+ 9G2  CONST_10  H5   C8   C7  N6    180.00   0.0  0
+ 9G2  Var_01    C1   C2   N4  C8     82.03  30.0  1
+ 9G2  Var_02    C10  C9   C7  C8    103.32  30.0  2
+ 9G2  Var_03    N4   C2   C1  CB    176.74  30.0  3
+ 9G2  Var_04    H15  C10  C9  C7    -60.24  30.0  3
+ 9G2  Var_05    CA   CB   C1  C2   -179.55  30.0  3
+ 9G2  Var_06    O    C    CA  N      -8.94  30.0  2
+ 9G2  Var_07    OXT  C    CA  N     171.54  30.0  2
+ 9G2  Var_08    C1   CB   CA  N     -58.55  30.0  3
+ 9G2  Var_09    C1   CB   CA  C     173.49  30.0  3
+ 9G2  Var_10    CB   CA   C   O     115.85  30.0  2
+ 9G2  Var_11    CB   CA   C   OXT   -63.66  30.0  2
+ 9G2  Var_12    H6   N    CA  C     -58.29  30.0  3
+ 9G2  Var_13    H7   N    CA  C      54.02  30.0  3
+ 9G2  Var_14    H9   CA   C   O    -128.25  30.0  2
+
+loop_
+_chem_comp_chir.comp_id
+_chem_comp_chir.id
+_chem_comp_chir.atom_id_centre
+_chem_comp_chir.atom_id_1
+_chem_comp_chir.atom_id_2
+_chem_comp_chir.atom_id_3
+_chem_comp_chir.volume_sign
+ 9G2  chir_01  CA  C  N  CB  negativ
+
+loop_
+_chem_comp_plane_atom.comp_id
+_chem_comp_plane_atom.plane_id
+_chem_comp_plane_atom.atom_id
+_chem_comp_plane_atom.dist_esd
+ 9G2  plan-1  C2   0.020
+ 9G2  plan-1  C8   0.020
+ 9G2  plan-1  N6   0.020
+ 9G2  plan-1  C7   0.020
+ 9G2  plan-1  N4   0.020
+ 9G2  plan-1  N5   0.020
+ 9G2  plan-1  H5   0.020
+ 9G2  plan-1  C9   0.020
+ 9G2  plan-2  CA   0.020
+ 9G2  plan-2  C    0.020
+ 9G2  plan-2  O    0.020
+ 9G2  plan-2  OXT  0.020
+"""
+
+OLD_CIF['ASJ'] = """\
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+_chem_comp.initial_date
+_chem_comp.modified_date
+_chem_comp.source
+ ASJ  ASJ  '(3S)-3-amino-4-hydroxybutanoic acid'  peptide  16  8  .  2019-03-22  2023-10-30
+;
+Directly from eLBOW using geometry from QM method PBEh-3c with CPCM solvent model
+Validated by Mogul as GRAND (side chain)
+Added dihedrals for adding hydrogens : 2023-10-30
+;
+
+data_comp_ASJ
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.charge
+_chem_comp_atom.partial_charge
+_chem_comp_atom.x
+_chem_comp_atom.y
+_chem_comp_atom.z
+ ASJ  C    C  CH2    0  -0.123  35.6025  93.2236  16.3208
+ ASJ  N    N  NH2    0  -0.810  36.8816  94.0112  18.2284
+ ASJ  O    O  OH1    0  -0.673  36.0521  91.8984  16.5215
+ ASJ  CA   C  CH1    0  -0.105  35.5421  93.9421  17.6565
+ ASJ  CB   C  CH2    0  -0.578  34.9886  95.3447  17.4580
+ ASJ  CG   C  C      0   0.415  34.7532  96.1791  18.7360
+ ASJ  OD1  O  OC    -1  -0.602  34.8605  95.6018  19.8386
+ ASJ  OD2  O  O      0  -0.615  34.4536  97.3754  18.5516
+ ASJ  H    H  HCH2   0   0.180  36.2751  93.7767  15.6509
+ ASJ  HA   H  HCH2   0   0.182  34.6042  93.2388  15.8624
+ ASJ  HN   H  HNH2   0   0.336  36.8016  94.4294  19.1466
+ ASJ  HNA  H  HNH2   0   0.331  37.2315  93.0732  18.3788
+ ASJ  HO   H  HOH1   0   0.449  36.2032  91.4973  15.6614
+ ASJ  HAA  H  HCH1   0   0.181  34.8387  93.3865  18.2971
+ ASJ  HB   H  HCH2   0   0.211  35.6538  95.9035  16.7905
+ ASJ  HBA  H  HCH2   0   0.221  34.0296  95.2791  16.9304
+
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.type
+_chem_comp_bond.value_dist
+_chem_comp_bond.value_dist_esd
+_chem_comp_bond.value_dist_neutron
+ ASJ  C   O    single  1.231  0.020  1.231
+ ASJ  C   CA   single  1.525  0.021  1.525
+ ASJ  C   H    single  0.970  0.020  1.090
+ ASJ  C   HA   single  0.970  0.020  1.090
+ ASJ  CA  N    single  1.458  0.019  1.458
+ ASJ  N   HN   single  0.890  0.020  1.040
+ ASJ  N   HNA  single  0.890  0.020  1.040
+ ASJ  O   HO   single  0.850  0.020  0.980
+ ASJ  CB  CA   single  1.521  0.033  1.521
+ ASJ  CA  HAA  single  0.970  0.020  1.090
+ ASJ  CB  CG   single  1.544  0.020  1.544
+ ASJ  CB  HB   single  0.970  0.020  1.090
+ ASJ  CB  HBA  single  0.970  0.020  1.090
+ ASJ  CG  OD2  deloc   1.247  0.020  1.247
+ ASJ  CG  OD1  deloc   1.249  0.020  1.249
+
+loop_
+_chem_comp_angle.comp_id
+_chem_comp_angle.atom_id_1
+_chem_comp_angle.atom_id_2
+_chem_comp_angle.atom_id_3
+_chem_comp_angle.value_angle
+_chem_comp_angle.value_angle_esd
+ ASJ  HA   C   H    107.15  3.000
+ ASJ  HA   C   CA   110.00  3.000
+ ASJ  H    C   CA   108.82  3.000
+ ASJ  HA   C   O    111.17  3.000
+ ASJ  H    C   O    111.33  3.000
+ ASJ  CA   C   O    120.80  1.700
+ ASJ  HNA  N   HN   105.98  3.000
+ ASJ  HNA  N   CA   109.39  3.000
+ ASJ  HN   N   CA   107.63  3.000
+ ASJ  HO   O   C    108.32  3.000
+ ASJ  HAA  CA  CB   107.97  3.000
+ ASJ  HAA  CA  N    112.48  3.000
+ ASJ  CB   CA  N    110.40  1.500
+ ASJ  HAA  CA  C    107.36  3.000
+ ASJ  CB   CA  C    110.50  1.500
+ ASJ  N    CA  C    111.00  2.800
+ ASJ  HBA  CB  HB   105.56  3.000
+ ASJ  HBA  CB  CG   107.29  3.000
+ ASJ  HB   CB  CG   108.74  3.000
+ ASJ  HBA  CB  CA   109.02  3.000
+ ASJ  HB   CB  CA   109.20  3.000
+ ASJ  CG   CB  CA   116.47  3.000
+ ASJ  OD2  CG  OD1  126.48  3.000
+ ASJ  OD1  CG  CB   117.88  3.000
+ ASJ  OD2  CG  CB   115.63  3.000
+
+loop_
+_chem_comp_tor.comp_id
+_chem_comp_tor.id
+_chem_comp_tor.atom_id_1
+_chem_comp_tor.atom_id_2
+_chem_comp_tor.atom_id_3
+_chem_comp_tor.atom_id_4
+_chem_comp_tor.value_angle
+_chem_comp_tor.value_angle_esd
+_chem_comp_tor.period
+ ASJ  Var_01  OD2  CG  CB  CA   171.74  30.0  3
+ ASJ  Var_02  HN   N   CA  C   -175.72  30.0  3
+ ASJ  Var_03  HNA  N   CA  C    -61.01  30.0  3
+ ASJ  Var_04  HB   CB  CA  C    -61.13  30.0  3
+ ASJ  Var_05  HBA  CB  CA  C     53.75  30.0  3
+ ASJ  Var_06  H    C   CA  N    -59.46  30.0  3
+ ASJ  Var_07  HA   C   CA  N   -175.96  30.0  3
+ ASJ  Var_08  HAA  CA  C   O    -59.94  30.0  3
+ ASJ  Var_09  HO   O   C   CA  -172.14  30.0  3
+
+loop_
+_chem_comp_chir.comp_id
+_chem_comp_chir.id
+_chem_comp_chir.atom_id_centre
+_chem_comp_chir.atom_id_1
+_chem_comp_chir.atom_id_2
+_chem_comp_chir.atom_id_3
+_chem_comp_chir.volume_sign
+ ASJ  chir_01  CA  C  N  CB  negativ
+
+loop_
+_chem_comp_plane_atom.comp_id
+_chem_comp_plane_atom.plane_id
+_chem_comp_plane_atom.atom_id
+_chem_comp_plane_atom.dist_esd
+ ASJ  plan-1  CB   0.020
+ ASJ  plan-1  CG   0.020
+ ASJ  plan-1  OD1  0.020
+ ASJ  plan-1  OD2  0.020
 """
 
 if __name__ == '__main__':

@@ -770,7 +770,1002 @@ _chem_comp_plane_atom.dist_esd
  004  plan-2  OXT  0.020
 """
 
-OLD_DICTIONARIES = (('0A0', cif_0a0), ('01W', cif_01w), ('004', cif_004))
+# GeoStd CTE as it was until 2026-11-25 (HN, HN1 on N; now H, HN1) and 0AA
+# (HN1, HA2 on N), whose computed third name HN2 is also a name of
+# pdb_interpretation's HN1/HN2 -> mod_NH2 rule
+cif_cte = """\
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+_chem_comp.initial_date
+_chem_comp.modified_date
+_chem_comp.source
+ CTE  CTE  '7-chloro-L-tryptophan    '  L-peptide  26  16  .  2012-08-28  2023-10-30
+;
+Directly from eLBOW using geometry from QM method PBEh-3c with CPCM solvent model
+Validated by Mogul as GRAND (side chain)
+Added dihedrals for adding hydrogens : 2023-10-30
+;
+
+data_comp_CTE
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.charge
+_chem_comp_atom.partial_charge
+_chem_comp_atom.x
+_chem_comp_atom.y
+_chem_comp_atom.z
+ CTE  O    O   O      0  -0.607  2.7665  5.8434  14.0246
+ CTE  C    C   C      0   0.397  3.9059  5.5785  14.4579
+ CTE  OXT  O   OC    -1  -0.609  4.2013  4.7160  15.3089
+ CTE  CA   C   CH1    0  -0.154  5.0781  6.4201  13.8978
+ CTE  N    N   NH2    0  -0.808  5.0364  6.4704  12.4391
+ CTE  CB   C   CH2    0  -0.529  5.0024  7.8596  14.4237
+ CTE  CG   C   CR5    0   0.015  5.0761  7.9706  15.9113
+ CTE  CD1  C   CR15   0  -0.085  6.2014  7.9460  16.6860
+ CTE  NE1  N   NR15   0  -0.684  5.8720  8.0544  18.0111
+ CTE  CE2  C   CR56   0   0.458  4.5228  8.1609  18.1222
+ CTE  CD2  C   CR56   0   0.019  3.9764  8.1070  16.8204
+ CTE  CE3  C   CR16   0  -0.353  2.5900  8.2011  16.6550
+ CTE  CZ3  C   CR16   0  -0.278  1.7917  8.3520  17.7705
+ CTE  CH2  C   CR16   0  -0.267  2.3405  8.4058  19.0623
+ CTE  CZ2  C   CR6    0  -0.122  3.7036  8.3090  19.2378
+ CTE  CL   CL  CL     0  -0.131  4.4161  8.3700  20.8165
+ CTE  HA   H   HCH1   0   0.173  6.0140  5.9813  14.2740
+ CTE  HN1  H   HNH2   0   0.332  5.8823  6.9179  12.1054
+ CTE  HN   H   HNH2   0   0.335  5.0660  5.5299  12.0646
+ CTE  HB1  H   HCH2   0   0.231  5.8179  8.4358  13.9742
+ CTE  HB2  H   HCH2   0   0.226  4.0741  8.3090  14.0623
+ CTE  HD1  H   HCR5   0   0.278  7.2352  7.8596  16.3890
+ CTE  HE1  H   HNR5   0   0.405  6.5300  8.0711  18.7725
+ CTE  HE3  H   HCR6   0   0.240  2.1531  8.1438  15.6669
+ CTE  HZ3  H   HCR6   0   0.251  0.7178  8.4264  17.6605
+ CTE  HH2  H   HCR6   0   0.267  1.6933  8.5226  19.9212
+
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.type
+_chem_comp_bond.value_dist
+_chem_comp_bond.value_dist_esd
+_chem_comp_bond.value_dist_neutron
+ CTE  O    C    deloc     1.231  0.020  1.231
+ CTE  C    OXT  deloc     1.247  0.020  1.247
+ CTE  C    CA   single    1.525  0.021  1.525
+ CTE  CA   N    single    1.458  0.019  1.458
+ CTE  CA   CB   single    1.530  0.020  1.530
+ CTE  CA   HA   single    0.970  0.020  0.970
+ CTE  N    HN1  single    0.890  0.020  1.040
+ CTE  N    HN   single    0.890  0.020  1.040
+ CTE  CB   CG   single    1.494  0.020  1.494
+ CTE  CB   HB1  single    0.970  0.020  1.090
+ CTE  CB   HB2  single    0.970  0.020  1.090
+ CTE  CG   CD1  aromatic  1.366  0.020  1.366
+ CTE  CG   CD2  aromatic  1.433  0.020  1.433
+ CTE  CD1  NE1  aromatic  1.370  0.020  1.370
+ CTE  CD1  HD1  single    0.930  0.020  1.080
+ CTE  NE1  CE2  aromatic  1.358  0.020  1.358
+ CTE  NE1  HE1  single    0.860  0.020  1.020
+ CTE  CE2  CD2  aromatic  1.413  0.020  1.413
+ CTE  CE2  CZ2  aromatic  1.392  0.020  1.392
+ CTE  CD2  CE3  aromatic  1.399  0.020  1.399
+ CTE  CE3  CZ3  aromatic  1.380  0.020  1.380
+ CTE  CE3  HE3  single    0.930  0.020  1.080
+ CTE  CZ3  CH2  aromatic  1.405  0.020  1.405
+ CTE  CZ3  HZ3  single    0.930  0.020  1.080
+ CTE  CH2  CZ2  aromatic  1.378  0.020  1.378
+ CTE  CH2  HH2  single    0.930  0.020  1.080
+ CTE  CZ2  CL   single    1.733  0.020  1.733
+
+loop_
+_chem_comp_angle.comp_id
+_chem_comp_angle.atom_id_1
+_chem_comp_angle.atom_id_2
+_chem_comp_angle.atom_id_3
+_chem_comp_angle.value_angle
+_chem_comp_angle.value_angle_esd
+ CTE  CA   C    OXT  116.33  3.000
+ CTE  CA   C    O    120.80  1.700
+ CTE  OXT  C    O    126.88  3.000
+ CTE  HA   CA   CB   109.00  3.000
+ CTE  HA   CA   N    110.00  3.000
+ CTE  CB   CA   N    110.50  1.700
+ CTE  HA   CA   C    109.00  3.000
+ CTE  CB   CA   C    110.10  1.900
+ CTE  N    CA   C    111.00  2.800
+ CTE  HN   N    HN1  105.30  3.000
+ CTE  HN   N    CA   109.67  3.000
+ CTE  HN1  N    CA   108.68  3.000
+ CTE  HB2  CB   HB1  106.29  3.000
+ CTE  HB2  CB   CG   109.93  3.000
+ CTE  HB1  CB   CG   109.44  3.000
+ CTE  HB2  CB   CA   108.32  3.000
+ CTE  HB1  CB   CA   108.43  3.000
+ CTE  CG   CB   CA   114.12  3.000
+ CTE  CD2  CG   CD1  105.90  3.000
+ CTE  CD2  CG   CB   126.93  3.000
+ CTE  CD1  CG   CB   127.16  3.000
+ CTE  HD1  CD1  NE1  120.20  3.000
+ CTE  HD1  CD1  CG   129.37  3.000
+ CTE  NE1  CD1  CG   110.43  3.000
+ CTE  HE1  NE1  CE2  125.90  3.000
+ CTE  HE1  NE1  CD1  125.17  3.000
+ CTE  CE2  NE1  CD1  108.92  3.000
+ CTE  CZ2  CE2  CD2  121.00  3.000
+ CTE  CZ2  CE2  NE1  131.20  3.000
+ CTE  CD2  CE2  NE1  107.81  3.000
+ CTE  CE3  CD2  CE2  119.31  3.000
+ CTE  CE3  CD2  CG   133.75  3.000
+ CTE  CE2  CD2  CG   106.94  3.000
+ CTE  HE3  CE3  CZ3  120.69  3.000
+ CTE  HE3  CE3  CD2  120.30  3.000
+ CTE  CZ3  CE3  CD2  119.00  3.000
+ CTE  HZ3  CZ3  CH2  118.60  3.000
+ CTE  HZ3  CZ3  CE3  119.96  3.000
+ CTE  CH2  CZ3  CE3  121.44  3.000
+ CTE  HH2  CH2  CZ2  119.89  3.000
+ CTE  HH2  CH2  CZ3  120.04  3.000
+ CTE  CZ2  CH2  CZ3  120.07  3.000
+ CTE  CL   CZ2  CH2  121.35  3.000
+ CTE  CL   CZ2  CE2  119.46  3.000
+ CTE  CH2  CZ2  CE2  119.18  3.000
+
+loop_
+_chem_comp_tor.comp_id
+_chem_comp_tor.id
+_chem_comp_tor.atom_id_1
+_chem_comp_tor.atom_id_2
+_chem_comp_tor.atom_id_3
+_chem_comp_tor.atom_id_4
+_chem_comp_tor.value_angle
+_chem_comp_tor.value_angle_esd
+_chem_comp_tor.period
+ CTE  CONST_01  CE2  NE1  CD1  CG      0.00   0.0  0
+ CTE  CONST_02  NE1  CE2  CD2  CG      0.00   0.0  0
+ CTE  CONST_03  CZ2  CE2  CD2  CG    180.00   0.0  0
+ CTE  CONST_04  CZ3  CE3  CD2  CG    180.00   0.0  0
+ CTE  CONST_05  CE2  CD2  CG   CD1     0.00   0.0  0
+ CTE  CONST_06  CE3  CD2  CG   CD1   180.00   0.0  0
+ CTE  CONST_07  CD2  CE2  NE1  CD1     0.00   0.0  0
+ CTE  CONST_08  CZ2  CE2  NE1  CD1   180.00   0.0  0
+ CTE  CONST_09  CD2  CG   CD1  NE1     0.00   0.0  0
+ CTE  CONST_10  CE3  CD2  CE2  NE1   180.00   0.0  0
+ CTE  CONST_11  CH2  CZ2  CE2  NE1   180.00   0.0  0
+ CTE  CONST_12  CZ3  CE3  CD2  CE2     0.00   0.0  0
+ CTE  CONST_13  CZ3  CH2  CZ2  CE2     0.00   0.0  0
+ CTE  CONST_14  CH2  CZ2  CE2  CD2     0.00   0.0  0
+ CTE  CONST_15  CH2  CZ3  CE3  CD2     0.00   0.0  0
+ CTE  CONST_16  CZ2  CE2  CD2  CE3     0.00   0.0  0
+ CTE  CONST_17  CZ2  CH2  CZ3  CE3     0.00   0.0  0
+ CTE  CONST_18  NE1  CD1  CG   CB    180.00   0.0  0
+ CTE  CONST_19  CE2  CD2  CG   CB    180.00   0.0  0
+ CTE  CONST_20  CE3  CD2  CG   CB      0.00   0.0  0
+ CTE  CONST_21  CL   CZ2  CE2  NE1     0.00   0.0  0
+ CTE  CONST_22  CL   CZ2  CE2  CD2   180.00   0.0  0
+ CTE  CONST_23  CL   CZ2  CH2  CZ3   180.00   0.0  0
+ CTE  CONST_24  HE1  NE1  CD1  CG    180.00   0.0  0
+ CTE  CONST_25  HE3  CE3  CD2  CG      0.00   0.0  0
+ CTE  CONST_26  HD1  CD1  NE1  CE2   180.00   0.0  0
+ CTE  CONST_27  HH2  CH2  CZ2  CE2   180.00   0.0  0
+ CTE  CONST_28  HZ3  CZ3  CE3  CD2   180.00   0.0  0
+ CTE  Var_01    CD1  CG   CB   CA     81.30  30.0  2
+ CTE  Var_02    HA   CA   CB   CG    -56.94  30.0  2
+ CTE  Var_03    HN1  N    CA   C    -172.33  30.0  3
+ CTE  Var_04    HN   N    CA   C     -57.70  30.0  3
+
+loop_
+_chem_comp_chir.comp_id
+_chem_comp_chir.id
+_chem_comp_chir.atom_id_centre
+_chem_comp_chir.atom_id_1
+_chem_comp_chir.atom_id_2
+_chem_comp_chir.atom_id_3
+_chem_comp_chir.volume_sign
+ CTE  chir_01  CA  C  N  CB  negativ
+
+loop_
+_chem_comp_plane_atom.comp_id
+_chem_comp_plane_atom.plane_id
+_chem_comp_plane_atom.atom_id
+_chem_comp_plane_atom.dist_esd
+ CTE  plan-1  CB   0.020
+ CTE  plan-1  CG   0.020
+ CTE  plan-1  CD1  0.020
+ CTE  plan-1  NE1  0.020
+ CTE  plan-1  CE2  0.020
+ CTE  plan-1  CD2  0.020
+ CTE  plan-1  CE3  0.020
+ CTE  plan-1  CZ3  0.020
+ CTE  plan-1  CH2  0.020
+ CTE  plan-1  CZ2  0.020
+ CTE  plan-1  CL   0.020
+ CTE  plan-1  HD1  0.020
+ CTE  plan-1  HE1  0.020
+ CTE  plan-1  HE3  0.020
+ CTE  plan-1  HZ3  0.020
+ CTE  plan-1  HH2  0.020
+ CTE  plan-2  O    0.020
+ CTE  plan-2  C    0.020
+ CTE  plan-2  OXT  0.020
+ CTE  plan-2  CA   0.020
+"""
+
+cif_0aa = """\
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+_chem_comp.initial_date
+_chem_comp.modified_date
+_chem_comp.source
+ 0AA  0AA  'methyl L-valinate        '  L-peptide  22  9  .  2022-03-10  2023-10-30
+;
+Directly from eLBOW using geometry from QM method PBEh-3c with CPCM solvent model
+Validated by Mogul as GRAND
+Added dihedrals for adding hydrogens : 2023-10-30
+;
+
+data_comp_0AA
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.charge
+_chem_comp_atom.partial_charge
+_chem_comp_atom.x
+_chem_comp_atom.y
+_chem_comp_atom.z
+ 0AA  N     N  NH2   0  -0.794  -0.8712   1.8113   0.3810
+ 0AA  CA    C  CH1   0  -0.176  -0.5496   0.3925   0.3672
+ 0AA  C     C  C     0   0.597   0.8569   0.2736  -0.1892
+ 0AA  O     O  O     0  -0.456   1.1762   0.6793  -1.2802
+ 0AA  CB    C  CH1   0  -0.257  -1.5063  -0.5084  -0.4384
+ 0AA  CG1   C  CH3   0  -0.664  -1.0730  -1.9708  -0.3788
+ 0AA  CG2   C  CH3   0  -0.661  -2.9371  -0.3542   0.0633
+ 0AA  O1    O  O2    0  -0.447   1.6975  -0.3166   0.6461
+ 0AA  C1    C  CH3   0  -0.428   3.0499  -0.4791   0.2138
+ 0AA  HN1   H  HNH2  0   0.347  -1.1120   2.1256  -0.5518
+ 0AA  HA2   H  HNH2  0   0.361  -1.6867   1.9704   0.9574
+ 0AA  HB    H  HCH1  0   0.253  -0.5467   0.0461   1.4044
+ 0AA  HA    H  HCH1  0   0.226  -1.4719  -0.1775  -1.4830
+ 0AA  HG11  H  HCH3  0   0.230  -0.0838  -2.1367  -0.8096
+ 0AA  HG12  H  HCH3  0   0.222  -1.0512  -2.3315   0.6521
+ 0AA  HG13  H  HCH3  0   0.236  -1.7688  -2.6002  -0.9343
+ 0AA  HG21  H  HCH3  0   0.226  -3.3004   0.6686  -0.0401
+ 0AA  HG22  H  HCH3  0   0.235  -3.6130  -0.9951  -0.5040
+ 0AA  HG23  H  HCH3  0   0.219  -3.0200  -0.6372   1.1157
+ 0AA  H1C1  H  HCH3  0   0.239   3.1111  -1.1141  -0.6700
+ 0AA  H1C2  H  HCH3  0   0.240   3.5177   0.4811  -0.0020
+ 0AA  H1C3  H  HCH3  0   0.252   3.5717  -0.9568   1.0374
+
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.type
+_chem_comp_bond.value_dist
+_chem_comp_bond.value_dist_esd
+_chem_comp_bond.value_dist_neutron
+ 0AA  N    CA    single  1.458  0.019  1.458
+ 0AA  N    HN1   single  0.890  0.020  1.040
+ 0AA  N    HA2   single  0.890  0.020  1.040
+ 0AA  CA   C     single  1.525  0.021  1.525
+ 0AA  CA   CB    single  1.540  0.027  1.540
+ 0AA  CA   HB    single  0.970  0.020  1.090
+ 0AA  C    O     double  1.231  0.020  1.231
+ 0AA  C    O1    single  1.324  0.020  1.324
+ 0AA  CB   CG1   single  1.526  0.020  1.526
+ 0AA  CB   CG2   single  1.524  0.020  1.524
+ 0AA  CB   HA    single  0.970  0.020  1.090
+ 0AA  CG1  HG11  single  0.970  0.020  1.090
+ 0AA  CG1  HG12  single  0.970  0.020  1.090
+ 0AA  CG1  HG13  single  0.970  0.020  1.090
+ 0AA  CG2  HG21  single  0.970  0.020  1.090
+ 0AA  CG2  HG22  single  0.970  0.020  1.090
+ 0AA  CG2  HG23  single  0.970  0.020  1.090
+ 0AA  O1   C1    single  1.429  0.020  1.429
+ 0AA  C1   H1C1  single  0.970  0.020  1.090
+ 0AA  C1   H1C2  single  0.970  0.020  1.090
+ 0AA  C1   H1C3  single  0.970  0.020  1.090
+
+loop_
+_chem_comp_angle.comp_id
+_chem_comp_angle.atom_id_1
+_chem_comp_angle.atom_id_2
+_chem_comp_angle.atom_id_3
+_chem_comp_angle.value_angle
+_chem_comp_angle.value_angle_esd
+ 0AA  HA2   N    HN1   106.51  3.000
+ 0AA  HA2   N    CA    109.71  3.000
+ 0AA  HN1   N    CA    110.26  3.000
+ 0AA  HB    CA   CB    108.20  3.000
+ 0AA  HB    CA   C     108.69  3.000
+ 0AA  CB    CA   C     111.40  1.900
+ 0AA  HB    CA   N     107.48  3.000
+ 0AA  CB    CA   N     111.50  1.700
+ 0AA  C     CA   N     111.00  2.800
+ 0AA  O1    C    O     123.52  3.000
+ 0AA  O1    C    CA    113.09  3.000
+ 0AA  O     C    CA    120.80  1.700
+ 0AA  HA    CB   CG2   108.22  3.000
+ 0AA  HA    CB   CG1   108.51  3.000
+ 0AA  CG2   CB   CG1   110.52  3.000
+ 0AA  HA    CB   CA    109.00  3.000
+ 0AA  CG2   CB   CA    110.58  3.000
+ 0AA  CG1   CB   CA    111.31  3.000
+ 0AA  HG13  CG1  HG12  107.63  3.000
+ 0AA  HG13  CG1  HG11  106.83  3.000
+ 0AA  HG12  CG1  HG11  107.71  3.000
+ 0AA  HG13  CG1  CB    110.61  3.000
+ 0AA  HG12  CG1  CB    111.03  3.000
+ 0AA  HG11  CG1  CB    112.79  3.000
+ 0AA  HG23  CG2  HG22  107.56  3.000
+ 0AA  HG23  CG2  HG21  107.99  3.000
+ 0AA  HG22  CG2  HG21  107.19  3.000
+ 0AA  HG23  CG2  CB    111.22  3.000
+ 0AA  HG22  CG2  CB    110.56  3.000
+ 0AA  HG21  CG2  CB    112.12  3.000
+ 0AA  C1    O1   C     117.43  3.000
+ 0AA  H1C3  C1   H1C2  109.37  3.000
+ 0AA  H1C3  C1   H1C1  109.38  3.000
+ 0AA  H1C2  C1   H1C1  109.19  3.000
+ 0AA  H1C3  C1   O1    105.98  3.000
+ 0AA  H1C2  C1   O1    111.46  3.000
+ 0AA  H1C1  C1   O1    111.39  3.000
+
+loop_
+_chem_comp_tor.comp_id
+_chem_comp_tor.id
+_chem_comp_tor.atom_id_1
+_chem_comp_tor.atom_id_2
+_chem_comp_tor.atom_id_3
+_chem_comp_tor.atom_id_4
+_chem_comp_tor.value_angle
+_chem_comp_tor.value_angle_esd
+_chem_comp_tor.period
+ 0AA  Var_01  HG11  CG1  CB  CA   -61.63  30.0  3
+ 0AA  Var_02  HG21  CG2  CB  CA    60.71  30.0  3
+ 0AA  Var_03  H1C1  C1   O1  C    -62.29  30.0  3
+ 0AA  Var_04  HA    CB   CA  N     61.37  30.0  3
+ 0AA  Var_05  HN1   N    CA  C     77.70  30.0  3
+ 0AA  Var_06  HA2   N    CA  C   -165.30  30.0  3
+ 0AA  Var_07  HB    CA   C   O   -174.12  30.0  3
+
+loop_
+_chem_comp_chir.comp_id
+_chem_comp_chir.id
+_chem_comp_chir.atom_id_centre
+_chem_comp_chir.atom_id_1
+_chem_comp_chir.atom_id_2
+_chem_comp_chir.atom_id_3
+_chem_comp_chir.volume_sign
+ 0AA  chir_01  CA  N  C  CB  positiv
+
+loop_
+_chem_comp_plane_atom.comp_id
+_chem_comp_plane_atom.plane_id
+_chem_comp_plane_atom.atom_id
+_chem_comp_plane_atom.dist_esd
+ 0AA  plan-1  CA  0.020
+ 0AA  plan-1  C   0.020
+ 0AA  plan-1  O   0.020
+ 0AA  plan-1  O1  0.020
+"""
+
+# GeoStd BB8, MH8 and TY2 as they were until 2026-11-25 (HN1, HA2 on N; now
+# H, HA2)
+cif_bb8 = """\
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+_chem_comp.initial_date
+_chem_comp.modified_date
+_chem_comp.source
+ BB8  BB8  (betaS)-beta-hydroxy-L-phenylalanine  L-peptide  23  13  .  2012-08-28  2023-10-30
+;
+Directly from eLBOW using geometry from QM method PBEh-3c with CPCM solvent model
+Validated by Mogul as PERFECT
+Added dihedrals for adding hydrogens : 2023-10-30
+;
+
+data_comp_BB8
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.charge
+_chem_comp_atom.partial_charge
+_chem_comp_atom.x
+_chem_comp_atom.y
+_chem_comp_atom.z
+ BB8  N    N  NH2    0  -0.781  10.0155  -1.6053  33.9253
+ BB8  CA   C  CH1    0  -0.281  10.6147  -0.7121  32.9533
+ BB8  C    C  C      0   0.440  11.3961  -1.4163  31.8102
+ BB8  CB   C  CH1    0  -0.017  11.4935   0.3358  33.6760
+ BB8  OB   O  OH1    0  -0.707  12.0423   1.2495  32.7658
+ BB8  CG   C  CR6    0   0.159  10.7011   1.0861  34.7172
+ BB8  CD1  C  CR16   0  -0.304   9.8146   2.0929  34.3408
+ BB8  CE1  C  CR16   0  -0.240   9.0705   2.7747  35.2934
+ BB8  CZ   C  CR16   0  -0.273   9.2049   2.4648  36.6416
+ BB8  CE2  C  CR16   0  -0.242  10.0917   1.4688  37.0275
+ BB8  CD2  C  CR16   0  -0.323  10.8323   0.7883  36.0692
+ BB8  O    O  O      0  -0.561  11.2321  -2.6305  31.6499
+ BB8  OXT  O  OC    -1  -0.617  12.1297  -0.6705  31.1002
+ BB8  HN1  H  HNH2   0   0.339   9.4927  -2.3135  33.4252
+ BB8  HA2  H  HNH2   0   0.327  10.7517  -2.1201  34.3964
+ BB8  HA   H  HCH1   0   0.234   9.8007  -0.1533  32.4691
+ BB8  HB   H  HCH1   0   0.190  12.2889  -0.2233  34.2034
+ BB8  HC   H  HOH1   0   0.435  12.2083   0.6926  31.9589
+ BB8  HD1  H  HCR6   0   0.241   9.7030   2.3491  33.2945
+ BB8  HD2  H  HCR6   0   0.240  11.5266   0.0157  36.3791
+ BB8  HE1  H  HCR6   0   0.246   8.3850   3.5534  34.9831
+ BB8  HZ   H  HCR6   0   0.248   8.6263   2.9991  37.3844
+ BB8  HE2  H  HCR6   0   0.247  10.2092   1.2218  38.0751
+
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.type
+_chem_comp_bond.value_dist
+_chem_comp_bond.value_dist_esd
+_chem_comp_bond.value_dist_neutron
+ BB8  N    CA   single    1.458  0.019  1.458
+ BB8  CA   C    single    1.525  0.021  1.525
+ BB8  CA   CB   single    1.530  0.020  1.530
+ BB8  C    OXT  deloc     1.264  0.020  1.264
+ BB8  CB   OB   single    1.402  0.020  1.402
+ BB8  CB   CG   single    1.508  0.020  1.508
+ BB8  CG   CD1  aromatic  1.393  0.020  1.393
+ BB8  CG   CD2  aromatic  1.391  0.020  1.391
+ BB8  CD1  CE1  aromatic  1.388  0.020  1.388
+ BB8  CE1  CZ   aromatic  1.390  0.020  1.390
+ BB8  CZ   CE2  aromatic  1.388  0.020  1.388
+ BB8  CE2  CD2  aromatic  1.389  0.020  1.389
+ BB8  N    HN1  single    0.890  0.020  1.040
+ BB8  N    HA2  single    0.890  0.020  1.040
+ BB8  CA   HA   single    0.970  0.020  0.970
+ BB8  C    O    deloc     1.231  0.020  1.231
+ BB8  CB   HB   single    0.970  0.020  1.090
+ BB8  OB   HC   single    0.850  0.020  0.980
+ BB8  CD1  HD1  single    0.930  0.020  1.080
+ BB8  CD2  HD2  single    0.930  0.020  1.080
+ BB8  CE1  HE1  single    0.930  0.020  1.080
+ BB8  CZ   HZ   single    0.930  0.020  1.080
+ BB8  CE2  HE2  single    0.930  0.020  1.080
+
+loop_
+_chem_comp_angle.comp_id
+_chem_comp_angle.atom_id_1
+_chem_comp_angle.atom_id_2
+_chem_comp_angle.atom_id_3
+_chem_comp_angle.value_angle
+_chem_comp_angle.value_angle_esd
+ BB8  HA2  N    HN1  104.43  3.000
+ BB8  HA2  N    CA   108.91  3.000
+ BB8  HN1  N    CA   108.25  3.000
+ BB8  HA   CA   CB   109.00  3.000
+ BB8  HA   CA   C    109.00  3.000
+ BB8  CB   CA   C    110.10  1.900
+ BB8  HA   CA   N    110.00  3.000
+ BB8  CB   CA   N    110.50  1.700
+ BB8  C    CA   N    111.00  2.800
+ BB8  OXT  C    O    125.72  3.000
+ BB8  O    C    CA   120.80  1.700
+ BB8  OXT  C    CA   115.96  3.000
+ BB8  HB   CB   CG   107.46  3.000
+ BB8  HB   CB   OB   110.95  3.000
+ BB8  CG   CB   OB   109.25  3.000
+ BB8  HB   CB   CA   106.79  3.000
+ BB8  CG   CB   CA   111.16  3.000
+ BB8  OB   CB   CA   111.14  3.000
+ BB8  HC   OB   CB   103.14  3.000
+ BB8  CD2  CG   CD1  118.52  3.000
+ BB8  CD2  CG   CB   121.00  3.000
+ BB8  CD1  CG   CB   120.48  3.000
+ BB8  HD1  CD1  CE1  119.45  3.000
+ BB8  HD1  CD1  CG   119.84  3.000
+ BB8  CE1  CD1  CG   120.71  3.000
+ BB8  HE1  CE1  CZ   119.97  3.000
+ BB8  HE1  CE1  CD1  119.74  3.000
+ BB8  CZ   CE1  CD1  120.29  3.000
+ BB8  HZ   CZ   CE2  120.31  3.000
+ BB8  HZ   CZ   CE1  120.26  3.000
+ BB8  CE2  CZ   CE1  119.43  3.000
+ BB8  HE2  CE2  CD2  119.86  3.000
+ BB8  HE2  CE2  CZ   120.13  3.000
+ BB8  CD2  CE2  CZ   120.02  3.000
+ BB8  HD2  CD2  CE2  119.56  3.000
+ BB8  HD2  CD2  CG   119.41  3.000
+ BB8  CE2  CD2  CG   121.03  3.000
+
+loop_
+_chem_comp_tor.comp_id
+_chem_comp_tor.id
+_chem_comp_tor.atom_id_1
+_chem_comp_tor.atom_id_2
+_chem_comp_tor.atom_id_3
+_chem_comp_tor.atom_id_4
+_chem_comp_tor.value_angle
+_chem_comp_tor.value_angle_esd
+_chem_comp_tor.period
+ BB8  CONST_01  CZ   CE1  CD1  CG      0.00   0.0  0
+ BB8  CONST_02  CZ   CE2  CD2  CG      0.00   0.0  0
+ BB8  CONST_03  CE2  CD2  CG   CD1     0.00   0.0  0
+ BB8  CONST_04  CE2  CZ   CE1  CD1     0.00   0.0  0
+ BB8  CONST_05  CD2  CG   CD1  CE1     0.00   0.0  0
+ BB8  CONST_06  CD2  CE2  CZ   CE1     0.00   0.0  0
+ BB8  CONST_07  CE1  CD1  CG   CB    180.00   0.0  0
+ BB8  CONST_08  CE2  CD2  CG   CB    180.00   0.0  0
+ BB8  CONST_09  HE1  CE1  CD1  CG    180.00   0.0  0
+ BB8  CONST_10  HE2  CE2  CD2  CG    180.00   0.0  0
+ BB8  CONST_11  HD2  CD2  CG   CD1   180.00   0.0  0
+ BB8  CONST_12  HZ   CZ   CE1  CD1   180.00   0.0  0
+ BB8  CONST_13  HD1  CD1  CE1  CZ    180.00   0.0  0
+ BB8  Var_01    HB   CB   CG   CD1   166.52  30.0  2
+ BB8  Var_02    HA   CA   CB   CG     60.58  30.0  2
+ BB8  Var_03    HC   OB   CB   CG   -157.85  30.0  3
+ BB8  Var_04    HN1  N    CA   C     -50.04  30.0  3
+ BB8  Var_05    HA2  N    CA   C      62.94  30.0  3
+
+loop_
+_chem_comp_chir.comp_id
+_chem_comp_chir.id
+_chem_comp_chir.atom_id_centre
+_chem_comp_chir.atom_id_1
+_chem_comp_chir.atom_id_2
+_chem_comp_chir.atom_id_3
+_chem_comp_chir.volume_sign
+ BB8  chir_01  CA  N   C   CB  positiv
+ BB8  chir_02  CB  OB  CA  CG  positiv
+
+loop_
+_chem_comp_plane_atom.comp_id
+_chem_comp_plane_atom.plane_id
+_chem_comp_plane_atom.atom_id
+_chem_comp_plane_atom.dist_esd
+ BB8  plan-1  CB   0.020
+ BB8  plan-1  CG   0.020
+ BB8  plan-1  CD1  0.020
+ BB8  plan-1  CE1  0.020
+ BB8  plan-1  CZ   0.020
+ BB8  plan-1  CE2  0.020
+ BB8  plan-1  CD2  0.020
+ BB8  plan-1  HD1  0.020
+ BB8  plan-1  HD2  0.020
+ BB8  plan-1  HE1  0.020
+ BB8  plan-1  HZ   0.020
+ BB8  plan-1  HE2  0.020
+ BB8  plan-2  CA   0.020
+ BB8  plan-2  C    0.020
+ BB8  plan-2  O    0.020
+ BB8  plan-2  OXT  0.020
+"""
+
+cif_mh8 = """\
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+_chem_comp.initial_date
+_chem_comp.modified_date
+_chem_comp.source
+ MH8  MH8  '(2S)-2-amino-2-methylhept-6-enoic acid'  L-peptide  25  11  .  2016-04-26  2023-10-30
+;
+Directly from eLBOW using geometry from QM method PBEh-3c with CPCM solvent model
+Validated by Mogul as PERFECT
+Added dihedrals for adding hydrogens : 2023-10-30
+;
+
+data_comp_MH8
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.charge
+_chem_comp_atom.partial_charge
+_chem_comp_atom.x
+_chem_comp_atom.y
+_chem_comp_atom.z
+ MH8  N     N  NH2    0  -0.799  92.3434  85.9697   8.1019
+ MH8  CA    C  CT     0  -0.028  91.5256  86.6361   7.0836
+ MH8  CB1   C  CH3    0  -0.635  90.7790  85.5528   6.3144
+ MH8  CB2   C  CH2    0  -0.408  90.5228  87.6078   7.7406
+ MH8  CG    C  CH2    0  -0.445  89.6482  88.4327   6.8024
+ MH8  CD    C  CH2    0  -0.485  88.6511  89.3214   7.5530
+ MH8  CE    C  C1     0  -0.148  87.6193  88.5418   8.3046
+ MH8  CZ    C  C2     0  -0.537  87.4038  88.6133   9.6136
+ MH8  C     C  C      0   0.427  92.4875  87.4530   6.1746
+ MH8  O     O  O      0  -0.597  92.3256  87.3843   4.9411
+ MH8  OXT   O  OC    -1  -0.612  93.3400  88.1437   6.7729
+ MH8  HN1   H  HNH2   0   0.325  92.9195  86.6713   8.5515
+ MH8  HA2   H  HNH2   0   0.321  91.7359  85.6002   8.8259
+ MH8  HB11  H  HCH3   0   0.213  90.1508  85.9625   5.5262
+ MH8  HB12  H  HCH3   0   0.212  91.4740  84.8493   5.8542
+ MH8  HB13  H  HCH3   0   0.198  90.1320  84.9859   6.9901
+ MH8  HB21  H  HCH2   0   0.204  89.8777  87.0211   8.4059
+ MH8  HB22  H  HCH2   0   0.205  91.0792  88.2941   8.3890
+ MH8  HG1   H  HCH2   0   0.225  90.2726  89.0714   6.1732
+ MH8  HG2   H  HCH2   0   0.215  89.0972  87.7776   6.1214
+ MH8  HD1   H  HCH2   0   0.223  89.1853  89.9852   8.2393
+ MH8  HD2   H  HCH2   0   0.237  88.1449  89.9652   6.8259
+ MH8  HE    H  H      0   0.233  87.0105  87.8658   7.7081
+ MH8  HZ1   H  H      0   0.230  86.6368  88.0227  10.0980
+ MH8  HZ2   H  H      0   0.226  87.9884  89.2681  10.2500
+
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.type
+_chem_comp_bond.value_dist
+_chem_comp_bond.value_dist_esd
+_chem_comp_bond.value_dist_neutron
+ MH8  N    CA    single  1.458  0.019  1.458
+ MH8  CA   CB1   single  1.524  0.020  1.524
+ MH8  CA   CB2   single  1.543  0.020  1.543
+ MH8  CA   C     single  1.525  0.021  1.525
+ MH8  CB2  CG    single  1.525  0.020  1.525
+ MH8  CG   CD    single  1.532  0.020  1.532
+ MH8  CD   CE    single  1.496  0.020  1.496
+ MH8  CE   CZ    double  1.329  0.020  1.329
+ MH8  C    O     deloc   1.231  0.020  1.231
+ MH8  C    OXT   deloc   1.250  0.020  1.250
+ MH8  N    HN1   single  0.890  0.020  1.040
+ MH8  N    HA2   single  0.890  0.020  1.040
+ MH8  CB1  HB11  single  0.970  0.020  1.090
+ MH8  CB1  HB12  single  0.970  0.020  1.090
+ MH8  CB1  HB13  single  0.970  0.020  1.090
+ MH8  CB2  HB21  single  0.970  0.020  1.090
+ MH8  CB2  HB22  single  0.970  0.020  1.090
+ MH8  CG   HG1   single  0.970  0.020  1.090
+ MH8  CG   HG2   single  0.970  0.020  1.090
+ MH8  CD   HD1   single  0.970  0.020  1.090
+ MH8  CD   HD2   single  0.970  0.020  1.090
+ MH8  CE   HE    single  0.930  0.020  1.080
+ MH8  CZ   HZ1   single  0.930  0.020  1.080
+ MH8  CZ   HZ2   single  0.930  0.020  1.080
+
+loop_
+_chem_comp_angle.comp_id
+_chem_comp_angle.atom_id_1
+_chem_comp_angle.atom_id_2
+_chem_comp_angle.atom_id_3
+_chem_comp_angle.value_angle
+_chem_comp_angle.value_angle_esd
+ MH8  HA2   N    HN1   106.02  3.000
+ MH8  HA2   N    CA    109.09  3.000
+ MH8  HN1   N    CA    108.10  3.000
+ MH8  C     CA   CB2   108.66  3.000
+ MH8  C     CA   CB1   112.42  3.000
+ MH8  CB2   CA   CB1   110.13  3.000
+ MH8  C     CA   N     111.00  2.800
+ MH8  CB2   CA   N     110.67  3.000
+ MH8  CB1   CA   N     107.50  3.000
+ MH8  HB13  CB1  HB12  107.65  3.000
+ MH8  HB13  CB1  HB11  107.53  3.000
+ MH8  HB12  CB1  HB11  107.77  3.000
+ MH8  HB13  CB1  CA    110.27  3.000
+ MH8  HB12  CB1  CA    111.05  3.000
+ MH8  HB11  CB1  CA    112.38  3.000
+ MH8  HB22  CB2  HB21  105.94  3.000
+ MH8  HB22  CB2  CG    108.45  3.000
+ MH8  HB21  CB2  CG    108.97  3.000
+ MH8  HB22  CB2  CA    108.44  3.000
+ MH8  HB21  CB2  CA    107.67  3.000
+ MH8  CG    CB2  CA    116.83  3.000
+ MH8  HG2   CG   HG1   106.22  3.000
+ MH8  HG2   CG   CD    108.94  3.000
+ MH8  HG1   CG   CD    108.36  3.000
+ MH8  HG2   CG   CB2   110.37  3.000
+ MH8  HG1   CG   CB2   110.04  3.000
+ MH8  CD    CG   CB2   112.68  3.000
+ MH8  HD2   CD   HD1   106.59  3.000
+ MH8  HD2   CD   CE    108.73  3.000
+ MH8  HD1   CD   CE    109.75  3.000
+ MH8  HD2   CD   CG    108.45  3.000
+ MH8  HD1   CD   CG    109.97  3.000
+ MH8  CE    CD   CG    113.12  3.000
+ MH8  HE    CE   CZ    118.88  3.000
+ MH8  HE    CE   CD    115.75  3.000
+ MH8  CZ    CE   CD    125.37  3.000
+ MH8  HZ2   CZ   HZ1   116.67  3.000
+ MH8  HZ2   CZ   CE    121.56  3.000
+ MH8  HZ1   CZ   CE    121.77  3.000
+ MH8  OXT   C    O     126.37  3.000
+ MH8  OXT   C    CA    120.80  1.700
+ MH8  O     C    CA    120.80  1.700
+
+loop_
+_chem_comp_tor.comp_id
+_chem_comp_tor.id
+_chem_comp_tor.atom_id_1
+_chem_comp_tor.atom_id_2
+_chem_comp_tor.atom_id_3
+_chem_comp_tor.atom_id_4
+_chem_comp_tor.value_angle
+_chem_comp_tor.value_angle_esd
+_chem_comp_tor.period
+ MH8  Var_01  CD    CG   CB2  CA    177.69  30.0  3
+ MH8  Var_02  CE    CD   CG   CB2   -65.87  30.0  3
+ MH8  Var_03  CZ    CE   CD   CG    121.53  30.0  3
+ MH8  Var_04  HZ1   CZ   CE   CD    179.81   0.0  2
+ MH8  Var_05  HB11  CB1  CA   N    -179.42  30.0  3
+ MH8  Var_06  HB12  CB1  CA   N     -58.61  30.0  3
+ MH8  Var_07  HB13  CB1  CA   N      60.63  30.0  3
+ MH8  Var_08  HB21  CB2  CA   N     -60.17  30.0  3
+ MH8  Var_09  HB22  CB2  CA   N      54.05  30.0  3
+ MH8  Var_10  HN1   N    CA   CB1   173.94  30.0  3
+ MH8  Var_11  HA2   N    CA   CB1   -71.21  30.0  3
+
+loop_
+_chem_comp_chir.comp_id
+_chem_comp_chir.id
+_chem_comp_chir.atom_id_centre
+_chem_comp_chir.atom_id_1
+_chem_comp_chir.atom_id_2
+_chem_comp_chir.atom_id_3
+_chem_comp_chir.volume_sign
+ MH8  chir_01  CA  CB1  CB2  C  positiv
+
+loop_
+_chem_comp_plane_atom.comp_id
+_chem_comp_plane_atom.plane_id
+_chem_comp_plane_atom.atom_id
+_chem_comp_plane_atom.dist_esd
+ MH8  plan-1  CA   0.020
+ MH8  plan-1  C    0.020
+ MH8  plan-1  O    0.020
+ MH8  plan-1  OXT  0.020
+ MH8  plan-2  CD   0.020
+ MH8  plan-2  CE   0.020
+ MH8  plan-2  CZ   0.020
+ MH8  plan-2  HE   0.020
+ MH8  plan-2  HZ1  0.020
+ MH8  plan-2  HZ2  0.020
+"""
+
+cif_ty2 = """\
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+_chem_comp.initial_date
+_chem_comp.modified_date
+_chem_comp.source
+ TY2  TY2  '3-amino-L-tyrosine       '  L-peptide  25  14  .  2012-08-28  2023-12-07
+;
+Directly from eLBOW using geometry from QM method PBEh-3c with CPCM solvent model
+Validated by Mogul as PERFECT (side chain)
+Added dihedrals for adding hydrogens : 2023-12-07
+;
+
+data_comp_TY2
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.charge
+_chem_comp_atom.partial_charge
+_chem_comp_atom.x
+_chem_comp_atom.y
+_chem_comp_atom.z
+ TY2  N     N  NH2    0  -0.798  1.5024  27.8639  41.2758
+ TY2  CA    C  CH1    0  -0.173  2.0607  29.2050  41.4084
+ TY2  C     C  C      0   0.412  1.3654  30.1315  40.3857
+ TY2  O     O  O      0  -0.614  1.4469  29.7658  39.1926
+ TY2  CB    C  CH2    0  -0.527  3.5883  29.2342  41.2098
+ TY2  CG    C  CR6    0   0.125  4.2085  30.5845  41.4318
+ TY2  CD1   C  CR16   0  -0.340  4.5815  30.9959  42.7050
+ TY2  CD2   C  CR16   0  -0.372  4.4023  31.4666  40.3701
+ TY2  CE1   C  CR16   0  -0.364  5.1339  32.2571  42.9049
+ TY2  CE2   C  CR6    0   0.234  4.9495  32.7353  40.5447
+ TY2  CZ    C  CR6    0   0.280  5.3183  33.1259  41.8429
+ TY2  OH    O  OH1    0  -0.641  5.8553  34.3665  41.9734
+ TY2  NE2   N  NH2    0  -0.852  5.0812  33.6258  39.4878
+ TY2  OXT   O  OC    -1  -0.603  0.7943  31.1498  40.8175
+ TY2  HN1   H  HNH2   0   0.325  1.6250  27.5651  40.3151
+ TY2  HA2   H  HNH2   0   0.331  2.0362  27.2134  41.8411
+ TY2  HB    H  HCH1   0   0.194  1.8441  29.5639  42.4196
+ TY2  HA1   H  HCH2   0   0.225  4.0349  28.5130  41.9020
+ TY2  HB2   H  HCH2   0   0.221  3.8072  28.8770  40.1998
+ TY2  HA    H  HCR6   0   0.234  4.4523  30.3316  43.5512
+ TY2  HC    H  HCR6   0   0.236  4.1145  31.1609  39.3694
+ TY2  HD    H  HCR6   0   0.256  5.4275  32.5657  43.9031
+ TY2  HE21  H  HNH2   0   0.370  5.8529  34.2698  39.5677
+ TY2  HE22  H  HNH2   0   0.371  5.0827  33.1841  38.5814
+ TY2  HH    H  HOH1   0   0.470  6.1164  34.5229  42.8874
+
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.type
+_chem_comp_bond.value_dist
+_chem_comp_bond.value_dist_esd
+_chem_comp_bond.value_dist_neutron
+ TY2  N    CA    single    1.458  0.019  1.458
+ TY2  CA   C     single    1.525  0.021  1.525
+ TY2  CA   CB    single    1.530  0.020  1.530
+ TY2  C    O     deloc     1.231  0.020  1.231
+ TY2  C    OXT   deloc     1.245  0.020  1.245
+ TY2  CB   CG    single    1.502  0.020  1.502
+ TY2  CG   CD1   aromatic  1.389  0.020  1.389
+ TY2  CG   CD2   aromatic  1.394  0.020  1.394
+ TY2  CD1  CE1   aromatic  1.391  0.020  1.391
+ TY2  CD2  CE2   aromatic  1.393  0.020  1.393
+ TY2  CE1  CZ    aromatic  1.384  0.020  1.384
+ TY2  CE2  CZ    aromatic  1.405  0.020  1.405
+ TY2  CE2  NE2   single    1.388  0.020  1.388
+ TY2  CZ   OH    single    1.358  0.020  1.358
+ TY2  N    HN1   single    0.890  0.020  1.040
+ TY2  N    HA2   single    0.890  0.020  1.040
+ TY2  CA   HB    single    0.970  0.020  1.090
+ TY2  CB   HA1   single    0.970  0.020  1.090
+ TY2  CB   HB2   single    0.970  0.020  1.090
+ TY2  CD1  HA    single    0.930  0.020  1.080
+ TY2  CD2  HC    single    0.930  0.020  1.080
+ TY2  CE1  HD    single    0.930  0.020  1.080
+ TY2  NE2  HE21  single    0.890  0.020  1.040
+ TY2  NE2  HE22  single    0.890  0.020  1.040
+ TY2  OH   HH    single    0.850  0.020  0.980
+
+loop_
+_chem_comp_angle.comp_id
+_chem_comp_angle.atom_id_1
+_chem_comp_angle.atom_id_2
+_chem_comp_angle.atom_id_3
+_chem_comp_angle.value_angle
+_chem_comp_angle.value_angle_esd
+ TY2  HA2   N    HN1   106.01  3.000
+ TY2  HA2   N    CA    109.74  3.000
+ TY2  HN1   N    CA    108.11  3.000
+ TY2  HB    CA   CB    108.00  3.000
+ TY2  HB    CA   C     109.01  3.000
+ TY2  CB    CA   C     110.10  1.900
+ TY2  HB    CA   N     108.04  3.000
+ TY2  CB    CA   N     110.50  1.700
+ TY2  C     CA   N     111.00  2.800
+ TY2  OXT   C    O     126.88  3.000
+ TY2  OXT   C    CA    117.86  3.000
+ TY2  O     C    CA    120.80  1.700
+ TY2  HB2   CB   HA1   106.69  3.000
+ TY2  HB2   CB   CG    110.33  3.000
+ TY2  HA1   CB   CG    109.28  3.000
+ TY2  HB2   CB   CA    108.14  3.000
+ TY2  HA1   CB   CA    108.09  3.000
+ TY2  CG    CB   CA    114.03  3.000
+ TY2  CD2   CG   CD1   118.25  3.000
+ TY2  CD2   CG   CB    120.91  3.000
+ TY2  CD1   CG   CB    120.83  3.000
+ TY2  HA    CD1  CE1   119.39  3.000
+ TY2  HA    CD1  CG    120.15  3.000
+ TY2  CE1   CD1  CG    120.45  3.000
+ TY2  HC    CD2  CE2   118.45  3.000
+ TY2  HC    CD2  CG    119.16  3.000
+ TY2  CE2   CD2  CG    122.39  3.000
+ TY2  HD    CE1  CZ    119.41  3.000
+ TY2  HD    CE1  CD1   119.83  3.000
+ TY2  CZ    CE1  CD1   120.77  3.000
+ TY2  NE2   CE2  CZ    120.01  3.000
+ TY2  NE2   CE2  CD2   121.75  3.000
+ TY2  CZ    CE2  CD2   118.18  3.000
+ TY2  OH    CZ   CE2   116.52  3.000
+ TY2  OH    CZ   CE1   123.52  3.000
+ TY2  CE2   CZ   CE1   119.96  3.000
+ TY2  HH    OH   CZ    110.27  3.000
+ TY2  HE22  NE2  HE21  110.48  3.000
+ TY2  HE22  NE2  CE2   113.80  3.000
+ TY2  HE21  NE2  CE2   114.96  3.000
+
+loop_
+_chem_comp_tor.comp_id
+_chem_comp_tor.id
+_chem_comp_tor.atom_id_1
+_chem_comp_tor.atom_id_2
+_chem_comp_tor.atom_id_3
+_chem_comp_tor.atom_id_4
+_chem_comp_tor.value_angle
+_chem_comp_tor.value_angle_esd
+_chem_comp_tor.period
+ TY2  CONST_01  CZ    CE1  CD1  CG     0.00   0.0  0
+ TY2  CONST_02  CZ    CE2  CD2  CG     0.00   0.0  0
+ TY2  CONST_03  CE2   CD2  CG   CD1    0.00   0.0  0
+ TY2  CONST_04  CE2   CZ   CE1  CD1    0.00   0.0  0
+ TY2  CONST_05  CE1   CD1  CG   CD2    0.00   0.0  0
+ TY2  CONST_06  CE1   CZ   CE2  CD2    0.00   0.0  0
+ TY2  CONST_07  CE1   CD1  CG   CB   180.00   0.0  0
+ TY2  CONST_08  CE2   CD2  CG   CB   180.00   0.0  0
+ TY2  CONST_09  NE2   CE2  CD2  CG   180.00   0.0  0
+ TY2  CONST_10  OH    CZ   CE1  CD1  180.00   0.0  0
+ TY2  CONST_11  OH    CZ   CE2  CD2  180.00   0.0  0
+ TY2  CONST_12  NE2   CE2  CZ   CE1  180.00   0.0  0
+ TY2  CONST_13  HD    CE1  CD1  CG   180.00   0.0  0
+ TY2  CONST_14  HC    CD2  CG   CD1  180.00   0.0  0
+ TY2  CONST_15  HA    CD1  CG   CD2  180.00   0.0  0
+ TY2  CONST_16  HE21  NE2  CE2  CD2  180.00   0.0  0
+ TY2  CONST_17  HE22  NE2  CE2  CD2    0.00   0.0  0
+ TY2  Var_01    CD1   CG   CB   CA    85.98  30.0  2
+ TY2  Var_02    HH    OH   CZ   CE1    2.56  30.0  2
+ TY2  Var_03    HB    CA   CB   CG   -56.82  30.0  2
+ TY2  Var_04    HN1   N    CA   C     56.65  30.0  3
+ TY2  Var_05    HA2   N    CA   C    171.83  30.0  3
+
+loop_
+_chem_comp_chir.comp_id
+_chem_comp_chir.id
+_chem_comp_chir.atom_id_centre
+_chem_comp_chir.atom_id_1
+_chem_comp_chir.atom_id_2
+_chem_comp_chir.atom_id_3
+_chem_comp_chir.volume_sign
+ TY2  chir_01  CA  N  C  CB  positiv
+
+loop_
+_chem_comp_plane_atom.comp_id
+_chem_comp_plane_atom.plane_id
+_chem_comp_plane_atom.atom_id
+_chem_comp_plane_atom.dist_esd
+ TY2  plan-1  CB    0.020
+ TY2  plan-1  CG    0.020
+ TY2  plan-1  CD1   0.020
+ TY2  plan-1  CD2   0.020
+ TY2  plan-1  CE1   0.020
+ TY2  plan-1  CE2   0.020
+ TY2  plan-1  CZ    0.020
+ TY2  plan-1  OH    0.020
+ TY2  plan-1  NE2   0.020
+ TY2  plan-1  HA    0.020
+ TY2  plan-1  HC    0.020
+ TY2  plan-1  HD    0.020
+ TY2  plan-2  CE2   0.020
+ TY2  plan-2  NE2   0.020
+ TY2  plan-2  HE21  0.020
+ TY2  plan-2  HE22  0.020
+ TY2  plan-3  CA    0.020
+ TY2  plan-3  C     0.020
+ TY2  plan-3  O     0.020
+ TY2  plan-3  OXT   0.020
+"""
+
+OLD_DICTIONARIES = (('0A0', cif_0a0), ('01W', cif_01w), ('004', cif_004),
+  ('CTE', cif_cte), ('0AA', cif_0aa), ('BB8', cif_bb8), ('MH8', cif_mh8),
+  ('TY2', cif_ty2))
 
 def old_residue_names(pdb_str):
   """the residue names in pdb_str that have an old dictionary here"""
@@ -983,7 +1978,7 @@ def test_imine_and_bond_order():
 def test_computed_rule_name():
   # 0AA: the computed HN2 is also a name of the HN1/HN2 -> mod_NH2 rule;
   # NH3-0AA restrains it, never mod_NH2
-  srv = mmtbx.monomer_library.server.server()
+  srv = server()
   mon = srv.get_comp_comp_id_direct('0AA')
   assert terminal_nh3.extra_h_names(mon) == ['HN2']
   nh3 = srv.mod_mod_id_dict['NH3']
