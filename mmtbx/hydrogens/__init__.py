@@ -679,7 +679,7 @@ def _place_and_optimize_core(model, do_flips, nuclear, keep_existing_H,
                                     # applies to the post-optimization reprocess.
     keep_existing_H       = keep_existing_H,
     metal_bound_amines_as_nh2 = metal_bound_amines_as_nh2)
-  # the symmetry of the metal contacts (thiolates, metal N-H, amines)
+  # the symmetry of the metal contacts
   o.input_crystal_symmetry = input_crystal_symmetry
   o.run()
   o.show(log)
@@ -762,9 +762,9 @@ def place_and_optimize_hydrogens(model, do_flips=False, nuclear=False,
     or with the CRYST1 1 1 1 placeholder. Not for a map's box, which is not a
     lattice.
   :param input_crystal_symmetry: The symmetry placement searches for metal
-    contacts (thiolates, metal-bound N-H, metal-bound amines):
-    'from_model' (default) reads it from the model, as before; None: no
-    symmetry (map input, or a model without a real cell); or a symmetry.
+    contacts: 'from_model' (default) reads it from the model, as before;
+    None: no symmetry (map input, or a model without a real cell); or a
+    symmetry.
   :param report: None, or a group_args with the lists flips, metal_amines_nh2
     and symmetry_copies, which are extended: flips, one key (model id, chain,
     resseq, icode, resname, altloc, 'amide' or 'His') per Asn/Gln/His atom
