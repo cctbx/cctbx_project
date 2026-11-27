@@ -257,6 +257,10 @@ class refinement_monitor(object):
        print(remark + "1_gbr: group B-factor refinement                                        ", file=out)
     if("occupancies" in self.params.refine.strategy):
        print(remark + "1_occ: refinement of occupancies                                        ", file=out)
+    if("bss:" in self.steps):
+       print(remark + "bss  : final bulk solvent correction and scaling, before squeeze        ", file=out)
+    if("squ:" in self.steps):
+       print(remark + "squ  : squeeze: unmodelled solvent density added to F_model             ", file=out)
     print(remark + separator, file=out)
     #
     has_bonds_angles=True
