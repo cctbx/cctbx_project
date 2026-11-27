@@ -899,20 +899,42 @@ def read_chemical_component_filename(filename, xyz_label=None, verbose=False):
   bond_order_rdkitkey = {value:key for key,value in bond_order_ccd.items()}
   ccd = cif.reader(filename).model()
   lookup={}
-  def is_coordinates(x):
-    return x!=('?', '?', '?')
+  # One row per atom, indexed by atom number below. A row with a missing
+  # component ('?' or '.') is a missing row. The model coordinates only if
+  # no atom has an ideal coordinate; a set with a gap is not used (MDE: two
+  # H without ideal coordinates).
+  def absent(value):
+    return value in (None, '?', '.')
+  def gaps(xyzs):
+    return [i for i, xyz in enumerate(xyzs) if [v for v in xyz if absent(v)]]
   xyzs = get_cc_cartesian_coordinates(ccd, label=xyz_label, ignore_question_mark=True)
-  xyzs = list(filter(is_coordinates, xyzs))
-  if xyzs is None or len(xyzs)==0:
+  def values(xyzs):
+    return [v for xyz in xyzs for v in xyz if not absent(v)]
+  kind = {'pdbx_model_Cartn_x_ideal': 'ideal', 'model_Cartn_x': 'model',
+          'x': 'x, y, z'}[xyz_label]
+  if len(gaps(xyzs))==len(xyzs) and not values(xyzs):
     xyzs = get_cc_cartesian_coordinates(ccd, label='model_Cartn_x', ignore_question_mark=True)
-    xyzs = list(filter(is_coordinates, xyzs))
-  if xyzs is None or len(xyzs)==0:
+    kind = 'model'
+  missing = gaps(xyzs)
+  if missing or len(xyzs)==0:
+    names = []
     for code, monomer in ccd.items():
-      break
-    raise Sorry('''
+      if code in ['comp_list']: continue
+      names.extend(monomer.get_loop_or_row('_chem_comp_atom').get(
+        '_chem_comp_atom.atom_id'))
+    if not values(xyzs):
+      raise Sorry('''
   Generating H restraints from Chemical Components for %s failed. Please supply
   restraints.
   ''' % code)
+    shown = ' '.join([names[i] for i in missing[:5]])
+    if len(missing)>5: shown += ' ...'
+    raise Sorry('Generating H restraints from Chemical Components for %s '
+      'failed: %d of its %d atoms %s %s %s coordinates (%s). Please supply '
+      'restraints.' % (code, len(missing), len(xyzs),
+      'has' if len(missing)==1 else 'have',
+      'incomplete' if values([xyzs[i] for i in missing]) else 'no',
+      kind, shown))
   def build(skip_metal_bonds):
     desc=None
     for i, (code, monomer) in enumerate(ccd.items()):
