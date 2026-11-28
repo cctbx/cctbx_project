@@ -37,7 +37,7 @@ import copy
 from iotbx.data_manager import DataManager
 import csv
 
-version = "3.25.4"
+version = "3.25.5"
 
 master_phil_str = '''
 approach = *add remove optimize place
@@ -59,12 +59,12 @@ metal_bound_amines_as_nh2 = True
   .type = bool
   .short_caption = Place metal-bound primary amines as NH2
   .help = A primary amine bound to a metal (Lys NZ, an N-terminal NH3, a \
-          ligand amine, not with alkali or alkaline-earth metals) is placed \
-          as NH2, with the metal as the third substituent. Metal-bound chain \
-          starts get NH2 whatever n_terminal_charge says. Sites that fail the \
-          geometry checks keep their H. A neutral NH2 bound to a metal \
-          (ethylenediamine on Cu) keeps both H, placed with the lone pair at \
-          the metal. Unresolved sites are turned away from the metal \
+          ligand amine, not with alkali metals or Be, Ca, Sr, Ba and Ra) is \
+          placed as NH2, with the metal as the third substituent. Metal-bound \
+          chain starts get NH2 whatever n_terminal_charge says. Sites that \
+          fail the geometry checks keep their H. A neutral NH2 bound to a \
+          metal (ethylenediamine on Cu) keeps both H, placed with the lone \
+          pair at the metal. Unresolved sites are turned away from the metal \
           positions. False: these NH2 are placed as without a metal and \
           listed.
 add_h_to_water = False
@@ -290,12 +290,12 @@ protonation
   .short_caption = Protonation state of selected residues
   .help = Sets the protonation state of the selected residues (whole \
           residues, all conformers), with approach=add or place. The state \
-          wins over the automatic rules (thiolates, metal-bound N-H, the His \
-          ion lock, also for metals in symmetry mates), and conflicts are \
-          listed. A His with a state gets no flip Mover, also in the flipkin \
-          passes. Repeat the scope for more residues, best in an .eff file: \
-          on the command line each word of a repeated scope starts a new \
-          entry. See NOTES in the program description.
+          wins over the automatic rules (thiolates, acid H and N-H at \
+          metals, the His ion lock, also for metals in symmetry mates), and \
+          conflicts are listed. A His with a state gets no flip Mover, also \
+          in the flipkin passes. Repeat the scope for more residues, best in \
+          an .eff file: on the command line each word of a repeated scope \
+          starts a new entry. See NOTES in the program description.
 {
   selection = None
     .type = str
@@ -1230,8 +1230,8 @@ NOTES:
     }}
   On the command line each word of a repeated scope starts a new entry, so
   protonation.selection=... protonation.state=... gives two half entries (a Sorry).
-  The state wins over the automatic rules (thiolates, H on metal-bound N, the His ion
-  lock, also for metals in symmetry mates), and the conflicts are listed in the log and
+  The state wins over the automatic rules (thiolates, acid H and N-H at metals, the His
+  ion lock, also for metals in symmetry mates), and the conflicts are listed in the log and
   the description file, with one line per residue saying which H were added, kept or
   left out. A His with a state gets no flip Mover and no ion lock, in the main run and
   in the flipkin passes. A protonated ASP/GLU H rotates; if it ends more than 30 deg
@@ -1463,14 +1463,16 @@ NOTES:
     if reduce_add_h_obj.residues_unknown_atoms:
       self._unknown_atoms_note = '\n' + reduce_add_h_obj.unknown_atoms_text(
         verbose=self.params.verbosity > 2) + '\n'
-    # its report of thiols and N-H at metals, of NH2 kept against IUPAC, of
-    # nucleic-acid ends and the full list of H not placed (last: it points
-    # to the others), for the description
+    # its report of thiols, acids and N-H at metals, of NH2 kept against
+    # IUPAC, of nucleic-acid ends and the full list of H not placed (last: it
+    # points to the others), for the description
     self._metal_thiol_note = ''
     self._supplied_metal_rows = (reduce_add_h_obj.thiol_h_supplied_kept +
       reduce_add_h_obj.selenol_h_supplied_kept +
+      reduce_add_h_obj.acid_h_supplied_kept +
       reduce_add_h_obj.metal_nh_supplied_kept)
     for text in (reduce_add_h_obj.metal_thiol_text(),
+                 reduce_add_h_obj.metal_acid_text(),
                  reduce_add_h_obj.metal_nh_text(),
                  reduce_add_h_obj.metal_amine_text(),
                  reduce_add_h_obj.chain_start_kept_text(),
@@ -2425,9 +2427,9 @@ NOTES:
 # ------------------------------------------------------------------------------
 
   def _SuppliedMetalHText(self):
-    # approach=optimize keeps every input H: the H on thiols, selenols and N
-    # bound to metals, and the other N-H next to a metal, as placement lists
-    # them (nothing is deleted here).
+    # approach=optimize keeps every input H: the H on thiols, selenols, acids
+    # and N bound to metals, and the other N-H next to a metal, as placement
+    # lists them (nothing is deleted here).
     # :return: The description-file text ('' if none); also in the log.
     cs = reduce_hydrogen.contact_symmetry(self._output_cs)
     thiols = reduce_hydrogen.supplied_metal_h(
@@ -2436,14 +2438,18 @@ NOTES:
     if reduce_hydrogen.has_selenium(self.model.get_hierarchy()):
       selenols = reduce_hydrogen.supplied_metal_h(
         reduce_hydrogen.selenol_metal_sites(self.model, cs), lambda a: True)
+    acids = reduce_hydrogen.supplied_metal_h(
+      reduce_hydrogen.acid_metal_sites(self.model, cs), lambda a: True)
     nh = reduce_hydrogen.metal_nh_sites(self.model, cs)
     nh_supplied = reduce_hydrogen.supplied_metal_h(nh, lambda a: True)
-    self._supplied_metal_rows = thiols + selenols + nh_supplied
+    self._supplied_metal_rows = thiols + selenols + acids + nh_supplied
     result = ''
     for text in (
         reduce_hydrogen.metal_thiol_text(supplied = thiols,
           hint = self._RebuildHint()),
         reduce_hydrogen.metal_selenol_text(supplied = selenols,
+          hint = self._RebuildHint()),
+        reduce_hydrogen.metal_acid_text(supplied = acids,
           hint = self._RebuildHint()),
         reduce_hydrogen.metal_nh_text(supplied = nh_supplied,
           reported = reduce_hydrogen.reported_metal_h(nh),

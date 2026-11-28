@@ -1271,7 +1271,7 @@ def get_output_crystal_symmetry(model):
 
 # ==============================================================================
 # H on atoms bound to metals: thiols and selenols (A4), backbone amide N and
-# T/U N3 (A5)
+# T/U N3 (A5), primary amines, acids
 
 # The metals, and As and Sb, which bind Cys thiolate as As(III) and Sb(III).
 # Membership makes an atom a coordination candidate only.
@@ -1282,6 +1282,12 @@ METAL_ELEMENTS = chemical_elements.metals_upper_set() | frozenset(('AS', 'SB'))
 NH_METAL_ELEMENTS = METAL_ELEMENTS - frozenset(
   'LI NA K RB CS FR BE MG CA SR BA RA AS SB'.split())
 
+# primary amines next to these (NH3+ has no lone pair, so a bound amine is
+# NH2): NH_METAL_ELEMENTS and Mg. Alkali metals and Ca-Ra hardly ever bind
+# amine N, and their windows reach N-H...O hydrogen-bond distances; no amine
+# on Be is known (A5)
+AMINE_METAL_ELEMENTS = NH_METAL_ELEMENTS | frozenset(('MG',))
+
 # images of one metal atom closer than this are one metal site
 METAL_SITE_IMAGE_DISTANCE = 2.0
 
@@ -1291,10 +1297,18 @@ METAL_SITE_IMAGE_DISTANCE = 2.0
 # formate dehydrogenases 2.41-2.59 A
 THIOL_METAL_WINDOW = (-0.55, 0.25)
 
+# acid O-metal window: it covers the first shell of carboxylate O on metals
+# in X-ray entries at 1.5 A or better, bidentate carboxylates included
+# (Harding 2006, Acta Cryst. D62, 678)
+ACID_METAL_WINDOW = (-0.55, 0.55)
+
 THIOL_H_SUPPLIED_NOTE = ('kept as supplied; thiols bound to metals are usually '
   'deprotonated')
 SELENOL_H_SUPPLIED_NOTE = ('kept as supplied; selenols bound to metals are '
   'usually deprotonated')
+
+ACID_H_SUPPLIED_NOTE = ('kept as supplied; acids bound to metals are '
+  'deprotonated')
 
 METAL_NH_SUPPLIED_NOTE = ('kept as supplied; backbone amide N and '
   'thymine/uracil N3 bound to metals are usually deprotonated')
@@ -1375,22 +1389,35 @@ def _compatible(a, b):
   alt_a, alt_b = a.parent().altloc, b.parent().altloc
   return alt_a == '' or alt_b == '' or alt_a == alt_b
 
+def _residue_atom(atom):
+  # one atom whatever its altloc copy: (residue_group, name)
+  return (atom.parent().parent().memory_id(), atom.name)
+
+def _one_heavy_neighbour(atoms, heavy, i_x, h):
+  '''
+  The non-metal heavy neighbour of atom i_x in the conformer of H h if there
+  is exactly one (counted by residue and atom name), else None.
+  '''
+  nb = [j for j in heavy.get(i_x, []) if _compatible(atoms[j], h)]
+  names = set(_residue_atom(atoms[j]) for j in nb)
+  if len(names) != 1: return None
+  return nb[0]
+
 def metal_contact_pairs(sites, elements, parents, metals, crystal_symmetry,
-                        model_index=None):
+                        model_index=None, window=THIOL_METAL_WINDOW):
   """
   The geometric X-metal contacts of metal_h_sites, also used before the
   model is processed (place_n_terminal_propeller()), so both agree: pairs
   (i_x, i_m, rt) of a parent i_x and a metal i_m (indices into sites and
-  elements) within THIOL_METAL_WINDOW of the summed cctbx covalent radii,
-  across crystal_symmetry (None: no symmetry, rt the identity), in the same
-  MODEL (model_index; None: all in one).
+  elements) within window of the summed cctbx covalent radii, across
+  crystal_symmetry (None: no symmetry, rt the identity), in the same MODEL
+  (model_index; None: all in one).
   """
   result = []
   if not parents or not metals: return result
   subset = list(parents) + list(metals)
   max_cut = max(_covalent_radius(elements[i]) for i in parents) + \
-    max(_covalent_radius(elements[i]) for i in metals) + \
-    THIOL_METAL_WINDOW[1]
+    max(_covalent_radius(elements[i]) for i in metals) + window[1]
   xyz = flex.vec3_double([sites[i] for i in subset])
   n_parents = len(parents)
   for x, y, rt, d in crystal.pairs_within(xyz, max_cut, crystal_symmetry,
@@ -1400,7 +1427,7 @@ def metal_contact_pairs(sites, elements, parents, metals, crystal_symmetry,
     if (model_index is not None and
         model_index[i_x] != model_index[i_m]): continue
     r = _covalent_radius(elements[i_x]) + _covalent_radius(elements[i_m])
-    if not (r + THIOL_METAL_WINDOW[0] <= d <= r + THIOL_METAL_WINDOW[1]):
+    if not (r + window[0] <= d <= r + window[1]):
       continue
     result.append((i_x, i_m, rt))
   return result
@@ -1414,8 +1441,8 @@ class metal_h_sites(object):
   gives contacts only (reported). Heavy neighbours come from the bond
   restraints, not counting metals or metal-coordination proxies.
   Contacts: bond proxies with origin "metal coordination" (simple and asu), and
-  atoms of self.metals within THIOL_METAL_WINDOW of the summed cctbx
-  covalent radii; same MODEL; across crystal_symmetry (None: no symmetry).
+  atoms of self.metals within self.window of the summed cctbx covalent
+  radii; same MODEL; across crystal_symmetry (None: no symmetry).
   Verdict per H site, from the metals of a compatible conformer (blank or the
   same altloc) with occupancy > 0. One metal site is a connected component of
   the images of one metal atom (one name in one residue_group), with an edge
@@ -1439,6 +1466,7 @@ class metal_h_sites(object):
             with counted contacts
   '''
   metals = METAL_ELEMENTS
+  window = THIOL_METAL_WINDOW
   covered = None
   state = None
 
@@ -1503,7 +1531,7 @@ class metal_h_sites(object):
     metals = [i for i, e in enumerate(elements) if e in self.metals
               and _covalent_radius(e) is not None]
     for i_x, i_m, rt in metal_contact_pairs([a.xyz for a in atoms], elements,
-        parents, metals, crystal_symmetry, model_index):
+        parents, metals, crystal_symmetry, model_index, window=self.window):
       record(i_x, i_m, rt, crystal_symmetry, 'geometric')
     # verdicts
     for i_x, i_h, judged in candidates:
@@ -1624,10 +1652,8 @@ class thiol_metal_sites(metal_h_sites):
     for i_s, hs in h_on.items():
       if elements[i_s] != self.element: continue
       for i_h in hs:
-        nb = set((atoms[j].parent().parent().memory_id(), atoms[j].name)
-                 for j in heavy.get(i_s, [])
-                 if _compatible(atoms[j], atoms[i_h]))
-        if len(nb) == 1: candidates.append((i_s, i_h, True))
+        if _one_heavy_neighbour(atoms, heavy, i_s, atoms[i_h]) is not None:
+          candidates.append((i_s, i_h, True))
     return candidates
 
 class selenol_metal_sites(thiol_metal_sites):
@@ -1646,6 +1672,61 @@ def has_selenium(hierarchy):
   coordinates.
   '''
   return any(_atom_element(a) == 'SE' for a in hierarchy.atoms())
+
+def _oxoacid_centre(atoms, elements, heavy, h_on, i_x, i_o, h):
+  '''
+  Whether atom i_x, the heavy neighbour of O i_o that carries H h, is the
+  centre of an acid group: a C, P or S bonded to another O that has no other
+  heavy neighbour and no H, in the conformer of h. A C must have three
+  neighbours (H counted). As is in METAL_ELEMENTS, so not a centre.
+  '''
+  if elements[i_x] not in ('C', 'P', 'S'): return False
+  nb = {}
+  for j in heavy.get(i_x, []) + h_on.get(i_x, []):
+    if _compatible(atoms[j], h): nb[_residue_atom(atoms[j])] = j
+  if elements[i_x] == 'C' and len(nb) != 3:
+    return False
+  for j in nb.values():
+    if elements[j] != 'O': continue
+    if _residue_atom(atoms[j]) == _residue_atom(atoms[i_o]): continue
+    others = set(_residue_atom(atoms[l]) for l in heavy.get(j, [])
+                 if _compatible(atoms[l], h))
+    hs = [l for l in h_on.get(j, []) if _compatible(atoms[l], h)]
+    if len(others) == 1 and not hs:
+      return True
+  return False
+
+class acid_metal_sites(metal_h_sites):
+  '''
+  Acids bound to metals.
+
+  An O carrying H whose one non-metal heavy neighbour is an acid centre
+  (_oxoacid_centre(): carboxylic and carbonic acids, and the oxoacids of P
+  and S with a P=O or S=O) in the bond restraints of the H site's conformer.
+  Covered: deprotonated. Metals: METAL_ELEMENTS, within ACID_METAL_WINDOW.
+  Contacts and verdicts as in metal_h_sites.
+
+  Parameters
+  ----------
+  model : mmtbx.model.manager
+    The processed model.
+  crystal_symmetry : cctbx.crystal.symmetry, optional
+    The symmetry of the contacts; None: no symmetry.
+  '''
+  covered = 'deprotonated'
+  state = 'acid'
+  window = ACID_METAL_WINDOW
+
+  def _candidates(self, atoms, elements, heavy, h_on):
+    candidates = []
+    for i_o, hs in h_on.items():
+      if elements[i_o] != 'O': continue
+      for i_h in hs:
+        i_x = _one_heavy_neighbour(atoms, heavy, i_o, atoms[i_h])
+        if i_x is not None and _oxoacid_centre(atoms, elements, heavy, h_on,
+            i_x, i_o, atoms[i_h]):
+          candidates.append((i_o, i_h, True))
+    return candidates
 
 def residue_is_amino_acid(resname, mon_lib_srv):
   '''
@@ -1938,9 +2019,9 @@ class metal_amine_sites(metal_h_sites):
   aromatic or delocalized bond (amide, amidine, guanidinium, aromatic amine,
   enamine). Each H on it is judged (covered: NH2). amine[i_h]: the branch
   that decided (PRIMARY_AMINE or the reason it is not one) and the heavy
-  neighbour i_c (None unless it is one atom). Metals: NH_METAL_ELEMENTS.
+  neighbour i_c (None unless it is one atom). Metals: AMINE_METAL_ELEMENTS.
   '''
-  metals = NH_METAL_ELEMENTS
+  metals = AMINE_METAL_ELEMENTS
   covered = 'NH2'
   state = 'NH3+'
 
@@ -1957,8 +2038,7 @@ class metal_amine_sites(metal_h_sites):
   def amine_class(self, atoms, heavy, i_n, i_h):
     n, h = atoms[i_n], atoms[i_h]
     nb = sorted(set(j for j in heavy.get(i_n, []) if _compatible(atoms[j], h)))
-    names = set((atoms[j].parent().parent().memory_id(), atoms[j].name)
-                for j in nb)
+    names = set(_residue_atom(atoms[j]) for j in nb)
     if len(names) != 1:
       return group_args(branch='%d heavy neighbours' % len(names), i_c=None)
     if i_n in self._planar:
@@ -2036,7 +2116,7 @@ def protect_supplied_metal_amines(model, crystal_symmetry=None,
   approach=optimize with metal_bound_amines_as_nh2 (placement is not run):
   a primary amine that its dictionary makes NH3+ but that carries two H, or
   a neutral NH2 in riding H's pyramidal scope (neutral_metal_nh2()), with
-  two H, with a metal of NH_METAL_ELEMENTS in the window (any occupancy,
+  two H, with a metal of AMINE_METAL_ELEMENTS in the window (any occupancy,
   alternates, symmetry), keeps both H where they are. They are taken out of
   the riding H manager before its first idealization; all other H keep
   their parameterization, as the Optimizer would build it. The H counts are
@@ -2050,7 +2130,7 @@ def protect_supplied_metal_amines(model, crystal_symmetry=None,
     those partly preserved)
   '''
   elements = model.get_hierarchy().atoms().extract_element()
-  if not any(e.strip().upper() in NH_METAL_ELEMENTS for e in elements):
+  if not any(e.strip().upper() in AMINE_METAL_ELEMENTS for e in elements):
     return [], []
   sites = metal_amine_sites(model, crystal_symmetry)
   in_window = {}
@@ -2205,6 +2285,35 @@ def metal_selenol_text(not_placed=(), unresolved=(), supplied=(), hint=None):
       SELENOL_H_SUPPLIED_NOTE),
     not_placed, unresolved, supplied, hint)
 
+def metal_acid_text(not_placed=(), unresolved=(), supplied=(), hint=None):
+  '''
+  Write the report of acids bound to metals.
+
+  Sites: acid_metal_sites.
+
+  Parameters
+  ----------
+  not_placed : sequence of (str, str)
+    The H not placed, (label, contacts).
+  unresolved : sequence of str
+    The messages of the unresolved sites.
+  supplied : sequence of (str, str, str)
+    The supplied H kept (supplied_metal_h()), (label, contacts,
+    connectivity).
+  hint : str, optional
+    How to drop the supplied H.
+
+  Returns
+  -------
+  str
+    The report; '' if there is nothing to report.
+  '''
+  return _metal_h_text(group_args(
+    not_placed = METAL_ACID_NOT_PLACED,
+    unresolved = 'Acid H placed at metal sites with unresolved protonation',
+    supplied = f'Supplied acid H at metal sites: {ACID_H_SUPPLIED_NOTE}'),
+    not_placed, unresolved, supplied, hint)
+
 def metal_nh_text(not_placed=(), unresolved=(), supplied=(), reported=(),
                   hint=None):
   '''
@@ -2279,10 +2388,12 @@ METAL_THIOL_NOT_PLACED = ('Thiol H not placed: the S is bound to a metal, '
   'taken as thiolate')
 METAL_SELENOL_NOT_PLACED = ('Selenol H not placed: the Se is bound to a '
   'metal, taken as selenolate')
+METAL_ACID_NOT_PLACED = ('Acid H not placed: the O is bound to a metal, '
+  'taken as deprotonated')
 METAL_NH_NOT_PLACED = ('N-H not placed: backbone amide N or thymine/uracil '
   'N3 bound to a metal, taken as deprotonated')
 # a neutral NH2 (orient_metal_bound_neutral_nh2()) with a metal of
-# NH_METAL_ELEMENTS this close to N but outside the coordination window
+# AMINE_METAL_ELEMENTS this close to N but outside the coordination window
 # (metal_amine_sites) is turned with its lone pair at the metal too: an
 # orientation, both H kept (radical-SAM SAM/SAH N - Fe: 2.2-2.6 A)
 NEUTRAL_NH2_NEAR = 2.6
@@ -2360,6 +2471,9 @@ NOT_PLACED_CAUSES = [group_args(key=k, short=s, title=t, hint=h, listed_in=l,
   ('metal_selenolate', 'metal selenolate',
    'Selenol Se bound to a metal, taken as selenolate', None,
    METAL_SELENOL_NOT_PLACED),
+  ('metal_acid', 'metal-bound acid',
+   'Acid O bound to a metal, taken as deprotonated', None,
+   METAL_ACID_NOT_PLACED),
   ('metal_nh', 'metal-bound N',
    'Backbone amide N or thymine/uracil N3 bound to a metal, taken as '
    'deprotonated', None, METAL_NH_NOT_PLACED),
@@ -3554,6 +3668,10 @@ class place_hydrogens():
     self.site_labels_selenolate  = list()
     self.selenol_h_unresolved    = list()
     self.selenol_h_supplied_kept = list()
+    # the same for acids bound to metals (acid_metal_sites)
+    self.site_labels_acid       = list()
+    self.acid_h_unresolved      = list()
+    self.acid_h_supplied_kept   = list()
     # the same for backbone amide N and T/U N3 bound to metals
     # (metal_nh_sites), and the other N-H next to a metal, kept
     self.site_labels_metal_nh   = list()
@@ -3700,7 +3818,8 @@ class place_hydrogens():
 
   def _protonation_metal_conflicts(self):
     # an atom that carries an H of a protonation state, within the metal
-    # window of metal_contact_pairs() (also across the input's symmetry)
+    # window of metal_contact_pairs() (also across the input's symmetry):
+    # ACID_METAL_WINDOW for the Asp/Glu O, THIOL_METAL_WINDOW for the His N
     hierarchy = self.model.get_hierarchy()
     atoms = hierarchy.atoms()
     elements = [_atom_element(a) for a in atoms]
@@ -3722,8 +3841,15 @@ class place_hydrogens():
       for a in m.atoms(): model_index[a.i_seq] = i_model
     uc = None
     if self._contact_cs is not None: uc = self._contact_cs.unit_cell()
-    for i_x, i_m, rt in metal_contact_pairs([a.xyz for a in atoms], elements,
-        parents, metals, self._contact_cs, model_index):
+    sites = [a.xyz for a in atoms]
+    acid_o = [i for i in parents if elements[i] == 'O']
+    other = [i for i in parents if elements[i] != 'O']
+    pairs = metal_contact_pairs(sites, elements, other, metals,
+      self._contact_cs, model_index)
+    pairs += metal_contact_pairs(sites, elements, acid_o, metals,
+      self._contact_cs, model_index, window=ACID_METAL_WINDOW)
+    pairs.sort(key=lambda p: parents.index(p[0]))
+    for i_x, i_m, rt in pairs:
       x, m = atoms[i_x], atoms[i_m]
       # one conformer: a metal of another altloc is not there
       if not _compatible(x, m): continue
@@ -3846,6 +3972,7 @@ class place_hydrogens():
     # re-interpretation.
     self.remove_auto_restraint_objects()
     self.exclude_H_on_metal_thiolates()
+    self.exclude_H_on_metal_acids()
     self.exclude_H_on_metal_bound_N()
     if self.metal_bound_amines_as_nh2:
       self.convert_metal_bound_amines()
@@ -4807,6 +4934,18 @@ class place_hydrogens():
         self.site_labels_selenolate, self.selenol_h_unresolved,
         self.selenol_h_supplied_kept, cause='metal_selenolate')
 
+  def exclude_H_on_metal_acids(self):
+    '''
+    Remove the H that reduce2 built on acids bound to metals.
+
+    An acid (acid_metal_sites(): carboxylic and carbonic acids, and the
+    oxoacids of P and S with a P=O or S=O) bound to a metal is taken as
+    deprotonated: as exclude_H_on_metal_thiolates().
+    '''
+    self._exclude_H_at_metal_sites(acid_metal_sites, METAL_ELEMENTS,
+      self.site_labels_acid, self.acid_h_unresolved,
+      self.acid_h_supplied_kept, cause='metal_acid')
+
   def exclude_H_on_metal_bound_N(self):
     '''
     A backbone amide N (with a preceding residue) or a thymine/uracil N3 bound
@@ -4845,7 +4984,7 @@ class place_hydrogens():
     Which N: a primary amine by metal_amine_sites() (one heavy neighbour, a
     C without a multiple bond, N in no plane) that the dictionary makes NH3+
     (three H, energy type NT3 or formal charge +1). Neutral NH2 keep both H.
-    Metal: one position of NH_METAL_ELEMENTS covering the H sites (step B's
+    Metal: one position of AMINE_METAL_ELEMENTS covering the H sites (step B's
     window, coverage and altloc rules), also through symmetry (the
     contact's image). Each complete conformer (conformer_groups()) is
     judged with its own metals.
@@ -4870,7 +5009,7 @@ class place_hydrogens():
     one judged gets one line in metal_amine_chain_starts.
     """
     elements = self.model.get_hierarchy().atoms().extract_element()
-    if not any(e.strip().upper() in NH_METAL_ELEMENTS for e in elements):
+    if not any(e.strip().upper() in AMINE_METAL_ELEMENTS for e in elements):
       return
     sites = metal_amine_sites(self.model, self._contact_cs,
       mon_lib_srv = self.query_mon_lib_srv)
@@ -5043,7 +5182,7 @@ class place_hydrogens():
     """
     A neutral NH2 that its dictionary puts in riding H's pyramidal scope
     (neutral_metal_nh2(): an sp3 C, acyclic N or O as the one heavy
-    neighbour X) and whose N binds a metal of NH_METAL_ELEMENTS
+    neighbour X) and whose N binds a metal of AMINE_METAL_ELEMENTS
     (metal_amine_sites(): window, symmetry images, conformer and occupancy
     rules as for NH3+) keeps both H, oriented with the lone pair at the
     metal. Per complete conformer with both H:
@@ -5063,7 +5202,7 @@ class place_hydrogens():
         farther from it than any planar pair.
       - alternate positions of X, H split over blank and alternate groups:
         listed, left to riding H.
-    A metal of NH_METAL_ELEMENTS within NEUTRAL_NH2_NEAR of N but outside the
+    A metal of AMINE_METAL_ELEMENTS within NEUTRAL_NH2_NEAR of N but outside the
     window (or not counted there) orients the NH2 the same way, an
     orientation only: radical-SAM SAM/SAH N bind the unique Fe at 2.2-2.6
     A, where the dictionary torsion can put an H on the Fe. With a window
@@ -5078,7 +5217,7 @@ class place_hydrogens():
     sites are listed (metal_amine_neutral_off).
     """
     elements = self.model.get_hierarchy().atoms().extract_element()
-    if not any(e.strip().upper() in NH_METAL_ELEMENTS for e in elements):
+    if not any(e.strip().upper() in AMINE_METAL_ELEMENTS for e in elements):
       return
     sites = metal_amine_sites(self.model, self._contact_cs,
       mon_lib_srv = self.query_mon_lib_srv)
@@ -5228,14 +5367,14 @@ class place_hydrogens():
 
   def _near_metal_contacts(self, i_ns, atoms, cutoff=NEUTRAL_NH2_NEAR):
     '''
-    {i_n: [group_args(image, altloc, text)]}: metals of NH_METAL_ELEMENTS
+    {i_n: [group_args(image, altloc, text)]}: metals of AMINE_METAL_ELEMENTS
     within cutoff of the N i_ns, in the same MODEL, conformers compatible,
     also in symmetry mates of the input symmetry (image: Cartesian).
     '''
     sites = self.model.get_sites_cart()
     # as metal_amine_sites: a metal at occupancy 0 is not there
     metals = [i for i in range(atoms.size())
-              if _atom_element(atoms[i]) in NH_METAL_ELEMENTS and
+              if _atom_element(atoms[i]) in AMINE_METAL_ELEMENTS and
               atoms[i].occ > 0]
     if not metals or not i_ns: return {}
     pts = flex.vec3_double([sites[i] for i in i_ns])
@@ -5438,9 +5577,13 @@ class place_hydrogens():
       return (self.keep_existing_H and parts[a.parent().memory_id()] +
         (a.parent().altloc, a.name) in self._existing_h)
     listed = self._metal_h_listed_src
+    # the H of a protonation state stay, supplied or not
+    # (_protonation_metal_conflicts() lists them)
+    state_h = self._state_h_iseqs()
     remove = []
     for site in sites.h_sites:
       if site.verdict == 'not counted': continue
+      if site.i_h in state_h: continue
       h = atoms[site.i_h]
       label = _atom_label(h)
       contact = '; '.join(sites.contact_text(c) for c in site.contacts)
@@ -5691,7 +5834,7 @@ class place_hydrogens():
   def chain_start_metal_conformers(self, m):
     """
     The chain starts of model m (chain_start_residue_groups()) with a metal
-    of NH_METAL_ELEMENTS in the window of an N atom, with the contacts of
+    of AMINE_METAL_ELEMENTS in the window of an N atom, with the contacts of
     metal_h_sites (metal_contact_pairs(), the same symmetry) and the metals
     it counts (an altloc compatible with that N, occupancy > 0).
     :return: [(rg, [(N altloc, N atom, set of the counted metals' altlocs)])],
@@ -5701,7 +5844,7 @@ class place_hydrogens():
     if not starts: return []
     atoms = m.atoms()
     elements = [_atom_element(a) for a in atoms]
-    metals = [i for i, e in enumerate(elements) if e in NH_METAL_ELEMENTS
+    metals = [i for i, e in enumerate(elements) if e in AMINE_METAL_ELEMENTS
               and _covalent_radius(e) is not None]
     if not metals: return []
     position = {}
@@ -6723,8 +6866,9 @@ class place_hydrogens():
     exclusion_dict = dict()
     link_partners = dict()
     # Metal coordination is decided elsewhere (A4): thiols and selenols by
-    # exclude_H_on_metal_thiolates(), other H on metal-bound atoms stay. It
-    # neither marks a link nor counts as a bond here.
+    # exclude_H_on_metal_thiolates(), acids by exclude_H_on_metal_acids(),
+    # other H on metal-bound atoms stay. It neither marks a link nor counts
+    # as a bond here.
     metal = origin_ids['metal coordination']
     metal_partners = dict()
     all_proxies = []
@@ -7155,6 +7299,22 @@ class place_hydrogens():
 
 # ------------------------------------------------------------------------------
 
+  def metal_acid_text(self):
+    '''
+    Write the report of acids bound to metals.
+
+    For show() and reduce2's description, as metal_thiol_text().
+
+    Returns
+    -------
+    str
+      The report; '' if there is none.
+    '''
+    return metal_acid_text(self.site_labels_acid, self.acid_h_unresolved,
+      self.acid_h_supplied_kept, self.supplied_h_hint)
+
+# ------------------------------------------------------------------------------
+
   def metal_nh_text(self):
     '''
     The report of N-H at metals (show(), reduce2's description); '' if
@@ -7199,7 +7359,8 @@ class place_hydrogens():
       print('', file=log)
       print(self.unknown_atoms_text(verbose), file=log)
     #
-    for text in (self.metal_thiol_text(), self.metal_nh_text(),
+    for text in (self.metal_thiol_text(), self.metal_acid_text(),
+                 self.metal_nh_text(),
                  self.metal_amine_text(), self.chain_start_kept_text(),
                  self.nh2_side_fixed_text(),
                  self.na_terminal_h_text(), self.na_terminal_gap_text()):
@@ -7236,6 +7397,9 @@ class place_hydrogens():
       site_labels_thiolate = self.site_labels_thiolate,
       thiol_h_unresolved = self.thiol_h_unresolved,
       thiol_h_supplied_kept = self.thiol_h_supplied_kept,
+      site_labels_acid = self.site_labels_acid,
+      acid_h_unresolved = self.acid_h_unresolved,
+      acid_h_supplied_kept = self.acid_h_supplied_kept,
       site_labels_metal_nh = self.site_labels_metal_nh,
       metal_nh_unresolved = self.metal_nh_unresolved,
       metal_nh_supplied_kept = self.metal_nh_supplied_kept,
