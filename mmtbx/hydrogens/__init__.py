@@ -588,7 +588,7 @@ def run_fit_rotatable(
 # =============================================================================
 import re, sys
 
-USE_OLD_REDUCE = True # SINGLE flip for switching to reduce2.
+USE_OLD_REDUCE = False # SINGLE flip for switching to reduce2.
                       # Flip to False to run reduce2 everywhere.
 
 def use_old_reduce():
