@@ -38,7 +38,10 @@ def run(target_evaluator,
                lower_bound,
                upper_bound,
                n,
-               max_iterations = None):
+               max_iterations = None,
+               factr = None,
+               pgtol = None,
+               count_iterations = False):
   """
     Run the L-BFGS-B minimization algorithm using the provided target
     evaluator and bounds.
@@ -68,6 +71,19 @@ def run(target_evaluator,
     max_iterations : int, optional
         Maximum number of iterations allowed during the optimization. If
         None, there is no limit on the number of iterations.
+    count_iterations : bool, optional
+        What max_iterations limits: False (default) - the number of function
+        evaluations (as it always did, despite the name); True - the number
+        of minimizer iterations (an iteration takes one or more evaluations).
+    factr : float, optional
+        Stop when the relative reduction of the function in one iteration is
+        below factr times machine precision (default 1.e+7, i.e. about
+        2.e-9). Functions computed with limited accuracy (for example via
+        FFT) need a larger value, otherwise the minimizer keeps iterating in
+        numerical noise.
+    pgtol : float, optional
+        Stop when the largest component of the projected gradient is below
+        this value (default 1.e-5).
 
     Returns
     -------
@@ -100,7 +116,9 @@ def run(target_evaluator,
     n   = n,
     l   = lower_bound,
     u   = upper_bound,
-    nbd = bound_flags) # flag to apply both bounds
+    nbd = bound_flags, # flag to apply both bounds
+    factr = factr,
+    pgtol = pgtol)
   lbfgsb_minimizer.error = None
   x, f, g = target_evaluator.compute_functional_and_gradients()
   try:
@@ -114,7 +132,10 @@ def run(target_evaluator,
         continue
       assert not lbfgsb_minimizer.requests_f_and_g()
       if(lbfgsb_minimizer.is_terminated()): break
-      if(max_iterations is not None and icall>max_iterations): break
+      if(max_iterations is not None):
+        if(count_iterations):
+          if(lbfgsb_minimizer.n_iteration() >= max_iterations): break
+        elif(icall>max_iterations): break
       if(callback_after_step is not None):
         if(callback_after_step(minimizer) is True):
           #print("lbfgs minimizer stop: callback_after_step is True")

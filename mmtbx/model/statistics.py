@@ -36,6 +36,7 @@ class geometry(object):
     self.cached_clash = None
     self.cached_rama = None
     self.cached_rota = None
+    self._parallel = {}
     self._init(self.pdb_hierarchy, model.restraints_manager.geometry)
 
   def _init(self, pdb_hierarchy=None, geometry_restraints_manager=None):
@@ -156,6 +157,7 @@ class geometry(object):
     return group_args(min = mi, max = ma, mean = me, n = n)
 
   def ramachandran(self):
+    if("ramachandran" in self._parallel): return self._parallel["ramachandran"]
     if self.cached_rama is None:
       self.cached_rama = ramalyze(
           pdb_hierarchy = self.pdb_hierarchy,
@@ -168,6 +170,7 @@ class geometry(object):
       )
 
   def rotamer(self):
+    if("rotamer" in self._parallel): return self._parallel["rotamer"]
     if self.cached_rota is None:
       self.cached_rota = rotalyze(
           pdb_hierarchy = self.pdb_hierarchy,
@@ -180,6 +183,7 @@ class geometry(object):
       )
 
   def c_beta(self):
+    if("c_beta" in self._parallel): return self._parallel["c_beta"]
     result = cbetadev(pdb_hierarchy = self.pdb_hierarchy,
       outliers_only = True, out = null_out()) # XXX Why it is different from others?
     return group_args(
@@ -188,6 +192,7 @@ class geometry(object):
       )
 
   def clash(self):
+    if("clash" in self._parallel): return self._parallel["clash"]
     from mmtbx import hydrogens  # function-local: avoids mmtbx.model import cycle
     keep_hydrogens = self.use_hydrogens
     if not hydrogens.use_old_reduce():
@@ -215,6 +220,7 @@ class geometry(object):
       )
 
   def cablam(self):
+    if("cablam" in self._parallel): return self._parallel["cablam"]
     result = cablam.cablamalyze(self.pdb_hierarchy, outliers_only=False,
       out=null_out(), quiet=True) # XXX Why it is different from others?
     gui_table = group_args(column_labels = result.gui_list_headers,
@@ -228,9 +234,11 @@ class geometry(object):
       gui_table   = gui_table)
 
   def rama_z_score(self):
+    if("rama_z_score" in self._parallel): return self._parallel["rama_z_score"]
     return rama_z.rama_z(models = [self.model], log = null_out()).get_result()
 
   def omega(self):
+    if("omega" in self._parallel): return self._parallel["omega"]
     result = omegalyze.omegalyze(pdb_hierarchy=self.pdb_hierarchy, quiet=True)
     # XXX Move this to omegalyze function.
     n_proline         = result.n_proline()
@@ -257,6 +265,39 @@ class geometry(object):
       n_twisted_general = n_twisted_general,
       omegalyze         = result #XXX Bulky object -- REMOVE!
       )
+
+  # Parts of validation that do not depend on each other, the longest first
+  _parallel_parts = ["clash", "rama_z_score", "cablam", "c_beta", "omega",
+                     "ramachandran", "rotamer"]
+
+  def _compute_part(self, name):
+    return getattr(self, name)()
+
+  def compute_in_parallel(self, nproc):
+    """
+    Evaluate clashscore, Rama-Z, CaBLAM, C-beta deviations, omega,
+    Ramachandran plot and rotamers each in a process of its own (up to nproc
+    at a time) and keep the results: result() and show() use them. The
+    numbers are those of the calculation in one process; for a large model
+    the time is that of the longest part (clashscore) instead of their sum.
+    Nothing is done if nproc is None or 1, or if results are already there.
+    """
+    if(nproc is None or nproc is Auto or nproc <= 1): return
+    if(len(self._parallel) > 0 or self.cached_result is not None): return
+    from libtbx import easy_mp
+    names = self._parallel_parts
+    results = easy_mp.pool_map(
+      processes  = min(nproc, len(names)),
+      fixed_func = self._compute_part,
+      args       = names,
+      chunksize  = 1)
+    self._parallel = dict(zip(names, results))
+
+  def computed_in_parallel(self):
+    """
+    Names of the parts evaluated by compute_in_parallel.
+    """
+    return list(self._parallel.keys())
 
   def mp_score(self):
     clashscore = self.clash().score
@@ -667,7 +708,12 @@ class info(object):
   def __init__(self, model,
                      fmodel_x          = None,
                      fmodel_n          = None,
-                     refinement_params = None):
+                     refinement_params = None,
+                     geometry          = None):
+    """
+    geometry: geometry statistics object already evaluated for this model
+      (model.geometry_statistics()); evaluated here if not given.
+    """
     ref_par = refinement_params
     self.wilson_b = None
     self.model = model
@@ -675,7 +721,9 @@ class info(object):
       self.wilson_b = fmodel_x.wilson_b()
     elif fmodel_n is not None:
       self.wilson_b = fmodel_n.wilson_b()
-    self.geometry = model.geometry_statistics()
+    self.geometry = geometry
+    if(self.geometry is None):
+      self.geometry = model.geometry_statistics()
     self.adp = model.adp_statistics()
     self.data_x, self.data_n = None, None
     if(fmodel_x is not None):

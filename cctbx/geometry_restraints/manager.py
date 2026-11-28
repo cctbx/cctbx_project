@@ -121,11 +121,28 @@ class manager(Base_geometry):
     self._flags_bond_used_for_pair_proxies = False
     self._flags_nonbonded_used_for_pair_proxies = False
     self._pair_proxies = None
-    self.plain_pair_sym_table = None
+    self.plain_pair_sym_table = None # also drops a pending update
     self.nonbonded_distance_cutoff_was_determined_automatically = False
     self.adjusted_nonbonded_distance_cutoff = self.nonbonded_distance_cutoff
     self.effective_nonbonded_buffer = self.nonbonded_buffer
     self.n_updates_pair_proxies = 0
+
+  # Table of atom pairs within plain_pairs_radius (for ADP restraints). Making
+  # it is expensive, and nonbonded interactions are updated many times in
+  # coordinate minimization, which never needs it. So an update of nonbonded
+  # interactions only keeps the coordinates, and the table is made from them
+  # when it is asked for.
+  @property
+  def plain_pair_sym_table(self):
+    sites_frac = self.__dict__.get("_plain_pairs_sites_frac", None)
+    if (sites_frac is not None):
+      self.update_plain_pair_sym_table(sites_frac=sites_frac)
+    return self.__dict__.get("_plain_pair_sym_table", None)
+
+  @plain_pair_sym_table.setter
+  def plain_pair_sym_table(self, value):
+    self._plain_pairs_sites_frac = None
+    self._plain_pair_sym_table = value
 
   def replace_site_symmetry(self, new_site_symmetry_table,
                                   special_position_settings,
@@ -133,10 +150,20 @@ class manager(Base_geometry):
     assert self.site_symmetry_table is not None
     self.site_symmetry_table = new_site_symmetry_table
     # Recompute shell_sym_tables
-    asu_mappings = special_position_settings.asu_mappings(
-      buffer_thickness = self.max_reasonable_bond_distance*3 if \
+    buffer_thickness = self.max_reasonable_bond_distance*3 if \
       self.max_reasonable_bond_distance is not None \
-      else 150) # arbitrary big number if not defined
+      else 150 # arbitrary big number if not defined
+    # Shells up to 1-4 are built from the bonds defined so far, so three times
+    # the longest of them (plus a margin) is enough. The formal limit above can
+    # be much larger than that, and the number of symmetry copies to map grows
+    # as its cube.
+    max_bond_length = self._max_bond_length(
+      unit_cell  = special_position_settings.unit_cell(),
+      sites_cart = sites_cart)
+    if(max_bond_length is not None):
+      buffer_thickness = min(buffer_thickness, max_bond_length*3 + 5)
+    asu_mappings = special_position_settings.asu_mappings(
+      buffer_thickness = buffer_thickness)
     asu_mappings.process_sites_cart(
       original_sites      = sites_cart,
       site_symmetry_table = self.site_symmetry_table)
@@ -149,6 +176,26 @@ class manager(Base_geometry):
     self.shell_sym_tables = [shell_asu_table.extract_pair_sym_table()
       for shell_asu_table in shell_asu_tables]
     self.reset_internals()
+
+  def _max_bond_length(self, unit_cell, sites_cart):
+    """
+    Length of the longest bond in shell_sym_tables[0] for given sites; None if
+    there are no bonds.
+    """
+    result = None
+    table = self.shell_sym_tables[0]
+    edges = table.simple_edge_list()
+    if(len(edges)>0):
+      i_seqs = flex.size_t([e[0] for e in edges])
+      j_seqs = flex.size_t([e[1] for e in edges])
+      result = flex.max(flex.sqrt(
+        (sites_cart.select(i_seqs) - sites_cart.select(j_seqs)).dot()))
+    for i_seq, j_seq, rt_mx_ji in table.symmetry_edge_list():
+      d = unit_cell.distance(
+        unit_cell.fractionalize(sites_cart[i_seq]),
+        rt_mx_ji * unit_cell.fractionalize(sites_cart[j_seq]))
+      if(result is None or d > result): result = d
+    return result
 
   def simple_edge_list(self, omit_slack_greater_than=0):
     assert self.bond_params_table is not None
@@ -1515,7 +1562,7 @@ class manager(Base_geometry):
             unit_cell = self.crystal_symmetry.unit_cell()
             sites_frac = unit_cell.fractionalize(sites_cart=sites_cart)
           if (self.plain_pairs_radius is not None):
-            self.update_plain_pair_sym_table(sites_frac=sites_frac)
+            self._plain_pairs_sites_frac = sites_frac # table made on demand
           if (bonded_distance_cutoff < 0):
             for shell_sym_table in self.shell_sym_tables:
               bonded_distance_cutoff = max(bonded_distance_cutoff,

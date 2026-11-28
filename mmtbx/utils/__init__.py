@@ -1676,8 +1676,14 @@ class extract_box_around_model_and_map(object):
     sites_cart = xray_structure_box.sites_cart()
     sites_frac = new_unit_cell_box.fractionalize(sites_cart)
     xray_structure_box = xray_structure_box.replace_sites_frac(sites_frac)
+    # Same scattering table (electron, neutron, ...) as the input structure:
+    # a structure made from scatterers alone gets the default X-ray one.
     self.xray_structure_box = xray.structure(
-       sp,xray_structure_box.scatterers())
+      special_position_settings = sp,
+      scatterers                = xray_structure_box.scatterers(),
+      scattering_type_registry  = xray_structure.scattering_type_registry(),
+      scattering_type_registry_params =
+        xray_structure.scattering_type_registry_params)
     # Just for transition:
     from iotbx.map_manager import map_manager
     map_box_as_map_manager=map_manager(

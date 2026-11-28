@@ -224,6 +224,53 @@ def fit_altlocs_with_masking(model, fmodel, sin_cos_table=None,
   #with open("fitted2.pdb","w") as fo:
   #  fo.write(model.model_as_pdb())
 
+def neighbors_general(special_position_settings, sites_cart, i_selection,
+                      radius):
+  """
+  Atoms within radius of selected atoms (those included), unit cell and
+  symmetry accounted for. Time is proportional to the number of all atoms.
+  """
+  return special_position_settings.pair_generator(
+    sites_cart      = sites_cart,
+    distance_cutoff = radius).neighbors_of(
+      primary_selection = flex.bool(sites_cart.size(), i_selection)
+        ).iselection()
+
+def neighbors_no_images(special_position_settings, sites_cart, i_selection,
+                        radius):
+  """
+  Same from plain distances, if no periodic or symmetry image of an atom can
+  be within radius of selected atoms: P1, all atoms inside the unit cell and
+  selected atoms further than radius from its faces (a model in a box cut
+  out of a cryo-EM map). None otherwise.
+  """
+  sps = special_position_settings
+  if(sps.space_group().order_z() != 1 or i_selection.size() == 0): return None
+  unit_cell = sps.unit_cell()
+  sites_frac = unit_cell.fractionalize(sites_cart)
+  if(min(sites_frac.min()) < 0 or max(sites_frac.max()) >= 1): return None
+  selected = sites_frac.select(i_selection)
+  f_min, f_max = selected.min(), selected.max()
+  reciprocal_lengths = unit_cell.reciprocal_parameters()[:3]
+  for k in range(3):
+    # distance to the nearest of the two faces across axis k
+    if(min(f_min[k], 1-f_max[k])/reciprocal_lengths[k] <= radius): return None
+  result = flex.bool(sites_cart.size(), False)
+  radius_sq = radius**2
+  for i in i_selection:
+    result = result | ((sites_cart - sites_cart[i]).dot() <= radius_sq)
+  return result.iselection()
+
+def neighbors(special_position_settings, sites_cart, i_selection, radius):
+  result = neighbors_no_images(
+    special_position_settings = special_position_settings,
+    sites_cart = sites_cart, i_selection = i_selection, radius = radius)
+  if(result is None):
+    result = neighbors_general(
+      special_position_settings = special_position_settings,
+      sites_cart = sites_cart, i_selection = i_selection, radius = radius)
+  return result
+
 class run(object):
   def __init__(self,
                pdb_hierarchy,
@@ -375,11 +422,11 @@ class run(object):
         residue_i_selection.append(a.i_seq)
     sites_cart = self.atoms.extract_xyz()
     #
-    residue_b_selection = flex.bool(sites_cart.size(), residue_i_selection)
-    selection_around_residue = self.special_position_settings.pair_generator(
-      sites_cart      = sites_cart,
-      distance_cutoff = radius
-        ).neighbors_of(primary_selection = residue_b_selection).iselection()
+    selection_around_residue = neighbors(
+      special_position_settings = self.special_position_settings,
+      sites_cart                = sites_cart,
+      i_selection               = residue_i_selection,
+      radius                    = radius)
 
     residue_i_selection = residue.atoms().extract_i_seq()
 

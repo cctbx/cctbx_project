@@ -3190,7 +3190,8 @@ class manager(object):
 
   def get_master_hierarchy(self):
     assert self.get_hierarchy().models_size() == 1
-    if self._master_sel.size() > 0:
+    # _master_sel is None after unset_ncs_constraints_groups()
+    if self._master_sel is not None and self._master_sel.size() > 0:
       return self.get_hierarchy().select(self._master_sel)
     else:
       return self.get_hierarchy()
@@ -5584,15 +5585,21 @@ class manager(object):
     self.set_b_iso(values = b_isos)
 
   def get_model_statistics_info(self,
-      fmodel_x          = None,
-      fmodel_n          = None,
-      refinement_params = None):
+      fmodel_x            = None,
+      fmodel_n            = None,
+      refinement_params   = None,
+      geometry_statistics = None):
+    """
+    geometry_statistics: object already evaluated for this model (result of
+      self.geometry_statistics()), to avoid evaluating it once more.
+    """
     if self.model_statistics_info is None:
       self.model_statistics_info = mmtbx.model.statistics.info(
           model             = self,
           fmodel_x          = fmodel_x,
           fmodel_n          = fmodel_n,
-          refinement_params = refinement_params)
+          refinement_params = refinement_params,
+          geometry          = geometry_statistics)
     return self.model_statistics_info
 
   def composition(self):
@@ -5606,7 +5613,12 @@ class manager(object):
   def geometry_statistics(self,
                           use_hydrogens=None,
                           fast_clash=True,
-                          condensed_probe=True):
+                          condensed_probe=True,
+                          nproc=1):
+    """
+    nproc > 1: validation (clashscore, Ramachandran plot, rotamers, ...) is
+    evaluated now, its parts in parallel; otherwise when it is asked for.
+    """
     scattering_table = \
         self.get_xray_structure().scattering_type_registry().last_table()
     rm = self.restraints_manager
@@ -5629,18 +5641,21 @@ class manager(object):
       m = self.deep_copy()
     m.get_hierarchy().atoms().reset_i_seq()
     hd_selection = m.get_hd_selection()
-    if(use_hydrogens==False):
+    has_hd = hd_selection.count(True) > 0 # nothing to remove otherwise
+    if(use_hydrogens==False and has_hd):
       not_hd_sel = ~hd_selection
       m = m.select(not_hd_sel)
-    if(use_hydrogens is None):
+    if(use_hydrogens is None and has_hd):
       if(self.riding_h_manager is not None or
          scattering_table in ["n_gaussian","wk1995", "it1992", "electron"]):
         not_hd_sel = ~hd_selection
         m = m.select(not_hd_sel, exclude_flags=True)
-    return mmtbx.model.statistics.geometry(
+    result = mmtbx.model.statistics.geometry(
       model           = m,
       fast_clash      = fast_clash,
       condensed_probe = condensed_probe)
+    result.compute_in_parallel(nproc = nproc)
+    return result
 
   def occupancy_statistics(self):
     return mmtbx.model.statistics.occupancy(

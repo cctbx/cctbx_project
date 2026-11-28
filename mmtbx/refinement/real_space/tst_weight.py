@@ -1725,64 +1725,228 @@ def get_pdb_inputs(pdb_str):
     grm = restraints_manager,
     xrs = xrs)
 
+def get_map(xrs, d_min):
+  f_calc = xrs.structure_factors(d_min = d_min).f_calc()
+  fft_map = f_calc.fft_map(resolution_factor=0.25)
+  fft_map.apply_sigma_scaling()
+  return fft_map.real_map_unpadded()
+
+def exercise_search():
+  """
+  weight.search with model functions score(weight) in place of refinement:
+  an acceptable weight is found in a few trials from any start; a start near
+  the answer takes one trial; cases with no acceptable weight.
+  """
+  tolerance = 0.2
+  for power in [0.3, 1, 2]:
+    for w_answer in [0.02, 1., 37., 2500.]:
+      # score = 1 at w_answer
+      score = lambda w: (w/w_answer)**power
+      for start in [1.e-3, 0.5, 1., 50., 1.e+4, w_answer*0.95]:
+        trials, best = weight.search(
+          refine = score, start = start, tolerance = tolerance)
+        w, s = trials[best]
+        assert 1-tolerance <= s <= 1, [power, w_answer, start, trials]
+        assert len(trials) <= 10, [power, w_answer, start, len(trials)]
+        assert [t[0] for t in trials].count(w) == 1 # no weight tried twice
+        if(start == w_answer*0.95): assert len(trials) == 1
+  # limits cannot be satisfied and lowering the weight stops helping: the
+  # search stops and takes the largest weight that is nearly as good as the
+  # best
+  n_calls = []
+  def score(w):
+    n_calls.append(w)
+    return 3 + w
+  trials, best = weight.search(refine = score, start = 1.)
+  assert len(trials) == len(n_calls) < 10, trials
+  s_min = min([t[1] for t in trials])
+  assert trials[best][1] <= 1.05*s_min
+  assert trials[best][0] == max([t[0] for t in trials if t[1] <= 1.05*s_min])
+  assert trials[best][0] > min([t[0] for t in trials])
+  # score does not depend on the weight at all (refinement that does not
+  # converge): two trials, the start weight is kept
+  trials, best = weight.search(refine = lambda w: 1.1, start = 1.)
+  assert len(trials) == 2 and trials[best][0] == 1., trials
+  # weight too small to matter, then a steep rise
+  score = lambda w: 0.45 if w < 2 else 0.45*(w/2.)**1.5
+  trials, best = weight.search(refine = score, start = 0.03)
+  assert 0.8 <= trials[best][1] <= 1 and len(trials) <= 8, trials
+  # any weight satisfies limits: the largest weight tried is taken
+  trials, best = weight.search(refine = lambda w: 0.1, start = 1.)
+  assert trials[best][1] == 0.1 and len(trials) <= 10
+  assert max([t[0] for t in trials]) >= 1.e+4*0.9999, trials
+  # noisy (not monotonic) score: terminates, result satisfies limits
+  import math
+  score = lambda w: (w/10.)*(1 + 0.2*math.sin(40*math.log(w)))
+  for start in [0.01, 1., 300.]:
+    trials, best = weight.search(refine = score, start = start)
+    assert len(trials) <= 10
+    assert trials[best][1] <= 1, trials
+
 def exercise():
   """
-  Exercise determination of optimal weights for real-space refinement of
-  individual coordinates.
+  The weight found gives a refined model with rmsd of bonds and angles within
+  the limits and close to them (the larger of the two ratios rmsd/limit is
+  between 0.8 and 1), at high and low resolution and for tight and loose
+  limits. The refined model that comes with the weight is what refinement
+  with this weight gives. Tighter limits: smaller weight.
   """
-  for d_min in [1,2,6]:
-    print(d_min, "-"*69)
-    pi = get_pdb_inputs(pdb_str=pdb_str_1)
-    f_calc = pi.xrs.structure_factors(d_min = d_min).f_calc()
-    fft_map = f_calc.fft_map(resolution_factor=0.25)
-    fft_map.apply_sigma_scaling()
-    map_data = fft_map.real_map_unpadded()
-    w = weight.run(
+  pi = get_pdb_inputs(pdb_str=pdb_str_1)
+  for d_min in [2, 6]:
+    map_data = get_map(xrs = pi.xrs, d_min = d_min)
+    weights = []
+    for b_limit, a_limit in [(0.005, 0.5), (0.0075, 1.4), (0.03, 3.0)]:
+      sites_cart_start = pi.xrs.sites_cart().deep_copy()
+      w = weight.run(
+        map_data                    = map_data,
+        xray_structure              = pi.xrs,
+        pdb_hierarchy               = pi.ph,
+        geometry_restraints_manager = pi.grm,
+        rms_bonds_limit             = b_limit,
+        rms_angles_limit            = a_limit)
+      # input structure is not modified
+      assert approx_equal(pi.xrs.sites_cart(), sites_cart_start, 1.e-9)
+      score = max(w.rms_bonds/b_limit, w.rms_angles/a_limit)
+      print("d_min=%d limits %5.3f %3.1f: weight %9.4f bonds %6.4f angles %5.2f"
+        " trials %d"%(d_min, b_limit, a_limit, w.weight, w.rms_bonds,
+        w.rms_angles, w.n_trials))
+      assert w.limits_satisfied
+      assert 0.8 <= score <= 1, [d_min, b_limit, a_limit, score]
+      assert w.n_trials <= 10
+      weights.append(w.weight)
+      ro = individual_sites.simple(
+        target_map                  = map_data,
+        selection                   = flex.bool(pi.xrs.scatterers().size(), True),
+        max_iterations              = 100,
+        max_shift                   = individual_sites.default_max_shift,
+        geometry_restraints_manager = pi.grm.geometry)
+      ro.refine(weight = w.weight, xray_structure = pi.xrs.deep_copy_scatterers())
+      # not identical: the restraints manager updates its list of nonbonded
+      # pairs as atoms move, so a repeated refinement starts with a list
+      # left by the previous one
+      d = flex.sqrt((ro.sites_cart() - w.sites_cart).dot())
+      print("  repeated refinement differs by (mean, max): %7.5f %7.5f"%(
+        flex.mean(d), flex.max(d)))
+      assert flex.mean(d) < 0.01 and flex.max(d) < 0.1, [flex.mean(d), flex.max(d)]
+      b, a = ro.rmsds()
+      assert approx_equal(b, w.rms_bonds, 1.e-3) and \
+             approx_equal(a, w.rms_angles, 0.05)
+    assert weights[0] < weights[1] < weights[2], weights
+
+def exercise_start_value():
+  """
+  Without a start value the first guess comes from fragments (same result
+  for any nproc) and the search goes on from it. Starting from the weight
+  found before takes one trial; starting far from it takes more and ends
+  within the same limits.
+  """
+  pi = get_pdb_inputs(pdb_str=pdb_str_1)
+  map_data = get_map(xrs = pi.xrs, d_min = 2)
+  def get(**kw):
+    return weight.run(
       map_data                    = map_data,
       xray_structure              = pi.xrs,
       pdb_hierarchy               = pi.ph,
-      geometry_restraints_manager = pi.grm).weight
-    ro = individual_sites.simple(
-      target_map = map_data,
-      selection  = flex.bool(pi.xrs.scatterers().size(), True),
-      geometry_restraints_manager = pi.grm.geometry)
-    ro.refine(weight=w, xray_structure = pi.xrs)
-    print(ro.rmsds())
+      geometry_restraints_manager = pi.grm,
+      **kw)
+  w0 = get()
+  guess = [m for m in w0.msg_strings if m.startswith("first guess from")]
+  assert len(guess) == 1 and guess[0].count("from 10 fragments"), w0.msg_strings
+  assert 0.8 <= max(w0.rms_bonds/0.0075, w0.rms_angles/1.4) <= 1
+  assert abs(w0.trials[0][0] - float(guess[0].split()[-1])) < 1.e-3
+  w4 = get(nproc = 4)
+  assert w4.weight == w0.weight and w4.msg_strings == w0.msg_strings
+  w = get(start_trial_weight_value = w0.weight)
+  assert w.n_trials == 1 and w.weight == w0.weight
+  assert len([m for m in w.msg_strings if m.startswith("first guess")]) == 0
+  d = flex.sqrt((w.sites_cart - w0.sites_cart).dot())
+  assert flex.mean(d) < 0.01 and flex.max(d) < 0.1, [flex.mean(d), flex.max(d)]
+  for factor in [1.e-3, 1.e+3]:
+    w = get(start_trial_weight_value = w0.weight*factor)
+    assert 1 < w.n_trials <= 10, w.n_trials
+    assert 0.8 <= max(w.rms_bonds/0.0075, w.rms_angles/1.4) <= 1
+    assert 0.5*w0.weight < w.weight < 2*w0.weight, [w.weight, w0.weight]
+  # log
+  assert w0.msg_strings[-1].startswith("overall best weight:")
+  assert w0.msg_strings[-2] == "trial refinements: %d"%w0.n_trials
+  assert len([m for m in w0.msg_strings
+              if m.startswith("trial weight:")]) == w0.n_trials
 
-def exercise_single_chunk():
+def exercise_one_trial():
   """
-  A model with only a few residues yields a single chunk and therefore a
-  single per-chunk weight estimate. That estimate must become the overall
-  weight rather than being discarded in favour of the default.
+  Series of calls (macro-cycles) with one whole-model refinement per call:
+  the weight is corrected from the score of the previous call and gets
+  within the limits and close to them in a few calls, also from a start
+  value that is far off. With must_satisfy a call that ends above the limits
+  goes on until they are satisfied.
   """
-  lines = []
-  residues = []
-  for l in pdb_str_1.splitlines():
-    if(l.startswith("ATOM")):
-      resid = l[21:27]
-      if(resid not in residues): residues.append(resid)
-      if(len(residues) > 5): break
-    lines.append(l)
-  pi = get_pdb_inputs(pdb_str="\n".join(lines)+"\nEND\n")
-  f_calc = pi.xrs.structure_factors(d_min = 2).f_calc()
-  fft_map = f_calc.fft_map(resolution_factor=0.25)
-  fft_map.apply_sigma_scaling()
-  map_data = fft_map.real_map_unpadded()
-  default_weight = 50
+  pi = get_pdb_inputs(pdb_str=pdb_str_1)
+  map_data = get_map(xrs = pi.xrs, d_min = 2)
+  def get(**kw):
+    return weight.run(
+      map_data                    = map_data,
+      xray_structure              = pi.xrs,
+      pdb_hierarchy               = pi.ph,
+      geometry_restraints_manager = pi.grm,
+      one_trial                   = True,
+      **kw)
+  for start in [None, 2000.]:
+    history, scores = None, []
+    for call in range(6):
+      w = get(history = history, must_satisfy = False,
+              start_trial_weight_value = start if call == 0 else None)
+      assert w.n_trials == 1
+      assert len(w.history) == call + 1
+      assert w.history[-1][0] == w.weight
+      if(call > 0): # weight changes by a factor of four at most
+        assert 0.25*0.999 <= w.weight/history[-1][0] <= 4*1.001
+      history = w.history
+      scores.append(history[-1][1])
+    print("one trial per call, start %s: scores"%str(start),
+      " ".join(["%.2f"%x for x in scores]))
+    assert 0.75 <= scores[-1] <= 1.05, scores
+  # above the limits and must_satisfy: more trials in the same call
+  w = get(start_trial_weight_value = 2000., must_satisfy = True)
+  assert w.n_trials > 1 and w.limits_satisfied
+  assert max(w.rms_bonds/0.0075, w.rms_angles/1.4) <= 1
+  w = get(start_trial_weight_value = 2000., must_satisfy = False)
+  assert w.n_trials == 1 and not w.limits_satisfied
+
+def exercise_selection():
+  """
+  Only a part of the model is refined; the rest has poor geometry and stays
+  as it is. The weight is judged by the rmsd of the refined part: limits are
+  reached for it (judged over all atoms they never could be).
+  """
+  pi = get_pdb_inputs(pdb_str=pdb_str_1)
+  map_data = get_map(xrs = pi.xrs, d_min = 2)
+  n = pi.xrs.scatterers().size()
+  selection = flex.bool([i < n//2 for i in range(n)])
+  xrs = pi.xrs.deep_copy_scatterers()
+  flex.set_random_seed(0)
+  xrs.shake_sites_in_place(mean_distance = 0.3, selection = ~selection)
+  es = pi.grm.geometry.energies_sites(sites_cart = xrs.sites_cart())
+  assert es.bond_deviations()[2] > 0.1 # all atoms: far above any limit
   w = weight.run(
     map_data                    = map_data,
-    xray_structure              = pi.xrs,
+    xray_structure              = xrs,
     pdb_hierarchy               = pi.ph,
     geometry_restraints_manager = pi.grm,
-    default_weight              = default_weight)
-  chunk_weights = [float(m.split()[-1]) for m in w.msg_strings
-    if m.startswith("chunk ") and "optimal weight" in m]
-  assert len(chunk_weights) == 1, w.msg_strings
-  assert chunk_weights[0] != default_weight, chunk_weights
-  assert approx_equal(w.weight, chunk_weights[0]), (w.weight, chunk_weights)
+    selection                   = selection)
+  assert w.limits_satisfied, w.msg_strings
+  assert 0.8 <= max(w.rms_bonds/0.0075, w.rms_angles/1.4) <= 1, w.msg_strings
+  d = flex.sqrt((w.sites_cart - xrs.sites_cart()).dot())
+  assert flex.max(d.select(~selection)) < 1.e-9
+  es = pi.grm.geometry.select(selection).energies_sites(
+    sites_cart = w.sites_cart.select(selection))
+  assert approx_equal(es.bond_deviations()[2], w.rms_bonds, 1.e-6)
 
 if(__name__ == "__main__"):
   timer = user_plus_sys_time()
+  exercise_selection()
+  exercise_search()
   exercise()
-  exercise_single_chunk()
+  exercise_start_value()
+  exercise_one_trial()
   print("Time: %6.2f" % timer.elapsed())
+  print("OK")

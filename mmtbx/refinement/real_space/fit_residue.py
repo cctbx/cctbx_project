@@ -21,6 +21,13 @@ def flatten(l):
   return sum(([x] if not (isinstance(x, list) or isinstance(x, flex.size_t))
     else flatten(x) for x in l), [])
 
+# A side chain goes to a conformation of a worse rotamer class (favoured to
+# allowed) only if the sum of map values at its atoms becomes at least this
+# many times larger. In real models (3-3.5 A) such moves gained 4 % (median;
+# 95 % of them below 20 %): noise. A side chain that is out of density and
+# has its place in an allowed rotamer gains 100 % or more.
+rotamer_class_min_gain = 1.5
+
 class monitor(object):
   def __init__(self, id_str, selection, map_data, unit_cell, weights, pairs,
                cmv, rotamer_evaluator, log):
@@ -49,7 +56,10 @@ class monitor(object):
       if(mv < 0): target_neg += mv
     #
     rot = self.rotamer_evaluator.evaluate_residue(residue)
+    rank = mmtbx.refinement.real_space.rotamer_rank(
+      self.rotamer_evaluator, residue)
     self.states[state] = group_args(
+      rank       = rank,
       vals       = vals,
       sites_cart = residue.atoms().extract_xyz(),
       target     = target,
@@ -72,13 +82,26 @@ class monitor(object):
        (F.target_neg>S.target_neg) or
        (S.exceed_map_max_value and not F.exceed_map_max_value)):
       state = "fitting"
+    # A trial conformation is taken by map values, but not if its rotamer
+    # class (favoured, allowed, outlier) is worse, unless the gain in map
+    # value is large (rotamer_class_min_gain). Map values alone (any gain,
+    # however small, accepted unless the result is an outlier) moved a large
+    # part of favoured rotamers to the edge of the allowed region.
+    def worse(a, b):
+      if(None in [a.rank, b.rank] or a.rank >= b.rank): return False
+      if(a.rank == 0): return True
+      return not (a.target > 0 and
+                  a.target > b.target*rotamer_class_min_gain)
+    if(state == "fitting" and worse(F, S)): state = "start"
     N = self.states[state]
+    prev = state
     if(T is not None):
       if((N.rot=="OUTLIER" and T.rot!="OUTLIER" and not T.exceed_map_max_value) or
          (T.target>N.target and T.target_neg>=S.target_neg and not T.exceed_map_max_value) or
          (T.target_neg>N.target_neg) or
          (N.exceed_map_max_value and not T.exceed_map_max_value)):
         state = "tuneup"
+        if(worse(T, N)): state = prev
     #
     residue.atoms().set_xyz(self.states[state].sites_cart)
     #
@@ -354,6 +377,9 @@ class run(object):
     else:
       self.chi_angles = self.rotamer_manager.get_chi_angles(
         resname = self.residue.resname)
+      # same table as one array: what the search takes without conversion
+      self.chi_angles_flat = self.rotamer_manager.get_chi_angles_flat(
+        resname = self.residue.resname)
       if(len(self.co.clusters)>0):
         if(backbone_sample):
           self.fit_c_beta(c_beta_rotation_cluster = self.co.clusters[0])
@@ -465,7 +491,7 @@ class run(object):
         fixed                    = self.xyzrad_bumpers,
         axes                     = axes,
         rotatable_points_indices = atr,
-        angles_array             = self.chi_angles,
+        angles_array             = self.chi_angles_flat,
         density_map              = self.target_map,
         moving                   = moving,
         unit_cell                = self.unit_cell,
@@ -480,7 +506,7 @@ class run(object):
         target_value             = start_target_value,
         axes                     = axes,
         rotatable_points_indices = atr,
-        angles_array             = self.chi_angles,
+        angles_array             = self.chi_angles_flat,
         density_map              = self.target_map,
         all_points               = self.residue.atoms().extract_xyz(),
         unit_cell                = self.unit_cell,
@@ -494,7 +520,7 @@ class run(object):
         sites_cart_start         = sites_cart_start.deep_copy(),
         axes                     = axes,
         rotatable_points_indices = atr,
-        angles_array             = self.chi_angles,
+        angles_array             = self.chi_angles_flat,
         all_points               = self.residue.atoms().extract_xyz(),
         sin_table                = self.sin_cos_table.sin_table,
         cos_table                = self.sin_cos_table.cos_table,

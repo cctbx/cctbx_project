@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 from cctbx import maptbx
 from cctbx.array_family import flex
 import scitbx.lbfgs
+import scitbx.lbfgsb
 from cctbx import xray
 from scitbx import matrix
 
@@ -104,7 +105,28 @@ class magnification_anisotropic_minimization(object):
       K          = O.K)
     return -1.* o.target(), o.gradients()*(-1.)
 
+class _shifts_evaluator(object):
+  """
+  Adaptor for scitbx.lbfgsb.run: target and gradients of the lbfgs object
+  below as functions of shifts.
+  """
+  def __init__(self, parent):
+    self.parent = parent
+
+  def compute_functional_and_gradients(self):
+    f, g = self.parent.compute_functional_and_gradients()
+    return self.parent.x, f, g
+
 class lbfgs(object):
+  """
+  Minimization of geometry restraints + weighted real-space target (sum of
+  map values at atom centers, negated) with respect to coordinates of
+  selected (selection_variable) or all atoms.
+
+  shifts_bound: if None, the variables are the coordinates and the minimizer
+    is L-BFGS. If a number (A), the variables are shifts of coordinates from
+    their start values, each kept within +/- shifts_bound by L-BFGS-B.
+  """
 
   def __init__(O,
         sites_cart,
@@ -125,7 +147,8 @@ class lbfgs(object):
         lbfgs_core_params=None,
         lbfgs_termination_params=None,
         lbfgs_exception_handling_params=None,
-        states_collector=None):
+        states_collector=None,
+        shifts_bound=None):
     #assert [unit_cell, geometry_restraints_manager].count(None) == 1
     assert real_space_gradients_delta is not None
     if (unit_cell is None):
@@ -163,17 +186,42 @@ class lbfgs(object):
     else:
       O.sites_cart = sites_cart.deep_copy()
       O.x = sites_cart.select(O.selection_variable).as_double()
+    O.x_start = None
+    if(shifts_bound is not None):
+      assert shifts_bound > 0
+      O.x_start = O.x
+      O.x = flex.double(O.x_start.size(), 0)
     O.number_of_function_evaluations = -1
     O.f_start, O.g_start = O.compute_functional_and_gradients()
-    O.minimizer = scitbx.lbfgs.run(
-      target_evaluator=O,
-      gradient_only=O.gradient_only,
-      line_search=O.line_search,
-      core_params=O.lbfgs_core_params,
-      termination_params=lbfgs_termination_params,
-      exception_handling_params=lbfgs_exception_handling_params)
+    if(shifts_bound is None):
+      O.minimizer = scitbx.lbfgs.run(
+        target_evaluator=O,
+        gradient_only=O.gradient_only,
+        line_search=O.line_search,
+        core_params=O.lbfgs_core_params,
+        termination_params=lbfgs_termination_params,
+        exception_handling_params=lbfgs_exception_handling_params)
+    elif(O.x.size() == 0):
+      O.minimizer = None # nothing to refine
+    else:
+      n = O.x.size()
+      max_iterations = None
+      if(lbfgs_termination_params is not None):
+        max_iterations = lbfgs_termination_params.max_iterations
+      O.minimizer = scitbx.lbfgsb.run(
+        target_evaluator = _shifts_evaluator(parent = O),
+        bound_flags      = flex.int(n, 2),
+        lower_bound      = flex.double(n, -shifts_bound),
+        upper_bound      = flex.double(n,  shifts_bound),
+        n                = n,
+        max_iterations   = max_iterations,
+        count_iterations = True)
     O.f_final, O.g_final = O.compute_functional_and_gradients()
+    O.max_shift = 0
+    if(O.x_start is not None and O.x.size() > 0):
+      O.max_shift = flex.max(flex.abs(O.x))
     del O.x
+    del O.x_start
     del O.site_radii
 
   def compute_functional_and_gradients(O):
@@ -182,13 +230,16 @@ class lbfgs(object):
       return O.f_start, O.g_start
     O.number_of_function_evaluations += 1
     #
-    x_current = O.x
-    if(O.x_previous is None):
-      O.x_previous = x_current.deep_copy()
+    if(O.x_start is not None): # variables are shifts, bounded by minimizer
+      x_current = O.x_start + O.x
     else:
-      xray.ext.damp_shifts(previous=O.x_previous, current=x_current,
-        max_value=10.)
-      O.x_previous = x_current.deep_copy()
+      x_current = O.x
+      if(O.x_previous is None):
+        O.x_previous = x_current.deep_copy()
+      else:
+        xray.ext.damp_shifts(previous=O.x_previous, current=x_current,
+          max_value=10.)
+        O.x_previous = x_current.deep_copy()
     #
     O.sites_cart_variable = flex.vec3_double(x_current)
     if (O.real_space_target_weight == 0):

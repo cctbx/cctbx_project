@@ -717,7 +717,16 @@ def load_tables():
     tables[residue_type] = t
   return tables
 
+_emsley8k_tables_cache = []
+
 def load_emsley8k_tables():
+  # Building the tables takes ~0.7 s; they are read-only, so build them once per
+  # process (restraints are re-created every macro-cycle in real-space refinement).
+  if(len(_emsley8k_tables_cache)==0):
+    _emsley8k_tables_cache.append(_load_emsley8k_tables())
+  return _emsley8k_tables_cache[0]
+
+def _load_emsley8k_tables():
   tables = {}
   name_to_file = [
     ("general",              "rama8000-general-noGPIVpreP.data", 0),

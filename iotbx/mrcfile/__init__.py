@@ -541,7 +541,7 @@ class write_ccp4_map:
       flex arrays.  Could be changed without difficulty by transposing the
       numpy array as is done in the map_reader class.
 
-     Class parallel to iotbx.ccp4_map.write_ccp4_map
+     Replaces the removed iotbx.ccp4_map.write_ccp4_map
 
        The parameter map_data should be a flex array (normally flex double)
 

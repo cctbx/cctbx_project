@@ -262,7 +262,7 @@ def test_flip_nqh_use_ncs_without_groups_reduce2():
   """use_ncs=True on a model with no NCS groups falls back to a whole-model flip
   (get_master_selection is not consulted) and still flips a backwards ASN, atom-
   preservingly. The NCS master-flip + multiply_ncs propagation itself is covered
-  end-to-end by real_space_refine tst_73."""
+  end-to-end by real_space_refine tst_070."""
   import os, re, libtbx.load_env
   from io import StringIO
   p = libtbx.env.find_in_repositories(

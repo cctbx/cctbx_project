@@ -5,9 +5,10 @@ import scitbx.rigid_body
 import scitbx.graph.tardy_tree
 import scitbx.lbfgs
 from scitbx import matrix
+from scitbx.math import superpose
 from libtbx.test_utils import approx_equal
 from libtbx import adopt_init_args
-import sys
+import sys, math
 import boost_adaptbx.boost.python as bp
 from six.moves import range
 cctbx_maptbx_ext = bp.import_ext("cctbx_maptbx_ext")
@@ -306,20 +307,8 @@ class refine_mz(object):
       self._show_and_track(d_min = d_min)
 
   def _get_mz_resolution_limits(self):
-    # lowest resolution: first zone
-    n_ref_lowest = 0
-    d_spacing = self.complete_set.d_spacings().sort().data()
-    if(d_spacing.size()<500): return ( self.complete_set.d_min(), )
-    d_0 = min(d_spacing[499], 15)
-    if(d_0>8.0): d_1 = 8.0
-    else:
-      return d_0, self.d_min
-    # second zone
-    if(d_1>4.0 and self.d_min<4.0):
-      d_2 = 4.0
-    else:
-      d_2 = max(self.d_min, 4.0)
-    return d_0, d_1, d_2
+    return mz_resolution_limits(
+      complete_set = self.complete_set, d_min = self.d_min)
 
   def _get_mask(self):
     mask_data = None
@@ -349,131 +338,377 @@ class refine_mz(object):
       y=self._get_map().as_1d()).coefficient()
 
   def _get_map_at_d_min(self, d_min):
-    done = False
-    cntr = 0
-    while not done:
-      if(cntr>50):
-        raise RuntimeError("Number of trial resolution increments exceeded.")
-      try:
-        f_obs_cmpl = self.complete_set.resolution_filter(
-          d_min=d_min).structure_factors_from_map(
-            map            = self.map_data,
-            use_scale      = True,
-            anomalous_flag = False,
-            use_sg         = True)
-        done = True
-      except KeyboardInterrupt: raise
-      except Exception as e:
-        if(str(e)=="cctbx Error: Miller index not in structure factor map."):
-          d_min += 0.25
-      cntr+=1
-    fft_map = miller.fft_map(
-      crystal_gridding     = self.crystal_gridding,
-      fourier_coefficients = f_obs_cmpl)
-    fft_map.apply_sigma_scaling()
-    return fft_map.real_map_unpadded()
+    return map_at_d_min(
+      map_data         = self.map_data,
+      complete_set     = self.complete_set,
+      crystal_gridding = self.crystal_gridding,
+      d_min            = d_min)
 
-class refine_groups(object):
-
-  def __init__(
-        self,
-        map_data,
-        pdb_hierarchy,
-        xray_structure,
-        macro_cycles,
-        d_min):
-    self.pdb_hierarchy = pdb_hierarchy
-    self.xray_structure = xray_structure
-    # sanity check
-    sites_cart_result = self.xray_structure.sites_cart().deep_copy()
-    assert approx_equal(sites_cart_result,
-      self.pdb_hierarchy.atoms().extract_xyz(), 1.e-4)
-    #
-    cs = self.xray_structure.crystal_symmetry()
-    for i_chain, chain in enumerate(self.pdb_hierarchy.chains()):
-      print("chain:", chain.id)
-      selection = chain.atoms().extract_i_seq()
-      ph = pdb_hierarchy.select(selection)
-      #
-      xrs_tmp = xray_structure.select(selection)
-      box = mmtbx.utils.extract_box_around_model_and_map(
-        xray_structure = xrs_tmp,
-        map_data       = map_data,
-        box_cushion    = 5,
-       )
-      #
-      shift_back = [-box.shift_cart[i] for i in range(3)]
-      ph_b       = box.pdb_hierarchy_box
-      md_b       = box.map_box
-      xrs_b      = box.xray_structure_box
-      #
-      minimized = refine_mz(
-        map_data       = md_b,
-        pdb_hierarchy  = ph_b,
-        xray_structure = xrs_b,
-        d_min          = d_min,
-        macro_cycles   = macro_cycles,
-        log            = None,
-        prefix="  ")
-      sites_cart_result = sites_cart_result.set_selected(
-        selection, minimized.sites_cart_best+shift_back)
-    self.xray_structure.set_sites_cart(sites_cart_result)
-    self.pdb_hierarchy.adopt_xray_structure(self.xray_structure)
-
-def translation_search(model, map_data, shifts=None):
+def mz_resolution_limits(complete_set, d_min):
   """
-  Rigid-body translation grid search in real-space
+  Resolution limits of zones for multi-zone rigid-body refinement, from the
+  lowest resolution (largest radius of convergence) to the highest.
   """
-  sites_cart_best = model.get_sites_cart()
-  cs = model.crystal_symmetry()
-  fm = cs.unit_cell().fractionalization_matrix()
+  d_spacing = complete_set.d_spacings().sort().data()
+  if(d_spacing.size()<500): return ( complete_set.d_min(), )
+  d_0 = min(d_spacing[499], 15)
+  if(d_0>8.0): d_1 = 8.0
+  else:
+    return d_0, d_min
+  # second zone
+  if(d_1>4.0 and d_min<4.0):
+    d_2 = 4.0
+  else:
+    d_2 = max(d_min, 4.0)
+  return d_0, d_1, d_2
+
+def map_at_d_min(map_data, complete_set, crystal_gridding, d_min):
+  """
+  Map with Fourier coefficients beyond d_min removed (sigma-scaled).
+  """
+  done = False
+  cntr = 0
+  while not done:
+    if(cntr>50):
+      raise RuntimeError("Number of trial resolution increments exceeded.")
+    try:
+      f_obs_cmpl = complete_set.resolution_filter(
+        d_min=d_min).structure_factors_from_map(
+          map            = map_data,
+          use_scale      = True,
+          anomalous_flag = False,
+          use_sg         = True)
+      done = True
+    except KeyboardInterrupt: raise
+    except Exception as e:
+      if(str(e)=="cctbx Error: Miller index not in structure factor map."):
+        d_min += 0.25
+    cntr+=1
+  fft_map = miller.fft_map(
+    crystal_gridding     = crystal_gridding,
+    fourier_coefficients = f_obs_cmpl)
+  fft_map.apply_sigma_scaling()
+  return fft_map.real_map_unpadded()
+
+def _subset(size, max_sites):
+  """
+  Selection of every n-th of size atoms so that about max_sites are selected;
+  None if all are to be used.
+  """
+  if(max_sites is None or size <= max_sites): return None
+  return flex.size_t(range(0, size, int(math.ceil(size/max_sites))))
+
+def translation_search(model, map_data, shifts=None, max_shift=10.,
+                       max_sites=None):
+  """
+  Rigid-body translation grid search in real-space: the model is moved along
+  the 26 directions of a 3x3x3 grid by each of the shifts (default: 0 to
+  max_shift, step 0.2 A) and left at the position with the largest mean map
+  value at atom centers. Returns the shift applied.
+  max_sites: if given and the model has more atoms, every n-th atom is used
+  so that about max_sites atoms are used (a few thousand atoms are enough to
+  rank shifts and it is much faster).
+  """
+  sites_cart = model.get_sites_cart()
+  fm = matrix.sqr(
+    model.crystal_symmetry().unit_cell().fractionalization_matrix())
+  sites_frac = model.get_sites_frac()
+  subset = _subset(sites_frac.size(), max_sites)
+  if(subset is not None): sites_frac = sites_frac.select(subset)
+  size = sites_frac.size()
   if shifts is None:
-    shifts = [i/10. for i in range(0,101, 2)]
+    shifts = [i/10. for i in range(0, int(round(max_shift*10))+1, 2)]
   t_best = -999999999.
-  sites_cart = sites_cart_best.deep_copy()
-  size = sites_cart.size()
-  best_shift = None
+  best_shift = [0,0,0]
+  tried = set()
   for sh in shifts:
     for x in [-1,0,1]:
       for y in [-1,0,1]:
         for z in [-1,0,1]:
           sh_ = [x*sh,y*sh,z*sh]
-          sites_cart_shifted = sites_cart + \
-            flex.vec3_double(sites_cart.size(), sh_)
-          sites_frac_shifted = fm*sites_cart_shifted
+          if(tuple(sh_) in tried): continue # zero shift comes up many times
+          tried.add(tuple(sh_))
           t = maptbx.map_sum_at_sites_frac(
             map_data   = map_data,
-            sites_frac = sites_frac_shifted)/size
+            sites_frac = sites_frac + (fm*matrix.col(sh_)).elems)/size
           if(t>t_best):
             t_best=t
             best_shift = sh_[:]
-            sites_cart_best=sites_cart_shifted.deep_copy()
   #print("best_shift:", best_shift)
-  model.set_sites_cart(sites_cart = sites_cart_best)
+  model.set_sites_cart(sites_cart = sites_cart + tuple(best_shift))
   return best_shift
 
-def protocol_1(model, map_data, macro_cycles=6, max_iterations=25):
+def protocol_1(model, map_data, macro_cycles=6, max_iterations=25,
+               max_shift=10., max_sites=None):
   """
   Rigid-body grid search translation search combined with rigid body gradient
-  based minimization in real-space
+  based minimization in real-space. The whole model is one rigid body; the
+  target is the mean map value at atom centers. max_shift: range of the
+  translation grid search (A). max_sites: if given and the model has more
+  atoms, position and orientation are determined using every n-th atom (see
+  translation_search) and applied to all atoms.
+  Used by phenix.magref (whole model) and, through refine_groups below, by
+  phenix.real_space_refine.
   """
-  shift = translation_search(model=model, map_data=map_data)
+  shift = translation_search(model=model, map_data=map_data,
+    max_shift=max_shift, max_sites=max_sites)
+  if(model.size() < 3): return # too few atoms to define orientation
   #
   for it in range(macro_cycles):
     delta = 0.01
     lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
       max_iterations = max_iterations)
+    sites_cart = model.get_sites_cart()
+    subset = _subset(sites_cart.size(), max_sites)
+    sites_cart_used = sites_cart
+    if(subset is not None): sites_cart_used = sites_cart.select(subset)
     o = refine2(
-      sites_cart                      = model.get_sites_cart(),
+      sites_cart                      = sites_cart_used,
       density_map                     = map_data,
       real_space_gradients_delta      = delta,
       lbfgs_termination_params        = lbfgs_termination_params,
       unit_cell                       = model.crystal_symmetry().unit_cell(),
       states_collector                = None)
-    model.set_sites_cart(sites_cart = o.sites_cart)
-    shift = translation_search(model=model, map_data=map_data)
-    max_shift = flex.max(flex.abs(flex.double(shift)))
-    if max_shift < 0.09: break
+    # Keep the result of minimization only if the target (sum of map values
+    # at atom centers) did not get worse: a failed line search can send the
+    # model far away.
+    if(o.rs_f_final >= o.rs_f_start):
+      if(subset is None):
+        model.set_sites_cart(sites_cart = o.sites_cart)
+      else: # apply the rigid-body move of the atoms used to all atoms
+        lsq = superpose.least_squares_fit(
+          reference_sites = o.sites_cart,
+          other_sites     = sites_cart_used)
+        model.set_sites_cart(
+          sites_cart = lsq.r.elems * sites_cart + lsq.t.elems)
+    shift = translation_search(model=model, map_data=map_data,
+      max_shift=max_shift, max_sites=max_sites)
+    max_shift_found = flex.max(flex.abs(flex.double(shift)))
+    if max_shift_found < 0.09: break
   #
   shifts = [x * 0.01 for x in range(0, 21)]
-  shift = translation_search(model=model, map_data=map_data, shifts=shifts)
+  shift = translation_search(model=model, map_data=map_data, shifts=shifts,
+    max_sites=max_sites)
+
+def mean_map_value(model, map_data):
+  """
+  Mean map value at atom centers: the target of protocol_1.
+  """
+  return maptbx.map_sum_at_sites_frac(
+    map_data   = map_data,
+    sites_frac = model.get_sites_frac())/model.size()
+
+def _refine_in_box(args):
+  """
+  Refine one group in its box with each of the search ranges. Returns
+  group index and a list of (mean map value, sites_cart), the first one for
+  the start position.
+  """
+  i, box_mmm, local_shift, max_shift, d_min, max_sites = args
+  model = box_mmm.model()
+  map_data = box_mmm.map_manager().map_data()
+  sites_cart_start = model.get_sites_cart().deep_copy()
+  result = [(mean_map_value(model, map_data), sites_cart_start)]
+  def add():
+    result.append(
+      (mean_map_value(model, map_data), model.get_sites_cart().deep_copy()))
+  # local
+  protocol_1(model = model, map_data = map_data, max_shift = local_shift,
+    max_sites = max_sites)
+  add()
+  # long-range
+  if(max_shift is not None and max_shift > local_shift):
+    model.set_sites_cart(sites_cart_start)
+    if(d_min is not None):
+      # multi-zone: maps of increasing resolution; the lowest resolution
+      # gives the largest radius of convergence
+      cs = model.crystal_symmetry()
+      crystal_gridding = maptbx.crystal_gridding(
+        unit_cell             = cs.unit_cell(),
+        space_group_info      = cs.space_group_info(),
+        pre_determined_n_real = map_data.all())
+      complete_set = miller.build_set(
+        crystal_symmetry = cs,
+        anomalous_flag   = False,
+        d_min            = d_min)
+      for d in mz_resolution_limits(complete_set = complete_set, d_min = d_min):
+        protocol_1(
+          model     = model,
+          map_data  = map_at_d_min(
+            map_data         = map_data,
+            complete_set     = complete_set,
+            crystal_gridding = crystal_gridding,
+            d_min            = d),
+          max_shift = max_shift,
+          max_sites = max_sites)
+      protocol_1(model = model, map_data = map_data, max_shift = local_shift,
+        max_sites = max_sites)
+    else:
+      protocol_1(model = model, map_data = map_data, max_shift = max_shift,
+        max_sites = max_sites)
+    add()
+  model.set_sites_cart(sites_cart_start)
+  return i, result
+
+class refine_groups(object):
+  """
+  Real-space rigid-body refinement of several rigid groups (selections) of
+  the model in map_model_manager, each with protocol_1 in a box cut out of
+  the map around the group. Model in map_model_manager is updated.
+
+  Groups are refined independently of each other, and density is not removed
+  or masked around the other groups (masking biases groups that are in
+  contact and leaves nothing to fit in tightly packed assemblies). The price
+  is that a group could move onto density that is not its own: of a
+  neighbour, or of a part that is not modelled. In assemblies of identical
+  molecules such a place is as good as its own (for example the next layer
+  of a fibril, 4.8 A away). Therefore each group is refined twice from where
+  it is:
+    - local: short-range translation search (local_shift, 1 A). A group
+      displaced by more than that still gets to its place in several steps
+      (grid search and minimization alternate) as long as the target
+      improves along the way; expect convergence from about 2 A / 5 degrees;
+    - long-range: translation search up to max_shift (5 A); if d_min (map
+      resolution) is given, first in maps truncated to lower resolution
+      (multi-zone, the lowest resolution gives the largest radius of
+      convergence: tens of A for large groups), then local as above;
+  and the long-range result is taken only if its mean map value at atom
+  centers is higher than that of the local result by more than the fraction
+  min_gain (a long move must pay; a move to an equivalent place does not).
+  The local result is taken only if it is better than the start position by
+  more than the fraction min_gain_local: a group that is in place is not
+  moved (the optimum of the target is within about 0.1-0.3 A of the best
+  position, depending on resolution, and such a shift gains less than that).
+  A selection that selects nothing is skipped. Groups of fewer than
+  min_size_long_range atoms are refined locally only (for a few atoms any
+  strong peak nearby "pays").
+  A result is not used if the group moved (mean over atoms) by more than
+  max_move (if given), or if it makes the group overlap with atoms outside
+  the group:
+  the number of such atoms within overlap_distance of atoms of the group,
+  relative to group size, has grown by more than overlap_tolerance (the
+  distance is short, 1 A, so that contacts, hydrogen bonds and a few covalent
+  links between groups do not count: this is about one group sitting on top
+  of another). Then the next best result is used; the last one is the start
+  position.
+
+  nproc: groups are done in parallel; the result does not depend on nproc.
+  """
+
+  def __init__(
+        self,
+        map_model_manager,
+        selections,
+        d_min=None,
+        local_shift=1.,
+        max_shift=5.,
+        min_gain=0.1,
+        min_gain_local=0.01,
+        max_move=None,
+        overlap_distance=1.0,
+        overlap_tolerance=0.05,
+        max_sites=3000,
+        min_size_long_range=10,
+        nproc=1,
+        log=None):
+    self.mmm = map_model_manager
+    self.selections = selections
+    self.overlap_distance = overlap_distance
+    self.log = log
+    model = self.mmm.model()
+    size = model.size()
+    for sel in selections:
+      assert isinstance(sel, flex.bool) and sel.size() == size
+    sites_cart_start = model.get_sites_cart().deep_copy()
+    overlap_start = [self._overlap(model, sel) for sel in selections]
+    # empty selections get no box: keep track of which group each box is
+    not_empty = [i for i, sel in enumerate(selections) if sel.count(True) > 0]
+    argss = []
+    if(len(not_empty) > 0):
+      box_info = self.mmm.split_up_map_and_model_by_supplied_selections(
+        selection_list = [selections[i] for i in not_empty])
+      assert len(box_info.mmm_list) == len(not_empty)
+      for i, box_mmm in zip(not_empty, box_info.mmm_list):
+        ms = max_shift
+        if(selections[i].count(True) < min_size_long_range): ms = None
+        argss.append([i, box_mmm, local_shift, ms, d_min, max_sites])
+    if(nproc > 1 and len(argss) > 1):
+      from libtbx import easy_mp
+      results = easy_mp.pool_map(
+        processes  = nproc,
+        fixed_func = _refine_in_box,
+        args       = argss)
+    else:
+      results = [_refine_in_box(args) for args in argss]
+    # Candidate positions of each group in order of preference, as shifts of
+    # atoms from the start position (boxes are shifted copies of the model).
+    self.candidates = [
+      [["not moved", 0, flex.vec3_double(sel.count(True), (0,0,0))]]
+      for sel in selections]
+    for i, result in results:
+      score_start, sites_start = result[0]
+      trials = [] # (label, score, shifts)
+      for label, (score, sites) in zip(["local", "long-range"], result[1:]):
+        d = sites - sites_start
+        if(max_move is not None and
+           flex.mean(flex.sqrt(d.dot())) > max_move): continue
+        trials.append([label, score, d])
+      if(len(trials) == 2 and
+         trials[1][1] - trials[0][1] > min_gain*abs(trials[0][1])):
+        trials.reverse()
+      elif(len(trials) == 2):
+        trials = trials[:1]
+      trials = [t for t in trials
+        if t[1] - score_start > min_gain_local*abs(score_start)]
+      trials.append(["not moved", score_start,
+        flex.vec3_double(sites_start.size(), (0,0,0))])
+      self.candidates[i] = trials
+    choice = [0,]*len(selections)
+    def set_sites():
+      sites_cart = sites_cart_start.deep_copy()
+      for i, sel in enumerate(selections):
+        sites_cart.set_selected(sel,
+          sites_cart_start.select(sel) + self.candidates[i][choice[i]][2])
+      model.set_sites_cart(sites_cart)
+      return sites_cart
+    # Give up results that end in overlap with other atoms: the group that
+    # moved most goes first (it is the one that came to the others).
+    while True:
+      sites_cart = set_sites()
+      moved = flex.sqrt((sites_cart - sites_cart_start).dot())
+      overlapping = []
+      for i, sel in enumerate(selections):
+        if(choice[i] == len(self.candidates[i])-1): continue # at start
+        if(self._overlap(model, sel) > overlap_start[i] + overlap_tolerance):
+          overlapping.append([flex.mean(moved.select(sel)), i])
+      if(len(overlapping) == 0): break
+      overlapping.sort()
+      d, i = overlapping[-1]
+      self._print("  group %d: %s result (moved %.2f A) runs into other atoms,"
+        " not used"%(i, self.candidates[i][choice[i]][0], d))
+      choice[i] += 1
+    sites_cart = model.get_sites_cart()
+    moved = flex.sqrt((sites_cart - sites_cart_start).dot())
+    self.moved = [flex.mean_default(moved.select(sel), 0) for sel in selections]
+    self.result = [self.candidates[i][choice[i]][0]
+                   for i in range(len(selections))]
+    for i, d in enumerate(self.moved):
+      c = self.candidates[i]
+      self._print(
+        "  group %d: %-10s moved (mean): %6.3f A  mean map value: %s -> %s"%(
+        i, self.result[i], d, "%.4g"%c[-1][1], "%.4g"%c[choice[i]][1]))
+
+  def _overlap(self, model, selection):
+    """
+    Number of atoms outside the group within overlap_distance of atoms of
+    the group, divided by the number of atoms in the group.
+    """
+    n = selection.count(True)
+    if(n == 0 or n == selection.size()): return 0
+    near = model.get_xray_structure().selection_within(
+      radius    = self.overlap_distance,
+      selection = selection)
+    return (near & ~selection).count(True)/n
+
+  def _print(self, m):
+    if(self.log is not None): print(m, file=self.log)

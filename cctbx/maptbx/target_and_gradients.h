@@ -191,10 +191,15 @@ public:
   {
     gradients_.resize(9, 0);
     af::c_grid_padded<3> a = map_data.accessor();
+    // Gradients with respect to fractional coordinates, converted to
+    // Cartesian with the transposed fractionalization matrix (correct for
+    // any cell, see class compute below).
     scitbx::vec3<FloatType> step;
     for(unsigned i=0;i<3;i++) {
-      step[i] = unit_cell.parameters()[i] / a.all()[i];
+      step[i] = 1. / a.focus()[i];
     }
+    scitbx::mat3<FloatType> f_t =
+      unit_cell.fractionalization_matrix().transpose();
     target_ = 0;
     for(std::size_t i_site=0;i_site<sites_cart.size();i_site++) {
       scitbx::vec3<FloatType> site_cart = sites_cart[i_site];
@@ -206,9 +211,8 @@ public:
         unit_cell.fractionalize(K * site_cart),
         step);
       target_ += result[0];
-      scitbx::vec3<FloatType> gXYZ =
-        unit_cell.orthogonalize(scitbx::vec3<FloatType>(
-          result[1],result[2],result[3]));
+      scitbx::vec3<FloatType> gXYZ = f_t * scitbx::vec3<FloatType>(
+        result[1],result[2],result[3]);
       FloatType gx = gXYZ[0];
       FloatType gy = gXYZ[1];
       FloatType gz = gXYZ[2];
@@ -233,10 +237,15 @@ public:
   {
     gradients_.resize(3, 0);
     af::c_grid_padded<3> a = map_data.accessor();
+    // Gradients with respect to fractional coordinates, converted to
+    // Cartesian with the transposed fractionalization matrix (correct for
+    // any cell, see class compute below).
     scitbx::vec3<FloatType> step;
     for(unsigned i=0;i<3;i++) {
-      step[i] = unit_cell.parameters()[i] / a.all()[i];
+      step[i] = 1. / a.focus()[i];
     }
+    scitbx::mat3<FloatType> f_t =
+      unit_cell.fractionalization_matrix().transpose();
     target_ = 0;
     for(std::size_t i_site=0;i_site<sites_cart.size();i_site++) {
       scitbx::vec3<FloatType> s = sites_cart[i_site];
@@ -247,9 +256,8 @@ public:
         unit_cell.fractionalize(sm),
         step);
       target_ += result[0];
-      scitbx::vec3<FloatType> gXYZ =
-        unit_cell.orthogonalize(scitbx::vec3<FloatType>(
-          result[1],result[2],result[3]));
+      scitbx::vec3<FloatType> gXYZ = f_t * scitbx::vec3<FloatType>(
+        result[1],result[2],result[3]);
       gradients_[0] += gXYZ[0]*s[0]; // gk11
       gradients_[1] += gXYZ[1]*s[1]; // gk22
       gradients_[2] += gXYZ[2]*s[2]; // gk33
@@ -312,22 +320,22 @@ public:
   {
     gradients_.resize(sites_cart.size(), scitbx::vec3<FloatType>(0,0,0));
     af::c_grid_padded<3> a = map_data.accessor();
+    // With this step the interpolation functions return gradients with
+    // respect to fractional coordinates. They are converted to Cartesian
+    // below: x_frac = F * x_cart, so g_cart = F^T * g_frac. (Dividing by cell
+    // edge lengths instead is correct for orthogonal cells only.)
     scitbx::vec3<FloatType> step;
     for(unsigned i=0;i<3;i++) {
-      step[i] = unit_cell.parameters()[i] / a.all()[i];
+      step[i] = 1. / a.focus()[i];
     }
+    scitbx::mat3<FloatType> f_t =
+      unit_cell.fractionalization_matrix().transpose();
     target_ = 0;
     for(std::size_t i_site=0;i_site<sites_cart.size();i_site++) {
       if(selection[i_site]) {
         af::tiny<FloatType, 4> result;
         if(interpolation == "linear") {
           result = eight_point_interpolation_with_gradients(
-            map_data,
-            unit_cell.fractionalize(sites_cart[i_site]),
-            step);
-        }
-        else if(interpolation=="quadratic") {
-          result = quadratic_interpolation_with_gradients(
             map_data,
             unit_cell.fractionalize(sites_cart[i_site]),
             step);
@@ -342,7 +350,7 @@ public:
           throw std::runtime_error("Unknown interpolation mode.");
         }
         target_ += result[0];
-        gradients_[i_site]=scitbx::vec3<FloatType>(
+        gradients_[i_site] = f_t * scitbx::vec3<FloatType>(
           result[1],result[2],result[3]);
       }
     }

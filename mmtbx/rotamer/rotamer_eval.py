@@ -130,6 +130,15 @@ def eval_sidechain_completeness(pdb_hierarchy,
             missing_atom_list.append(item)
   return missing_atom_list
 
+_default_mon_lib_srv_cache = []
+
+def _default_mon_lib_srv():
+  # Creating the server takes ~0.4 s. RotamerEval only reads rotamer
+  # definitions from it, so all instances that are not given a server share one.
+  if(len(_default_mon_lib_srv_cache)==0):
+    _default_mon_lib_srv_cache.append(mmtbx.monomer_library.server.server())
+  return _default_mon_lib_srv_cache[0]
+
 class RotamerEval:
 
   # This is shared among all instances of RotamerEval -- a class variable.
@@ -147,7 +156,7 @@ class RotamerEval:
       sidechain_angles = SidechainAngles(True)
     self.sidechain_angles = sidechain_angles
     if mon_lib_srv is None:
-      mon_lib_srv = mmtbx.monomer_library.server.server()
+      mon_lib_srv = _default_mon_lib_srv()
     if log is None:
       log = sys.stdout
     self.data_version = data_version

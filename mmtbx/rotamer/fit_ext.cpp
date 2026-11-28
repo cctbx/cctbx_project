@@ -114,6 +114,34 @@ namespace {
                          arg("step"),
                          arg("n"))))
 
+     // angles_array: one array of numbers
+     .def(init<       fixed<double> const&,
+                      boost::python::list const&,
+                      boost::python::list const&,
+                      af::const_ref<double> const&,
+                      af::const_ref<double, af::c_grid_padded<3> > const&,
+                      moving<double> const&,
+                      cctbx::uctbx::unit_cell const&,
+                      af::const_ref<std::size_t> const& ,
+                      af::const_ref<std::size_t> const& ,
+                      af::const_ref<double> const&,
+                      af::const_ref<double> const&,
+                      double,
+                      int >
+                       ((arg("fixed"),
+                         arg("axes"),
+                         arg("rotatable_points_indices"),
+                         arg("angles_array"),
+                         arg("density_map"),
+                         arg("moving"),
+                         arg("unit_cell"),
+                         arg("selection_clash"),
+                         arg("selection_rsr"),
+                         arg("sin_table"),
+                         arg("cos_table"),
+                         arg("step"),
+                         arg("n"))))
+
      .def(init<double,
                       boost::python::list const&,
                       boost::python::list const&,
@@ -139,10 +167,56 @@ namespace {
                          arg("step"),
                          arg("n"))))
 
+     // angles_array: one array of numbers
+     .def(init<double,
+                      boost::python::list const&,
+                      boost::python::list const&,
+                      af::const_ref<double> const&,
+                      af::const_ref<double, af::c_grid_padded<3> > const&,
+                      af::shared<scitbx::vec3<double> >,
+                      cctbx::uctbx::unit_cell const&,
+                      af::const_ref<std::size_t> const& ,
+                      af::const_ref<double> const&,
+                      af::const_ref<double> const&,
+                      double,
+                      int >
+                       ((arg("target_value"),
+                         arg("axes"),
+                         arg("rotatable_points_indices"),
+                         arg("angles_array"),
+                         arg("density_map"),
+                         arg("all_points"),
+                         arg("unit_cell"),
+                         arg("selection"),
+                         arg("sin_table"),
+                         arg("cos_table"),
+                         arg("step"),
+                         arg("n"))))
+
      .def(init<af::shared<scitbx::vec3<double> > const&,
                       boost::python::list const&,
                       boost::python::list const&,
                       boost::python::list const&,
+                      af::shared<scitbx::vec3<double> >,
+                      af::const_ref<double> const&,
+                      af::const_ref<double> const&,
+                      double,
+                      int >
+                       ((arg("sites_cart_start"),
+                         arg("axes"),
+                         arg("rotatable_points_indices"),
+                         arg("angles_array"),
+                         arg("all_points"),
+                         arg("sin_table"),
+                         arg("cos_table"),
+                         arg("step"),
+                         arg("n"))))
+
+     // angles_array: one array of numbers
+     .def(init<af::shared<scitbx::vec3<double> > const&,
+                      boost::python::list const&,
+                      boost::python::list const&,
+                      af::const_ref<double> const&,
                       af::shared<scitbx::vec3<double> >,
                       af::const_ref<double> const&,
                       af::const_ref<double> const&,

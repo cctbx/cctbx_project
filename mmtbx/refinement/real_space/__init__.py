@@ -101,7 +101,9 @@ class rsr_model(object):
   def __init__(self,
                model,
                map_data=None,
-               d_min=None):
+               d_min=None,
+               nproc=1):
+    # nproc: validation of geometry (update_statistics) is done in parallel
     adopt_init_args(self, locals())
     self.unit_cell = self.model.crystal_symmetry().unit_cell()
     self.sites_cart_start = self.model.get_sites_cart()
@@ -118,6 +120,7 @@ class rsr_model(object):
     self.dist_from_start = 0
     self.dist_from_previous = 0
     self.stats_evaluations = []
+    self.last_geometry_statistics = None
     self.cc_mask=None
     self.cc_box=None
     #
@@ -152,12 +155,16 @@ class rsr_model(object):
   def update_statistics(self, prefix = None, log = None):
     from mmtbx import hydrogens # reduce2: keep H so clash() is not skipped
     gs = self.model.geometry_statistics(
-      use_hydrogens = None if hydrogens.use_old_reduce() else True)
+      use_hydrogens = None if hydrogens.use_old_reduce() else True,
+      nproc         = self.nproc)
     result = None
     if(gs is not None):
       if (log):
         gs.show(prefix=prefix, log=log, uppercase=False)
       result = gs.result()
+    # Kept so that the caller can report on the same (final) model without
+    # evaluating everything once more
+    self.last_geometry_statistics = gs
     self.stats_evaluations.append(group_args(
       cc       = self.cc_mask,
       geometry = result))
@@ -337,9 +344,14 @@ class side_chain_fit_evaluator(object):
                 atoms.extract_i_seq(), True)
               self.cntr_poormap+=1
     #
+    # A residue can be both a rotamer outlier and in poor density: count once
+    self.cntr_need_fit = 0
+    sel_need_fit = self._sel_outliers | self._sel_poormap
+    for residue_group in pdb_hierarchy.residue_groups():
+      i_seqs = residue_group.atoms().extract_i_seq()
+      if(sel_need_fit.select(i_seqs).count(True)>0): self.cntr_need_fit += 1
     fmt = "%-d residues out of total %-d (non-[ALA,GLY,PRO]) need to be fit."
-    self.mes.append(
-      fmt%(self.cntr_poormap+self.cntr_outliers, self.cntr_residues))
+    self.mes.append(fmt%(self.cntr_need_fit, self.cntr_residues))
     self.mes.append("  rotamer outliers: %d"%self.cntr_outliers)
     self.mes.append("  poor density    : %d"%self.cntr_poormap)
     self.mes.append("time to evaluate  : %-6.3f"%(time.time()-t0))
@@ -1043,6 +1055,16 @@ def torsion_search_nested(
         xyz_moved[atom] = new_xyz
     scorer.update(sites_cart = xyz_moved, selection = selection)
   return scorer
+
+def rotamer_rank(rotamer_eval, residue):
+  """
+  Rotamer class of residue as a number: 2 favoured, 1 allowed, 0 outlier.
+  None if it cannot be told (no evaluator, residue without rotamers).
+  """
+  if(rotamer_eval is None): return None
+  c = rotamer_eval.evaluate_residue_2(residue = residue)
+  if(c is None): return None
+  return {"FAVORED":2, "ALLOWED":1, "OUTLIER":0}[c.strip().upper()]
 
 class score3(object):
   def __init__(self,

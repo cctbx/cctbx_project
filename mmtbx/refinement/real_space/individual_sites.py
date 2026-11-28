@@ -11,6 +11,15 @@ import mmtbx.model
 from cctbx.maptbx import minimization
 from six.moves import range
 
+# Whole-model refinement (easy, weight.run): coordinates are refined as
+# shifts from their start values with L-BFGS-B, each shift (x, y, z of every
+# atom) kept within +/- this value (A). In refinements of 49 models (737
+# minimizations) the largest shift was 1.3 A on average, below 2.3 A in 90 %
+# and above 5 A in 1 % of minimizations; 10 A is never limiting in a normal
+# refinement and stops runaway atoms. (The L-BFGS minimizer used before
+# damped shifts with the same limit.)
+default_max_shift = 10.0
+
 class easy(object):
   """
   Simplest interface to most automated and fast real-space refinement.
@@ -25,20 +34,44 @@ class easy(object):
         gradients_method="fd",
         selection=None,
         selection_real_space=None,
-        rms_bonds_limit=0.015,
-        rms_angles_limit=2.0,
+        rms_bonds_limit=0.0075,
+        rms_angles_limit=1.4,
         max_iterations=150,
         w = None,
         states_accumulator=None,
-        log=None):
-    assert gradients_method in ["fd", "linear", "quadratic", "tricubic"]
+        log=None,
+        start_trial_weight_value=None,
+        nproc=1,
+        ncs_groups=None,
+        max_shift=default_max_shift,
+        weight_history=None,
+        weight_one_trial=False,
+        weight_must_satisfy=True):
+    """
+    weight_history, weight_one_trial, weight_must_satisfy: for the weight
+      search in a series of calls (see history, one_trial, must_satisfy of
+      weight.run); the history to pass next time is self.weight.history.
+    nproc: used for the first guess of the weight (see weight.run).
+    max_shift: see simple and default_max_shift.
+    w: data/restraints weight; if None it is found (see weight.run) starting
+      from start_trial_weight_value, and the refined model is the result of
+      the trial refinement with that weight.
+    rms_bonds_limit, rms_angles_limit: the refined model has rmsd within
+      these and close to at least one of them. (Defaults were 0.015 and 2.0
+      when the weight search stopped at about a third of the bonds limit and
+      two thirds of the angles limit; the present values ask for about the
+      same geometry as before.)
+    """
+    assert gradients_method in ["fd", "linear", "tricubic"]
     adopt_init_args(self, locals())
     es = geometry_restraints_manager.geometry.energies_sites(
       sites_cart = xray_structure.sites_cart())
     self.rmsd_angles_start = es.angle_deviations()[2]
     self.rmsd_bonds_start  = es.bond_deviations()[2]
     self.w = w
-    if(self.max_iterations > 0):
+    self.weight = None
+    nothing_to_refine = selection is not None and selection.count(True) == 0
+    if(self.max_iterations > 0 and not nothing_to_refine):
       if(self.w is None):
         import mmtbx.refinement.real_space.weight
         self.weight = mmtbx.refinement.real_space.weight.run(
@@ -48,23 +81,42 @@ class easy(object):
           geometry_restraints_manager = geometry_restraints_manager,
           rms_bonds_limit             = rms_bonds_limit,
           rms_angles_limit            = rms_angles_limit,
-          gradients_method            = gradients_method)
+          gradients_method            = gradients_method,
+          max_iterations              = max_iterations,
+          selection                   = selection,
+          selection_real_space        = selection_real_space,
+          ncs_groups                  = ncs_groups,
+          max_shift                   = max_shift,
+          history                     = weight_history,
+          one_trial                   = weight_one_trial,
+          must_satisfy                = weight_must_satisfy,
+          nproc                       = nproc,
+          start_trial_weight_value    = start_trial_weight_value)
         self.w = self.weight.weight
-      if(selection is None):
-        selection = flex.bool(self.xray_structure.scatterers().size(), True)
-      refine_object = simple(
-        target_map                  = map_data,
-        selection                   = selection,
-        selection_real_space        = selection_real_space,
-        max_iterations              = max_iterations,
-        geometry_restraints_manager = geometry_restraints_manager.geometry,
-        states_accumulator          = states_accumulator,
-        gradients_method            = gradients_method)
-      refine_object.refine(
-        weight = self.w, xray_structure = self.xray_structure)
-      self.rmsd_bonds_final, self.rmsd_angles_final = refine_object.rmsds()
+        sites_cart = self.weight.sites_cart
+        self.rmsd_bonds_final  = self.weight.rms_bonds
+        self.rmsd_angles_final = self.weight.rms_angles
+      if(self.weight is None or states_accumulator is not None):
+        # weight given; or states wanted: they are collected in a refinement
+        # with the weight found, not in the trials of the search
+        if(selection is None):
+          selection = flex.bool(self.xray_structure.scatterers().size(), True)
+        refine_object = simple(
+          target_map                  = map_data,
+          selection                   = selection,
+          selection_real_space        = selection_real_space,
+          max_iterations              = max_iterations,
+          geometry_restraints_manager = geometry_restraints_manager.geometry,
+          states_accumulator          = states_accumulator,
+          gradients_method            = gradients_method,
+          ncs_groups                  = ncs_groups,
+          max_shift                   = max_shift)
+        refine_object.refine(
+          weight = self.w, xray_structure = self.xray_structure)
+        self.rmsd_bonds_final, self.rmsd_angles_final = refine_object.rmsds()
+        sites_cart = refine_object.sites_cart()
       self.xray_structure=self.xray_structure.replace_sites_cart(
-        new_sites=refine_object.sites_cart(), selection=None)
+        new_sites=sites_cart, selection=None)
       self.pdb_hierarchy.adopt_xray_structure(self.xray_structure)
 
 class simple(object):
@@ -78,7 +130,15 @@ class simple(object):
         selection_real_space=None,
         max_iterations=150,
         states_accumulator=None,
-        ncs_groups=None):
+        ncs_groups=None,
+        max_shift=None):
+    """
+    max_shift: if a number (A), coordinates are refined as shifts from their
+      start values, each within +/- max_shift (L-BFGS-B): this is how whole
+      models are refined (easy, weight.run). None (default): coordinates are
+      refined directly (L-BFGS); refinement of fragments (a residue or a
+      ligand, sometimes started far from its place) relies on it.
+    """
     adopt_init_args(self, locals())
     self.lbfgs_core_params = scitbx.lbfgs.core_parameters(
       stpmax = 25.0)
@@ -90,6 +150,7 @@ class simple(object):
         ignore_line_search_failed_step_at_upper_bound = True,
         ignore_line_search_failed_maxfev              = True)
     self.refined = None
+    self.largest_shift = None # largest |shift| of a coordinate in refine()
     self.crystal_symmetry = None
     self.site_symmetry_table = None
 
@@ -109,7 +170,9 @@ class simple(object):
         lbfgs_core_params               = self.lbfgs_core_params,
         lbfgs_termination_params        = self.lbfgs_termination_params,
         lbfgs_exception_handling_params = self.lbfgs_exception_handling_params,
-        states_collector                = self.states_accumulator)
+        states_collector                = self.states_accumulator,
+        shifts_bound                    = self.max_shift)
+      self.largest_shift = self.refined.max_shift
     else:
       refine_selection = flex.bool(xray_structure.scatterers().size(),
         True).iselection()
@@ -122,7 +185,9 @@ class simple(object):
           real_space_gradients_delta = self.real_space_gradients_delta,
           restraints_manager         = self.geometry_restraints_manager,
           data_weight                = weight,
-          refine_sites               = True)
+          refine_sites               = True,
+          gradients_method           = self.gradients_method,
+          selection_real_space       = self.selection_real_space)
       minimized = mmtbx.refinement.minimization_ncs_constraints.lbfgs(
         target_and_grads_object      = self.refined,
         xray_structure               = xray_structure.deep_copy_scatterers(),
@@ -130,7 +195,9 @@ class simple(object):
         refine_selection             = refine_selection,
         finite_grad_differences_test = False,
         max_iterations               = self.max_iterations,
-        refine_sites                 = True)
+        refine_sites                 = True,
+        shifts_bound                 = self.max_shift)
+      self.largest_shift = getattr(minimized, "max_shift", 0)
 
   def sites_cart(self):
     assert self.refined is not None
@@ -204,6 +271,11 @@ class refinery(object):
     self.rms_angles_start = None
     self.rms_bonds_start = None
     self.refiner = refiner
+    self._grm_refined = None
+    self._set_rmsd_selection(
+      sites_cart       = xray_structure.sites_cart(),
+      rms_bonds_limit  = rms_bonds_limit,
+      rms_angles_limit = rms_angles_limit)
     self.weight_start=start_trial_weight_value
     sites_cart_start = xray_structure.sites_cart()
     self.rms_bonds_start, self.rms_angles_start  = \
@@ -280,15 +352,44 @@ class refinery(object):
     else:
       self.weight_final = self.weight_start
       self.sites_cart_result = sites_cart_result
+    self.n_trials = max(1, weights.size())
 
   def rmsds(self, sites_cart):
+    """
+    Bond and angle rmsd used to judge a trial weight: over all atoms present
+    (the refined fragment and its fixed surroundings), unless the surroundings
+    alone violate the limits (see _set_rmsd_selection); then over the refined
+    atoms only.
+    """
     b,a = None,None
-    if(self.refiner.geometry_restraints_manager is not None):
-      es = self.refiner.geometry_restraints_manager.energies_sites(
-        sites_cart = sites_cart)
+    grm = self.refiner.geometry_restraints_manager
+    if(grm is not None):
+      if(self._grm_refined is not None):
+        grm = self._grm_refined
+        sites_cart = sites_cart.select(self.refiner.selection)
+      es = grm.energies_sites(sites_cart = sites_cart)
       a = es.angle_deviations()[2]
       b = es.bond_deviations()[2]
     return b,a
+
+  def _set_rmsd_selection(self, sites_cart, rms_bonds_limit, rms_angles_limit):
+    """
+    Normally the rmsd is taken over the fragment together with its fixed
+    surroundings. If geometry of the surroundings is worse than the limits
+    (model far from ideal geometry, for example before the first minimization),
+    no weight can satisfy the limits and the search would be blind; in that
+    case judge the refined atoms only.
+    """
+    grm = self.refiner.geometry_restraints_manager
+    selection = getattr(self.refiner, "selection", None)
+    if(grm is None or selection is None): return
+    if(selection.size() != sites_cart.size()): return
+    if(selection.count(True) in [0, selection.size()]): return
+    fixed = ~selection
+    es = grm.select(fixed).energies_sites(sites_cart = sites_cart.select(fixed))
+    if(es.bond_deviations()[2]  > rms_bonds_limit or
+       es.angle_deviations()[2] > rms_angles_limit):
+      self._grm_refined = grm.select(selection)
 
   def adjust_weight_sample_rate(self, weight):
     if(  weight <= 0.01 ): self.weight_sample_rate=0.001
@@ -314,6 +415,7 @@ class box_refinement_manager(object):
     self.max_iterations=max_iterations
     self.real_space_gradients_delta = real_space_gradients_delta
     self.weight_optimal = None
+    self.n_trials = 0 # trial refinements done by the last refine() call
     self.ncs_groups = ncs_groups
     self.gradients_method = gradients_method
 
@@ -367,6 +469,7 @@ class box_refinement_manager(object):
         rms_bonds_limit = rms_bonds_limit,
         rms_angles_limit = rms_angles_limit)
       self.weight_optimal = real_space_result.weight_final
+      self.n_trials = real_space_result.n_trials
       sites_cart_box_refined = real_space_result.sites_cart_result
       shift_back = [-box.shift_cart[i] for i in range(3)]
       sites_cart_box_refined_shifted_back = \
@@ -390,6 +493,7 @@ class box_refinement_manager(object):
         real_space_gradients_delta  = self.real_space_gradients_delta,
         max_iterations              = self.max_iterations,
         geometry_restraints_manager = grm,
+        gradients_method            = self.gradients_method,
         ncs_groups                  = ncs_groups_)
       real_space_result = refinery(
         refiner                  = rsr_simple_refiner,
@@ -399,6 +503,7 @@ class box_refinement_manager(object):
         rms_bonds_limit          = rms_bonds_limit,
         rms_angles_limit         = rms_angles_limit)
       self.weight_optimal = real_space_result.weight_final
+      self.n_trials = real_space_result.n_trials
 #      # XXX undefined
 #      self.xray_structure = None #XXX undefined
 #      self.sites_cart = None     #XXX undefined
@@ -446,6 +551,15 @@ class minimize_wrapper_with_map():
       unit_cell_grid             = target_map.all(),
       wrapping                   = False,
       unit_cell_crystal_symmetry = model.crystal_symmetry())
+    # Model and target_map are in the same frame. If the model carries a
+    # record of a shift applied earlier (it was boxed together with the map by
+    # the caller), map_model_manager would undo that shift and misplace the
+    # model with respect to target_map. Hide the record for the duration of the
+    # refinement and put it back afterwards.
+    shift_cart_saved = model.shift_cart()
+    uc_cs_saved      = model.unit_cell_crystal_symmetry()
+    if(shift_cart_saved is not None):
+      model.set_shift_cart((0,0,0))
     mmm = map_model_manager.map_model_manager(
       model       = model,
       map_manager = mm)
@@ -458,7 +572,11 @@ class minimize_wrapper_with_map():
       rigid_body_selections = rigid_body_selections)
 
     model.set_sites_cart_from_hierarchy(res.model.get_hierarchy())
-    res.structure_monitor.states_collector.write(file_name="rsr_all_states.pdb")
+    if(shift_cart_saved is not None):
+      model.set_shift_cart((0,0,0))
+      if(uc_cs_saved is not None):
+        model.set_unit_cell_crystal_symmetry(uc_cs_saved)
+      model.set_shift_cart(shift_cart_saved)
     return
 
 

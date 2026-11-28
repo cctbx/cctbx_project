@@ -269,6 +269,9 @@ class lbfgs(object):
     diag_mode : str, optional
         If specified, controls the frequency of diagonal updates for curvature
         approximation. Must be either 'once' or 'always'. Defaults to None.
+    factr, pgtol : float, optional
+        L-BFGS-B termination parameters (see scitbx.lbfgsb.run); used in
+        'lbfgsb' mode only. Defaults to None (L-BFGS-B defaults).
 
     Attributes
     ----------
@@ -304,7 +307,9 @@ class lbfgs(object):
                max_iterations = None,
                min_iterations = 0,
                diag_mode = None,
-               gradient_only = False):
+               gradient_only = False,
+               factr = None,
+               pgtol = None):
     """
     Initialize the minimizer with the selected mode and calculator object.
     """
@@ -338,7 +343,9 @@ class lbfgs(object):
         bound_flags      = self.calculator.bound_flags,
         lower_bound      = self.calculator.lower_bound,
         upper_bound      = self.calculator.upper_bound,
-        n                = self.x.size())
+        n                = self.x.size(),
+        factr            = factr,
+        pgtol            = pgtol)
 
   def compute_functional_and_gradients(self):
     """

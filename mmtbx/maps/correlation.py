@@ -13,7 +13,15 @@ from libtbx import group_args
 from mmtbx.maps import map_tools
 
 def get_selection_above_cutoff(m, n):
-  return m>=m.as_1d().select(flex.sort_permutation(m.as_1d(), reverse=True))[n]
+  """
+  Selection of grid points with values not smaller than the (n+1)-th largest.
+  """
+  # Partial sort: the cutoff is the same as from sorting all values, ~10 times
+  # faster for large maps.
+  import numpy
+  a = m.as_1d().as_numpy_array()
+  k = a.size-1-n
+  return m >= float(numpy.partition(a, k)[k])
 
 class five_cc(object):
   def __init__(self,

@@ -5,6 +5,7 @@ from libtbx import adopt_init_args
 import mmtbx.ncs.ncs_utils as nu
 from cctbx import xray
 import scitbx.lbfgs
+import scitbx.lbfgsb
 from six.moves import zip
 
 def grads_asu_to_one_ncs(
@@ -198,7 +199,16 @@ class target_function_and_grads_real_space(object):
         use_ncs_constraints=True,
         restraints_manager=None,
         data_weight=None,
-        refine_sites=False):
+        refine_sites=False,
+        gradients_method="fd",
+        selection_real_space=None):
+    """
+    gradients_method: fd (finite differences with real_space_gradients_delta),
+      linear or tricubic (analytical, from map interpolation).
+    selection_real_space: flex.bool, atoms that contribute to the map term
+      (all if None).
+    """
+    assert gradients_method in ["fd", "linear", "tricubic"]
     adopt_init_args(self, locals())
     self.refine_selection = nu.get_refine_selection(
       refine_selection=self.refine_selection,
@@ -209,6 +219,9 @@ class target_function_and_grads_real_space(object):
     # get selection to refine
     asu_size = xray_structure.scatterers().size()
     self.selection = flex.bool(asu_size, refine_selection)
+    if(selection_real_space is not None):
+      assert selection_real_space.size() == asu_size
+      self.selection = self.selection & selection_real_space
 
   def data_target_and_grads(self, compute_gradients,x):
     """
@@ -217,12 +230,20 @@ class target_function_and_grads_real_space(object):
       x: refined parameters
     """
     g = None
-    tg = maptbx.target_and_gradients_simple(
-      unit_cell   = self.unit_cell,
-      map_target  = self.map_data,
-      sites_cart  = self.xray_structure.sites_cart(),
-      delta       = self.real_space_gradients_delta,
-      selection   = self.selection)
+    if(self.gradients_method == "fd"):
+      tg = maptbx.target_and_gradients_simple(
+        unit_cell   = self.unit_cell,
+        map_target  = self.map_data,
+        sites_cart  = self.xray_structure.sites_cart(),
+        delta       = self.real_space_gradients_delta,
+        selection   = self.selection)
+    else:
+      tg = maptbx.target_and_gradients_simple(
+        unit_cell     = self.unit_cell,
+        map_target    = self.map_data,
+        sites_cart    = self.xray_structure.sites_cart(),
+        selection     = self.selection,
+        interpolation = self.gradients_method)
     t = tg.target()*(-1)
     if compute_gradients:
       if self.refine_sites:
@@ -372,6 +393,18 @@ class target_function_and_grads_reciprocal_space(object):
       update_f_calc  = True,
       update_f_mask  = True)
 
+class _shifts_evaluator(object):
+  """
+  Adaptor for scitbx.lbfgsb.run: target and gradients of the lbfgs object
+  below as functions of shifts.
+  """
+  def __init__(self, parent):
+    self.parent = parent
+
+  def compute_functional_and_gradients(self):
+    f, g = self.parent.compute_functional_and_gradients()
+    return self.parent.x, f, g
+
 class lbfgs(object):
   def __init__(self,
         ncs_restraints_group_list,
@@ -383,12 +416,19 @@ class lbfgs(object):
         max_iterations               = 35,
         refine_sites                 = False,
         refine_u_iso                 = False,
-        refine_transformations       = False):
+        refine_transformations       = False,
+        shifts_bound                 = None):
     """
     NCS constrained ADP and coordinates refinement. Also refines NCS operators.
+
+    shifts_bound: for refinement of sites only. If None, the variables are
+      the coordinates (of one NCS copy) and the minimizer is L-BFGS. If a
+      number (A), the variables are shifts of these coordinates from their
+      start values, each kept within +/- shifts_bound by L-BFGS-B.
     """
     adopt_init_args(self, args=locals(),exclude=['ncs_restraints_group_list'])
     self.x_previous = None
+    self.x_start = None
     self.refine_selection = nu.get_refine_selection(
       refine_selection=self.refine_selection,
       number_of_atoms=self.xray_structure.sites_cart().size())
@@ -419,19 +459,40 @@ class lbfgs(object):
       self.ncs_restraints_group_list = self.ncs_restraints_group_list.shift_translation_to_center(
           shifts = self.ncs_groups_coordinates_centers)
       self.x = self.ncs_restraints_group_list.concatenate_rot_tran()
-    lbfgs_core_params = scitbx.lbfgs.core_parameters(
-      stpmax = 25.0)
-    minimizer = scitbx.lbfgs.run(
-      target_evaluator=self,
-      core_params=lbfgs_core_params,
-      termination_params=scitbx.lbfgs.termination_parameters(
-        max_iterations=max_iterations,
-        traditional_convergence_test_eps=traditional_convergence_test_eps),
-      exception_handling_params=scitbx.lbfgs.exception_handling_parameters(
-        ignore_line_search_failed_rounding_errors=True,
-        ignore_line_search_failed_step_at_lower_bound=True,
-        ignore_line_search_failed_step_at_upper_bound=True,
-        ignore_line_search_failed_maxfev=True))
+    if(shifts_bound is not None):
+      assert self.refine_sites and shifts_bound > 0
+      self.x_start = self.x
+      self.x = flex.double(self.x_start.size(), 0)
+      n = self.x.size()
+      if(n > 0): minimizer = scitbx.lbfgsb.run(
+        target_evaluator = _shifts_evaluator(parent = self),
+        bound_flags      = flex.int(n, 2),
+        lower_bound      = flex.double(n, -shifts_bound),
+        upper_bound      = flex.double(n,  shifts_bound),
+        n                = n,
+        max_iterations   = max_iterations,
+        count_iterations = True)
+      # leave the structure at the final point (the last evaluation may have
+      # been a trial step) and x as coordinates
+      self.max_shift = 0
+      if(n > 0): self.max_shift = flex.max(flex.abs(self.x))
+      self.compute_functional_and_gradients(compute_gradients=False)
+      self.x = self.x_start + self.x
+      self.x_start = None
+    else:
+      lbfgs_core_params = scitbx.lbfgs.core_parameters(
+        stpmax = 25.0)
+      minimizer = scitbx.lbfgs.run(
+        target_evaluator=self,
+        core_params=lbfgs_core_params,
+        termination_params=scitbx.lbfgs.termination_parameters(
+          max_iterations=max_iterations,
+          traditional_convergence_test_eps=traditional_convergence_test_eps),
+        exception_handling_params=scitbx.lbfgs.exception_handling_parameters(
+          ignore_line_search_failed_rounding_errors=True,
+          ignore_line_search_failed_step_at_lower_bound=True,
+          ignore_line_search_failed_step_at_upper_bound=True,
+          ignore_line_search_failed_maxfev=True))
     # change transforms to the original coordinate system
     if self.refine_transformations:
       self.ncs_restraints_group_list = self.ncs_restraints_group_list.shift_translation_back_to_place(
@@ -445,18 +506,21 @@ class lbfgs(object):
         tr1.t = tr2.t
 
   def compute_functional_and_gradients(self, compute_gradients=True):
-    x_current = self.x
-    if(self.x_previous is None):
-      self.x_previous = x_current.deep_copy()
+    if(self.x_start is not None): # variables are shifts, bounded by minimizer
+      x_current = self.x_start + self.x
     else:
-      xray.ext.damp_shifts(previous=self.x_previous, current=x_current,
-        max_value=10.)
-      self.x_previous = x_current.deep_copy()
+      x_current = self.x
+      if(self.x_previous is None):
+        self.x_previous = x_current.deep_copy()
+      else:
+        xray.ext.damp_shifts(previous=self.x_previous, current=x_current,
+          max_value=10.)
+        self.x_previous = x_current.deep_copy()
 
     t,g = self.target_and_grads_object.target_and_gradients(
       compute_gradients=compute_gradients,
-      xray_structure = self.update_xray_structure(),
-      x=self.x)
+      xray_structure = self.update_xray_structure(x = x_current),
+      x=x_current)
     if(self.finite_grad_differences_test and compute_gradients):
       self.finite_difference_test(g)
     return t, g
@@ -504,7 +568,7 @@ class lbfgs(object):
         new_x = new_x.select(self.refine_selection)
         new_x = x_old.set_selected(self.refine_selection,new_x)
       else:
-        new_x = self.x
+        new_x = flex.vec3_double(x)
       return new_x.as_double()
     elif self.refine_u_iso:
       if self.use_ncs_constraints:
